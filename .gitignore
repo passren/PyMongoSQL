@@ -36,3 +36,7 @@ venv/
 ENV/
 env.bak/
 venv.bak/
+
+# Antlr4 generated files
+*.interp
+*.tokens

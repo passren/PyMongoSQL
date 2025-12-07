@@ -2,6 +2,7 @@
 __all__ = [
     "Error",
     "Warning",
+    "SqlSyntaxError",
     "InterfaceError",
     "DatabaseError",
     "InternalError",
@@ -17,6 +18,9 @@ class Error(Exception):
 
 
 class Warning(Exception):
+    pass
+
+class SqlSyntaxError(Error):
     pass
 
 
