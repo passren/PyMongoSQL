@@ -1,11 +1,11 @@
 # -*- coding: utf-8 -*-
 import logging
-from .base import Executor, QueryExecutor
+from .base import Executor, MongoSQL, QueryExecutor
 
 _logger = logging.getLogger(__name__)  # type: ignore
 
 
-class MongoQuery:
+class MongoQuery(MongoSQL):
     def __init__(
         self, collection: str = None, filter: dict = None, projection: dict = None
     ):

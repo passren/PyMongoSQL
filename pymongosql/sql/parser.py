@@ -27,9 +27,9 @@ class SQLParser(metaclass=ABCMeta):
 
     def _load_ast(self) -> None:
         try:
-            self._lexer = MongoSQLLexer(InputStream(self._sql))
-            self._parser = MongoSQLParser(CommonTokenStream(self._lexer))
-            self._ast = self._parser.root()
+            lexer = MongoSQLLexer(InputStream(self._sql))
+            parser = MongoSQLParser(CommonTokenStream(lexer))
+            self._ast = parser.root()
         except Exception as e:
             _logger.error("Failed to generate AST for [%s]: %s", self._sql, e)
             raise SqlSyntaxError from e
