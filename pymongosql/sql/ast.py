@@ -1,7 +1,5 @@
 # -*- coding: utf-8 -*-
-from typing import Any, Dict, List, Optional
-from dataclasses import dataclass, field
-from abc import ABC, abstractmethod
+from typing import Any, Dict
 import logging
 
 from .partiql.PartiQLLexer import PartiQLLexer
@@ -9,94 +7,9 @@ from .partiql.PartiQLParser import PartiQLParser
 from .partiql.PartiQLParserVisitor import PartiQLParserVisitor
 from .builder import QueryPlan
 from ..error import SqlSyntaxError
+from .handler import ParseResult, BaseHandler, HandlerFactory
 
 _logger = logging.getLogger(__name__)
-
-
-@dataclass
-class ParseContext:
-    """Context object to maintain parsing state"""
-
-    collection: Optional[str] = None
-    projection: Dict[str, Any] = field(default_factory=dict)
-    filter_conditions: Dict[str, Any] = field(default_factory=dict)
-    sort_fields: List[Dict[str, int]] = field(default_factory=list)
-    limit_value: Optional[int] = None
-    offset_value: Optional[int] = None
-
-
-class VisitorHandler(ABC):
-    """Abstract base for visitor method handlers"""
-
-    @abstractmethod
-    def handle(self, ctx: Any, parse_context: ParseContext) -> Any:
-        pass
-
-
-class SelectHandler(VisitorHandler):
-    """Handles SELECT statement parsing"""
-
-    def handle(
-        self, ctx: PartiQLParser.SelectItemsContext, parse_context: ParseContext
-    ) -> Any:
-        projection = {}
-
-        if hasattr(ctx, "projectionItems") and ctx.projectionItems():
-            for item in ctx.projectionItems().projectionItem():
-                field_name = self._extract_field_name(item)
-                projection[field_name] = 1
-
-        parse_context.projection = projection
-        return projection
-
-    def _extract_field_name(self, item) -> str:
-        """Extract field name from projection item"""
-        if hasattr(item, "getText"):
-            return item.getText().strip()
-        return str(item)
-
-
-class FromHandler(VisitorHandler):
-    """Handles FROM clause parsing"""
-
-    def handle(
-        self, ctx: PartiQLParser.FromClauseContext, parse_context: ParseContext
-    ) -> Any:
-        if hasattr(ctx, "tableReference") and ctx.tableReference():
-            collection_name = ctx.tableReference().getText()
-            parse_context.collection = collection_name
-            return collection_name
-        return None
-
-
-class WhereHandler(VisitorHandler):
-    """Handles WHERE clause parsing"""
-
-    def __init__(self):
-        # Import here to avoid circular imports
-        from .handler import EnhancedWhereHandler
-
-        self._expression_handler = EnhancedWhereHandler()
-
-    def handle(
-        self, ctx: PartiQLParser.WhereClauseSelectContext, parse_context: ParseContext
-    ) -> Any:
-        if hasattr(ctx, "exprSelect") and ctx.exprSelect():
-            try:
-                # Use enhanced expression handler for better parsing
-                filter_conditions = self._expression_handler.handle(ctx)
-                parse_context.filter_conditions = filter_conditions
-                return filter_conditions
-            except Exception as e:
-                _logger.warning(
-                    f"Failed to parse WHERE expression, falling back to text search: {e}"
-                )
-                # Fallback to simple text search
-                filter_text = ctx.exprSelect().getText()
-                fallback_filter = {"$text": {"$search": filter_text}}
-                parse_context.filter_conditions = fallback_filter
-                return fallback_filter
-        return {}
 
 
 class MongoSQLLexer(PartiQLLexer):
@@ -116,31 +29,32 @@ class MongoSQLParserVisitor(PartiQLParserVisitor):
 
     def __init__(self) -> None:
         super().__init__()
-        self._parse_context = ParseContext()
+        self._parse_result = ParseResult.for_visitor()
         self._handlers = self._initialize_handlers()
 
-    def _initialize_handlers(self) -> Dict[str, VisitorHandler]:
+    def _initialize_handlers(self) -> Dict[str, BaseHandler]:
         """Initialize method handlers for better separation of concerns"""
+        # Use the factory to get pre-configured handlers
         return {
-            "select": SelectHandler(),
-            "from": FromHandler(),
-            "where": WhereHandler(),
+            "select": HandlerFactory.get_visitor_handler("select"),
+            "from": HandlerFactory.get_visitor_handler("from"),
+            "where": HandlerFactory.get_visitor_handler("where"),
         }
 
     @property
-    def parse_context(self) -> ParseContext:
-        """Get the current parse context"""
-        return self._parse_context
+    def parse_result(self) -> ParseResult:
+        """Get the current parse result"""
+        return self._parse_result
 
     def parse_to_query_plan(self) -> QueryPlan:
-        """Convert the parse context to a QueryPlan"""
+        """Convert the parse result to a QueryPlan"""
         return QueryPlan(
-            collection=self._parse_context.collection,
-            filter_stage=self._parse_context.filter_conditions,
-            projection_stage=self._parse_context.projection,
-            sort_stage=self._parse_context.sort_fields,
-            limit_stage=self._parse_context.limit_value,
-            skip_stage=self._parse_context.offset_value,
+            collection=self._parse_result.collection,
+            filter_stage=self._parse_result.filter_conditions,
+            projection_stage=self._parse_result.projection,
+            sort_stage=self._parse_result.sort_fields,
+            limit_stage=self._parse_result.limit_value,
+            skip_stage=self._parse_result.offset_value,
         )
 
     def visitRoot(self, ctx: PartiQLParser.RootContext) -> Any:
@@ -157,7 +71,7 @@ class MongoSQLParserVisitor(PartiQLParserVisitor):
         """Handle SELECT * statements"""
         _logger.debug("Processing SELECT ALL statement")
         # SELECT * means no projection filter (return all fields)
-        self._parse_context.projection = {}
+        self._parse_result.projection = {}
         return self.visitChildren(ctx)
 
     def visitSelectItems(self, ctx: PartiQLParser.SelectItemsContext) -> Any:
@@ -165,8 +79,10 @@ class MongoSQLParserVisitor(PartiQLParserVisitor):
         _logger.debug("Processing SELECT items")
         try:
             handler = self._handlers["select"]
-            result = handler.handle(ctx, self._parse_context)
-            return result
+            if handler:
+                result = handler.handle_visitor(ctx, self._parse_result)
+                return result
+            return self.visitChildren(ctx)
         except Exception as e:
             _logger.warning(f"Error processing SELECT items: {e}")
             return self.visitChildren(ctx)
@@ -176,9 +92,11 @@ class MongoSQLParserVisitor(PartiQLParserVisitor):
         _logger.debug("Processing FROM clause")
         try:
             handler = self._handlers["from"]
-            result = handler.handle(ctx, self._parse_context)
-            _logger.debug(f"Extracted collection: {result}")
-            return result
+            if handler:
+                result = handler.handle_visitor(ctx, self._parse_result)
+                _logger.debug(f"Extracted collection: {result}")
+                return result
+            return self.visitChildren(ctx)
         except Exception as e:
             _logger.warning(f"Error processing FROM clause: {e}")
             return self.visitChildren(ctx)
@@ -190,9 +108,11 @@ class MongoSQLParserVisitor(PartiQLParserVisitor):
         _logger.debug("Processing WHERE clause")
         try:
             handler = self._handlers["where"]
-            result = handler.handle(ctx, self._parse_context)
-            _logger.debug(f"Extracted filter conditions: {result}")
-            return result
+            if handler:
+                result = handler.handle_visitor(ctx, self._parse_result)
+                _logger.debug(f"Extracted filter conditions: {result}")
+                return result
+            return self.visitChildren(ctx)
         except Exception as e:
             _logger.warning(f"Error processing WHERE clause: {e}")
             return self.visitChildren(ctx)
