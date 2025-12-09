@@ -13,34 +13,45 @@ __all__ = [
 ]
 
 
-class Error(Exception): ...
+class Error(Exception):
+    pass
 
 
-class Warning(Exception): ...
+class Warning(Exception):
+    pass
 
 
-class SqlSyntaxError(Error): ...
+class SqlSyntaxError(Error):
+    pass
 
 
-class InterfaceError(Error): ...
+class InterfaceError(Error):
+    pass
 
 
-class DatabaseError(Error): ...
+class DatabaseError(Error):
+    pass
 
 
-class InternalError(DatabaseError): ...
+class InternalError(DatabaseError):
+    pass
 
 
-class OperationalError(DatabaseError): ...
+class OperationalError(DatabaseError):
+    pass
 
 
-class ProgrammingError(DatabaseError): ...
+class ProgrammingError(DatabaseError):
+    pass
 
 
-class IntegrityError(DatabaseError): ...
+class IntegrityError(DatabaseError):
+    pass
 
 
-class DataError(DatabaseError): ...
+class DataError(DatabaseError):
+    pass
 
 
-class NotSupportedError(DatabaseError): ...
+class NotSupportedError(DatabaseError):
+    pass

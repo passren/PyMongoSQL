@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
 import logging
 from abc import ABCMeta, abstractmethod
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Union
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple
 
-from .error import ProgrammingError, OperationalError
+from .error import ProgrammingError
 
 if TYPE_CHECKING:
     from .connection import Connection
