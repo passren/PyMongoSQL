@@ -1,0 +1,242 @@
+# -*- coding: utf-8 -*-
+"""
+Query builder for constructing MongoDB queries in a fluent, readable way
+"""
+from typing import Any, Dict, List, Optional, Union
+from dataclasses import dataclass, field
+import logging
+
+_logger = logging.getLogger(__name__)
+
+
+@dataclass
+class QueryPlan:
+    """Unified representation for MongoDB queries - replaces MongoQuery functionality"""
+
+    collection: Optional[str] = None
+    filter_stage: Dict[str, Any] = field(default_factory=dict)
+    projection_stage: Dict[str, Any] = field(default_factory=dict)
+    sort_stage: List[Dict[str, int]] = field(default_factory=list)
+    limit_stage: Optional[int] = None
+    skip_stage: Optional[int] = None
+
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert query plan to dictionary representation"""
+        return {
+            "collection": self.collection,
+            "filter": self.filter_stage,
+            "projection": self.projection_stage,
+            "sort": self.sort_stage,
+            "limit": self.limit_stage,
+            "skip": self.skip_stage,
+        }
+
+    def validate(self) -> bool:
+        """Validate the query plan"""
+        errors = []
+
+        if not self.collection:
+            errors.append("Collection name is required")
+
+        if self.limit_stage is not None and (
+            not isinstance(self.limit_stage, int) or self.limit_stage < 0
+        ):
+            errors.append("Limit must be a non-negative integer")
+
+        if self.skip_stage is not None and (
+            not isinstance(self.skip_stage, int) or self.skip_stage < 0
+        ):
+            errors.append("Skip must be a non-negative integer")
+
+        if errors:
+            _logger.error(f"Query validation errors: {errors}")
+            return False
+
+        return True
+
+    def copy(self) -> "QueryPlan":
+        """Create a copy of this query plan"""
+        return QueryPlan(
+            collection=self.collection,
+            filter_stage=self.filter_stage.copy(),
+            projection_stage=self.projection_stage.copy(),
+            sort_stage=self.sort_stage.copy(),
+            limit_stage=self.limit_stage,
+            skip_stage=self.skip_stage,
+        )
+
+
+class MongoQueryBuilder:
+    """Fluent builder for MongoDB queries with validation and readability"""
+
+    def __init__(self):
+        self._query_plan = QueryPlan()
+        self._validation_errors = []
+
+    def collection(self, name: str) -> "MongoQueryBuilder":
+        """Set the target collection"""
+        if not name or not name.strip():
+            self._add_error("Collection name cannot be empty")
+            return self
+
+        self._query_plan.collection = name.strip()
+        _logger.debug(f"Set collection to: {name}")
+        return self
+
+    def filter(self, conditions: Dict[str, Any]) -> "MongoQueryBuilder":
+        """Add filter conditions"""
+        if not isinstance(conditions, dict):
+            self._add_error("Filter conditions must be a dictionary")
+            return self
+
+        self._query_plan.filter_stage.update(conditions)
+        _logger.debug(f"Added filter conditions: {conditions}")
+        return self
+
+    def project(self, fields: Union[Dict[str, int], List[str]]) -> "MongoQueryBuilder":
+        """Set projection fields"""
+        if isinstance(fields, list):
+            # Convert list to projection dict
+            projection = {field: 1 for field in fields}
+        elif isinstance(fields, dict):
+            projection = fields
+        else:
+            self._add_error("Projection must be a list of field names or a dictionary")
+            return self
+
+        self._query_plan.projection_stage = projection
+        _logger.debug(f"Set projection: {projection}")
+        return self
+
+    def sort(self, field: str, direction: int = 1) -> "MongoQueryBuilder":
+        """Add sort criteria"""
+        if not field or not isinstance(field, str):
+            self._add_error("Sort field must be a non-empty string")
+            return self
+
+        if direction not in [-1, 1]:
+            self._add_error("Sort direction must be 1 (ascending) or -1 (descending)")
+            return self
+
+        self._query_plan.sort_stage.append({field: direction})
+        _logger.debug(f"Added sort: {field} -> {direction}")
+        return self
+
+    def limit(self, count: int) -> "MongoQueryBuilder":
+        """Set limit for results"""
+        if not isinstance(count, int) or count < 0:
+            self._add_error("Limit must be a non-negative integer")
+            return self
+
+        self._query_plan.limit_stage = count
+        _logger.debug(f"Set limit to: {count}")
+        return self
+
+    def skip(self, count: int) -> "MongoQueryBuilder":
+        """Set skip count for pagination"""
+        if not isinstance(count, int) or count < 0:
+            self._add_error("Skip must be a non-negative integer")
+            return self
+
+        self._query_plan.skip_stage = count
+        _logger.debug(f"Set skip to: {count}")
+        return self
+
+    def where(self, field: str, operator: str, value: Any) -> "MongoQueryBuilder":
+        """Add a where condition in a readable format"""
+        condition = self._build_condition(field, operator, value)
+        if condition:
+            return self.filter(condition)
+        return self
+
+    def where_in(self, field: str, values: List[Any]) -> "MongoQueryBuilder":
+        """Add a WHERE field IN (values) condition"""
+        return self.filter({field: {"$in": values}})
+
+    def where_between(
+        self, field: str, min_val: Any, max_val: Any
+    ) -> "MongoQueryBuilder":
+        """Add a WHERE field BETWEEN min AND max condition"""
+        return self.filter({field: {"$gte": min_val, "$lte": max_val}})
+
+    def where_like(self, field: str, pattern: str) -> "MongoQueryBuilder":
+        """Add a WHERE field LIKE pattern condition"""
+        # Convert SQL LIKE pattern to MongoDB regex
+        regex_pattern = pattern.replace("%", ".*").replace("_", ".")
+        return self.filter({field: {"$regex": regex_pattern, "$options": "i"}})
+
+    def _build_condition(
+        self, field: str, operator: str, value: Any
+    ) -> Optional[Dict[str, Any]]:
+        """Build a MongoDB condition from field, operator, and value"""
+        operator_map = {
+            "=": "$eq",
+            "!=": "$ne",
+            "<": "$lt",
+            "<=": "$lte",
+            ">": "$gt",
+            ">=": "$gte",
+            "eq": "$eq",
+            "ne": "$ne",
+            "lt": "$lt",
+            "lte": "$lte",
+            "gt": "$gt",
+            "gte": "$gte",
+        }
+
+        mongo_op = operator_map.get(operator.lower())
+        if not mongo_op:
+            self._add_error(f"Unsupported operator: {operator}")
+            return None
+
+        return {field: {mongo_op: value}}
+
+    def _add_error(self, message: str) -> None:
+        """Add validation error"""
+        self._validation_errors.append(message)
+        _logger.error(f"Query builder error: {message}")
+
+    def validate(self) -> bool:
+        """Validate the current query plan"""
+        self._validation_errors.clear()
+
+        if not self._query_plan.collection:
+            self._add_error("Collection name is required")
+
+        # Add more validation rules as needed
+        return len(self._validation_errors) == 0
+
+    def get_errors(self) -> List[str]:
+        """Get validation errors"""
+        return self._validation_errors.copy()
+
+    def build(self) -> QueryPlan:
+        """Build and return the query plan"""
+        if not self.validate():
+            error_summary = "; ".join(self._validation_errors)
+            raise ValueError(f"Query validation failed: {error_summary}")
+
+        return self._query_plan
+
+    def reset(self) -> "MongoQueryBuilder":
+        """Reset the builder to start a new query"""
+        self._query_plan = QueryPlan()
+        self._validation_errors.clear()
+        return self
+
+    def __str__(self) -> str:
+        """String representation for debugging"""
+        return (
+            f"MongoQueryBuilder(collection={self._query_plan.collection}, "
+            f"filter={self._query_plan.filter_stage}, "
+            f"projection={self._query_plan.projection_stage})"
+        )
+
+
+class BuilderFactory:
+    """Factory for creating query builders"""
+
+    @staticmethod
+    def create_query_builder() -> MongoQueryBuilder:
+        """Create a builder for SELECT queries"""
+        return MongoQueryBuilder()

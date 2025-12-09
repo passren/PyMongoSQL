@@ -1,43 +1,162 @@
 # -*- coding: utf-8 -*-
 import logging
 from abc import ABCMeta
-from typing import Any
+from typing import Any, Optional
 from antlr4 import CommonTokenStream, InputStream
+from antlr4.error.ErrorListener import ErrorListener
+
 from .ast import MongoSQLLexer, MongoSQLParser, MongoSQLParserVisitor
-from .base import Executor
+from .builder import QueryPlan
 from ..error import SqlSyntaxError
 
-_logger = logging.getLogger(__name__)  # type: ignore
+_logger = logging.getLogger(__name__)
+
+
+class SQLParseErrorListener(ErrorListener):
+    """Custom error listener for better error handling"""
+
+    def __init__(self):
+        super().__init__()
+        self.errors = []
+
+    def syntaxError(self, recognizer, offendingSymbol, line, column, msg, e):
+        error_msg = f"Syntax error at line {line}, column {column}: {msg}"
+        self.errors.append(error_msg)
+        _logger.error(error_msg)
 
 
 class SQLParser(metaclass=ABCMeta):
+    """Enhanced SQL Parser with better error handling and readability"""
+
     def __init__(self, sql: str) -> None:
-        self._sql: str = sql
-        self._ast: Any = None
+        if not sql or not sql.strip():
+            raise ValueError("SQL statement cannot be empty")
 
-        # Preprocess the statement before parsing
-        self.preprocess()
+        self._original_sql = sql
+        self._preprocessed_sql: Optional[str] = None
+        self._ast: Optional[Any] = None
+        self._visitor: Optional[MongoSQLParserVisitor] = None
+        self._error_listener = SQLParseErrorListener()
 
-        # Generate the AST
-        self._load_ast()
+        # Process the SQL statement
+        self._process_sql()
 
     @property
-    def sql(self):
-        return self._sql
+    def original_sql(self) -> str:
+        """Get the original SQL statement"""
+        return self._original_sql
 
-    def _load_ast(self) -> None:
+    @property
+    def preprocessed_sql(self) -> str:
+        """Get the preprocessed SQL statement"""
+        return self._preprocessed_sql or self._original_sql
+
+    @property
+    def has_errors(self) -> bool:
+        """Check if parsing encountered any errors"""
+        return len(self._error_listener.errors) > 0
+
+    @property
+    def errors(self) -> list:
+        """Get list of parsing errors"""
+        return self._error_listener.errors.copy()
+
+    def _process_sql(self) -> None:
+        """Process the SQL statement through preprocessing and parsing"""
         try:
-            lexer = MongoSQLLexer(InputStream(self._sql))
-            parser = MongoSQLParser(CommonTokenStream(lexer))
-            self._ast = parser.root()
+            # Step 1: Preprocess the SQL
+            self._preprocess()
+
+            # Step 2: Generate AST
+            self._generate_ast()
+
+            # Step 3: Validate AST
+            self._validate_ast()
+
         except Exception as e:
-            _logger.error("Failed to generate AST for [%s]: %s", self._sql, e)
-            raise SqlSyntaxError from e
+            _logger.error(f"Failed to process SQL statement: {e}")
+            raise
 
-    def preprocess(self) -> None:
-        pass  # pragma: no cover
+    def _preprocess(self) -> None:
+        """Preprocess the SQL statement"""
+        # Remove extra whitespace and normalize
+        sql = self._original_sql.strip()
 
-    def get_executor(self) -> Executor:
-        visitor = MongoSQLParserVisitor()
-        visitor.visit(self._ast)
-        return visitor.mongo_sql.transform()
+        # Remove comments (basic implementation)
+        lines = []
+        for line in sql.split("\n"):
+            # Remove single-line comments
+            if "--" in line:
+                line = line[: line.index("--")]
+            lines.append(line)
+
+        self._preprocessed_sql = " ".join(lines).strip()
+        _logger.debug(f"Preprocessed SQL: {self._preprocessed_sql}")
+
+    def _generate_ast(self) -> None:
+        """Generate Abstract Syntax Tree from SQL"""
+        try:
+            # Create lexer and parser
+            input_stream = InputStream(self.preprocessed_sql)
+            lexer = MongoSQLLexer(input_stream)
+            lexer.addErrorListener(self._error_listener)
+
+            token_stream = CommonTokenStream(lexer)
+            parser = MongoSQLParser(token_stream)
+            parser.addErrorListener(self._error_listener)
+
+            # Generate AST
+            self._ast = parser.root()
+
+            if self.has_errors:
+                error_summary = "; ".join(self.errors)
+                raise SqlSyntaxError(f"SQL parsing failed: {error_summary}")
+
+        except Exception as e:
+            _logger.error(f"Failed to generate AST for SQL: {self.preprocessed_sql}")
+            if not isinstance(e, SqlSyntaxError):
+                raise SqlSyntaxError(f"AST generation failed: {e}") from e
+            raise
+
+    def _validate_ast(self) -> None:
+        """Validate the generated AST"""
+        if self._ast is None:
+            raise SqlSyntaxError("AST generation resulted in None")
+
+        _logger.debug("AST validation successful")
+
+    def get_query_plan(self) -> QueryPlan:
+        """Parse SQL and return QueryPlan directly"""
+        if self._ast is None:
+            raise SqlSyntaxError("No AST available - parsing may have failed")
+
+        try:
+            # Create and use visitor to generate QueryPlan
+            self._visitor = MongoSQLParserVisitor()
+            self._visitor.visit(self._ast)
+            query_plan = self._visitor.parse_to_query_plan()
+
+            # Validate query plan
+            if not query_plan.validate():
+                raise SqlSyntaxError("Generated query plan is invalid")
+
+            _logger.debug(
+                f"Generated QueryPlan for collection: {query_plan.collection}"
+            )
+            return query_plan
+
+        except Exception as e:
+            _logger.error(f"Failed to generate QueryPlan from AST: {e}")
+            raise SqlSyntaxError(f"QueryPlan generation failed: {e}") from e
+
+    def get_parse_info(self) -> dict:
+        """Get detailed parsing information for debugging"""
+        return {
+            "original_sql": self.original_sql,
+            "preprocessed_sql": self.preprocessed_sql,
+            "has_errors": self.has_errors,
+            "errors": self.errors,
+            "ast_available": self._ast is not None,
+            "visitor_available": self._visitor is not None,
+            "parse_context": self._visitor.parse_context if self._visitor else None,
+        }
