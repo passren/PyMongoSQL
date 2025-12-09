@@ -51,20 +51,6 @@ class ParseResult:
 
     # Factory methods for different use cases
     @classmethod
-    def for_expression(
-        cls,
-        filter_conditions: Dict[str, Any] = None,
-        has_errors: bool = False,
-        error_message: str = None,
-    ) -> "ParseResult":
-        """Create ParseResult for expression parsing"""
-        return cls(
-            filter_conditions=filter_conditions or {},
-            has_errors=has_errors,
-            error_message=error_message,
-        )
-
-    @classmethod
     def for_visitor(cls) -> "ParseResult":
         """Create ParseResult for visitor parsing"""
         return cls()
@@ -288,14 +274,14 @@ class ComparisonExpressionHandler(
                 operator=operator,
             )
 
-            return ParseResult.for_expression(filter_conditions=mongo_filter)
+            return ParseResult(filter_conditions=mongo_filter)
 
         except Exception as e:
             processing_time = (time.time() - start_time) * 1000
             self._log_operation_error(
                 "comparison_parsing", ctx, operation_id, processing_time, e
             )
-            return ParseResult.for_expression(has_errors=True, error_message=str(e))
+            return ParseResult(has_errors=True, error_message=str(e))
 
     def _build_mongo_filter(
         self, field_name: str, operator: str, value: Any
@@ -487,14 +473,14 @@ class LogicalExpressionHandler(
                 processed_count=len(processed_operands),
             )
 
-            return ParseResult.for_expression(filter_conditions=mongo_filter)
+            return ParseResult(filter_conditions=mongo_filter)
 
         except Exception as e:
             processing_time = (time.time() - start_time) * 1000
             self._log_operation_error(
                 "logical_parsing", ctx, operation_id, processing_time, e
             )
-            return ParseResult.for_expression(has_errors=True, error_message=str(e))
+            return ParseResult(has_errors=True, error_message=str(e))
 
     def _process_operands(self, operands: List[Any]) -> List[Dict[str, Any]]:
         """Process operands and return processed filters"""
@@ -640,14 +626,14 @@ class FunctionExpressionHandler(BaseHandler, ContextUtilsMixin, LoggingMixin):
                 function_name=function_name,
             )
 
-            return ParseResult.for_expression(filter_conditions=mongo_filter)
+            return ParseResult(filter_conditions=mongo_filter)
 
         except Exception as e:
             processing_time = (time.time() - start_time) * 1000
             self._log_operation_error(
                 "function_parsing", ctx, operation_id, processing_time, e
             )
-            return ParseResult.for_expression(has_errors=True, error_message=str(e))
+            return ParseResult(has_errors=True, error_message=str(e))
 
     def _is_function_context(self, ctx: Any) -> bool:
         """Check if context is a function call"""
