@@ -67,6 +67,10 @@ jobs:
           sleep 2
         done
 
+    - name: Check code style with flake8
+      run: |
+        flake8 pymongosql/ --count --max-line-length=127 --statistics
+
     - name: Set up test database
       run: |
         echo "Setting up test database..."

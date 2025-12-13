@@ -6,3 +6,4 @@ pymongo>=4.15.0
 pytest>=7.0.0
 pytest-cov>=4.0.0
 testcontainers[mongodb]>=3.7.0
+flake8>=6.0.0
