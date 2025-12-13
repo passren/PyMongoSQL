@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 import pytest
-from unittest.mock import Mock, MagicMock
+from unittest.mock import Mock
 from pymongosql.result_set import ResultSet
-from pymongosql.error import OperationalError, ProgrammingError
+from pymongosql.error import ProgrammingError
 from pymongosql.sql.builder import QueryPlan
 
 
@@ -15,20 +15,16 @@ class TestResultSet:
         self.mock_projection = {"name": "full_name", "email": "user_email"}
 
         # Create QueryPlan objects for testing
-        self.query_plan_with_projection = QueryPlan(
-            collection="test_collection", projection_stage=self.mock_projection
-        )
+        self.query_plan_with_projection = QueryPlan(collection="test_collection", projection_stage=self.mock_projection)
 
-        self.query_plan_empty_projection = QueryPlan(
-            collection="test_collection", projection_stage={}
-        )
+        self.query_plan_empty_projection = QueryPlan(collection="test_collection", projection_stage={})
 
     def test_result_set_init(self):
         """Test ResultSet initialization"""
         result_set = ResultSet(self.mock_cursor, self.query_plan_with_projection)
         assert result_set._mongo_cursor == self.mock_cursor
         assert result_set._query_plan == self.query_plan_with_projection
-        assert result_set._is_closed == False
+        assert result_set._is_closed is False
 
     def test_result_set_init_empty_projection(self):
         """Test ResultSet initialization with empty projection"""
@@ -106,9 +102,7 @@ class TestResultSet:
         result_set = ResultSet(self.mock_cursor, self.query_plan_empty_projection)
         rows = result_set.fetchmany()  # Should use default arraysize (1000)
 
-        assert (
-            len(rows) == 15
-        )  # Gets all available docs since arraysize (1000) > available (15)
+        assert len(rows) == 15  # Gets all available docs since arraysize (1000) > available (15)
 
     def test_fetchmany_less_data_available(self):
         """Test fetchmany when less data available than requested"""
@@ -172,9 +166,7 @@ class TestResultSet:
     def test_apply_projection_mapping(self):
         """Test _process_document method"""
         projection = {"name": "full_name", "age": "user_age", "email": "email"}
-        query_plan = QueryPlan(
-            collection="test_collection", projection_stage=projection
-        )
+        query_plan = QueryPlan(collection="test_collection", projection_stage=projection)
         doc = {
             "_id": "123",
             "name": "John",
@@ -196,9 +188,7 @@ class TestResultSet:
             "age": "user_age",
             "missing": "missing_alias",
         }
-        query_plan = QueryPlan(
-            collection="test_collection", projection_stage=projection
-        )
+        query_plan = QueryPlan(collection="test_collection", projection_stage=projection)
         doc = {"_id": "123", "name": "John"}  # Missing age and missing fields
 
         result_set = ResultSet(self.mock_cursor, query_plan)
@@ -211,9 +201,7 @@ class TestResultSet:
     def test_apply_projection_mapping_identity_mapping(self):
         """Test projection mapping with identity mapping (field: field)"""
         projection = {"name": "name", "age": "age"}
-        query_plan = QueryPlan(
-            collection="test_collection", projection_stage=projection
-        )
+        query_plan = QueryPlan(collection="test_collection", projection_stage=projection)
         doc = {"_id": "123", "name": "John", "age": 30}
 
         result_set = ResultSet(self.mock_cursor, query_plan)

@@ -41,9 +41,7 @@ class BaseCursor(metaclass=ABCMeta):
         raise NotImplementedError  # pragma: no cover
 
     @abstractmethod
-    def executemany(
-        self, operation: str, seq_of_parameters: List[Optional[Dict[str, Any]]]
-    ) -> None:
+    def executemany(self, operation: str, seq_of_parameters: List[Optional[Dict[str, Any]]]) -> None:
         raise NotImplementedError  # pragma: no cover
 
     @abstractmethod
@@ -82,9 +80,7 @@ class CursorIterator(metaclass=ABCMeta):
         if value <= 0:
             raise ValueError("arraysize must be positive")
         if value > self.DEFAULT_FETCH_SIZE:
-            raise ProgrammingError(
-                f"MaxResults is more than maximum allowed length {self.DEFAULT_FETCH_SIZE}."
-            )
+            raise ProgrammingError(f"MaxResults is more than maximum allowed length {self.DEFAULT_FETCH_SIZE}.")
         self._arraysize = value
 
     @property

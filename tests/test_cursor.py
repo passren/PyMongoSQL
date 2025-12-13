@@ -1,16 +1,9 @@
 # -*- coding: utf-8 -*-
 import pytest
-from unittest.mock import Mock, patch
 from pymongosql.connection import Connection
 from pymongosql.cursor import Cursor
 from pymongosql.result_set import ResultSet
-from pymongosql.error import (
-    SqlSyntaxError,
-    DatabaseError,
-    OperationalError,
-    ProgrammingError,
-)
-from pymongosql.sql.builder import QueryPlan
+from pymongosql.error import ProgrammingError
 
 
 class TestCursor:
@@ -23,9 +16,9 @@ class TestCursor:
             host="localhost",
             port=27017,
             database="test_db",
-            username="admin",
-            password="secret",
-            auth_source="admin",
+            username="testuser",
+            password="testpass",
+            auth_source="test_db",
         )
         self.cursor = Cursor(self.connection)
 
@@ -193,9 +186,9 @@ class TestCursor:
             host="localhost",
             port=27017,
             database="test_db",
-            username="admin",
-            password="secret",
-            auth_source="admin",
+            username="testuser",
+            password="testpass",
+            auth_source="test_db",
         )
         self.cursor = Cursor(self.connection)
 
@@ -240,7 +233,7 @@ class TestCursor:
         sql = "SELECT * FROM users"
 
         # Execute query first
-        result_set = self.cursor.execute(sql)
+        _ = self.cursor.execute(sql)
 
         # Test fetchone
         row = self.cursor.fetchone()
@@ -253,7 +246,7 @@ class TestCursor:
         sql = "SELECT * FROM users"
 
         # Execute query first
-        result_set = self.cursor.execute(sql)
+        _ = self.cursor.execute(sql)
 
         # Test fetchmany
         rows = self.cursor.fetchmany(2)
@@ -270,7 +263,7 @@ class TestCursor:
         sql = "SELECT * FROM users"
 
         # Execute query first
-        result_set = self.cursor.execute(sql)
+        _ = self.cursor.execute(sql)
 
         # Test fetchall
         rows = self.cursor.fetchall()

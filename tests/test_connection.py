@@ -1,9 +1,7 @@
 # -*- coding: utf-8 -*-
 import pytest
-from unittest.mock import patch
 from pymongosql.connection import Connection
 from pymongosql.cursor import Cursor
-from pymongosql.error import DatabaseError, OperationalError
 
 
 class TestConnection:
@@ -30,13 +28,13 @@ class TestConnection:
             host="localhost",
             port=27017,
             database="test_db",
-            username="admin",
-            password="secret",
-            auth_source="admin",
+            username="testuser",
+            password="testpass",
+            auth_source="test_db",
         )
         # Test that auth properties are stored correctly
-        assert conn.username == "admin"
-        assert conn.password == "secret"
+        assert conn.username == "testuser"
+        assert conn.password == "testpass"
         assert conn.is_connected
 
     def test_connection_init_with_auth_full(self):
@@ -45,12 +43,12 @@ class TestConnection:
             host="localhost",
             port=27017,
             database="test_db",
-            username="admin",
-            password="secret",
-            auth_source="admin",
+            username="testuser",
+            password="testpass",
+            auth_source="test_db",
         )
-        assert conn.username == "admin"
-        assert conn.password == "secret"
+        assert conn.username == "testuser"
+        assert conn.password == "testpass"
         assert conn.is_connected
 
     def test_connect_success(self):
@@ -68,14 +66,14 @@ class TestConnection:
             host="localhost",
             port=27017,
             database="test_db",
-            username="admin",
-            password="secret",
-            auth_source="admin",
+            username="testuser",
+            password="testpass",
+            auth_source="test_db",
         )
 
         assert conn.is_connected
-        assert conn.username == "admin"
-        assert conn.password == "secret"
+        assert conn.username == "testuser"
+        assert conn.password == "testpass"
 
     def test_connect_behavior(self):
         """Test connection behavior (connects automatically in constructor)"""
@@ -157,9 +155,9 @@ class TestConnection:
             host="localhost",
             port=27017,
             database="test_db",
-            username="admin",
-            password="secret",
-            auth_source="admin",
+            username="testuser",
+            password="testpass",
+            auth_source="test_db",
         )
 
         # Clear existing test data to avoid duplicate key errors
@@ -193,9 +191,9 @@ class TestConnection:
             host="localhost",
             port=27017,
             database="test_db",
-            username="admin",
-            password="secret",
-            auth_source="admin",
+            username="testuser",
+            password="testpass",
+            auth_source="test_db",
         )
 
         # Access different collections

@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 """
 MongoDB Test Helper Script
 
@@ -15,9 +16,7 @@ def check_docker():
     """Check if Docker is available and running"""
     try:
         print("  Checking Docker daemon...")
-        result = subprocess.run(
-            ["docker", "info"], capture_output=True, text=True, timeout=10
-        )
+        result = subprocess.run(["docker", "info"], capture_output=True, text=True, timeout=10)
         if result.returncode != 0:
             return False, "Docker daemon is not running. Please start Docker Desktop."
         print("  Docker daemon is running")
@@ -37,9 +36,7 @@ def start_mongodb_docker(version="8.0"):
     if not docker_ok:
         print(f"❌ {docker_msg}")
         print("\nAlternatives:")
-        print(
-            "1. Install Docker Desktop from https://www.docker.com/products/docker-desktop"
-        )
+        print("1. Install Docker Desktop from https://www.docker.com/products/docker-desktop")
         print("2. Start Docker Desktop if already installed")
         print("3. Use MongoDB Community Edition locally")
         print("4. Use MongoDB Atlas (cloud) for testing")
@@ -135,13 +132,45 @@ def wait_for_mongodb(host="localhost", port=27017, timeout=30):
     return False
 
 
+def create_database_user():
+    """Create a user for test_db database"""
+    print("Creating database user...")
+    try:
+        # Connect as admin to create user
+        admin_client = pymongo.MongoClient("localhost", 27017, username="admin", password="secret", authSource="admin")
+
+        # Create user for test_db
+        admin_client.test_db.command(
+            "createUser",
+            "testuser",
+            pwd="testpass",
+            roles=[
+                {"role": "readWrite", "db": "test_db"},
+                {"role": "dbAdmin", "db": "test_db"},
+            ],
+        )
+        print("Database user 'testuser' created successfully")
+        admin_client.close()
+        return True
+    except pymongo.errors.DuplicateKeyError:
+        print("Database user 'testuser' already exists")
+        return True
+    except Exception as e:
+        print(f"Failed to create database user: {e}")
+        return False
+
+
 def setup_test_data():
     """Setup test data in MongoDB"""
     print("Setting up test data...")
     try:
-        # Connect with authentication
+        # Connect with database user
         client = pymongo.MongoClient(
-            "localhost", 27017, username="admin", password="secret", authSource="admin"
+            "localhost",
+            27017,
+            username="testuser",
+            password="testpass",
+            authSource="test_db",
         )
         db = client.test_db
 
@@ -221,9 +250,7 @@ def suggest_alternatives():
 def main():
     """Main function"""
     if len(sys.argv) < 2 or len(sys.argv) > 3:
-        print(
-            "Usage: python run_test_server.py [start|stop|setup|status|alternatives|test] [version]"
-        )
+        print("Usage: python run_test_server.py [start|stop|setup|status|alternatives|test] [version]")
         print("Version examples: 7.0, 8.0 (default: 8.0)")
         sys.exit(1)
 
@@ -233,9 +260,12 @@ def main():
     if command == "start":
         if start_mongodb_docker(version):
             if wait_for_mongodb():
-                setup_test_data()
-                print(f"\n✅ MongoDB {version} test instance is ready!")
-                print("Connection: mongodb://localhost:27017/test_db")
+                if create_database_user():
+                    setup_test_data()
+                    print(f"\n✅ MongoDB {version} test instance is ready!")
+                    print("Connection: mongodb://testuser:testpass@localhost:27017/test_db?authSource=test_db")
+                else:
+                    print("❌ Failed to create database user")
             else:
                 print("❌ MongoDB failed to start properly")
 
@@ -245,6 +275,7 @@ def main():
 
     elif command == "setup":
         if wait_for_mongodb():
+            create_database_user()
             setup_test_data()
             print("✅ Test data setup complete")
         else:
@@ -257,20 +288,34 @@ def main():
                 client = pymongo.MongoClient(
                     "localhost",
                     27017,
-                    username="admin",
-                    password="secret",
-                    authSource="admin",
+                    username="testuser",
+                    password="testpass",
+                    authSource="test_db",
                 )
                 db = client.test_db
                 print(f"Users: {db.users.count_documents({})}")
                 print(f"Products: {db.products.count_documents({})}")
             except Exception as e:
-                print(f"Auth connection failed: {e}")
-                print("Trying without auth...")
-                client = pymongo.MongoClient("localhost", 27017)
-                db = client.test_db
-                print(f"Users: {db.users.count_documents({})}")
-                print(f"Products: {db.products.count_documents({})}")
+                print(f"Database user connection failed: {e}")
+                print("Trying to create user and retry...")
+                if create_database_user():
+                    client = pymongo.MongoClient(
+                        "localhost",
+                        27017,
+                        username="testuser",
+                        password="testpass",
+                        authSource="test_db",
+                    )
+                    db = client.test_db
+                    print(f"Users: {db.users.count_documents({})}")
+                    print(f"Products: {db.products.count_documents({})}")
+                else:
+                    print("Failed to create user, trying without auth...")
+                    client = pymongo.MongoClient("localhost", 27017)
+                    db = client.test_db
+                    print(f"Users: {db.users.count_documents({})}")
+                    print(f"Products: {db.products.count_documents({})}")
+                    print("⚠️  Warning: Using unauthenticated connection")
         else:
             print("❌ MongoDB is not accessible")
 

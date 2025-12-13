@@ -36,9 +36,7 @@ class ParseResult:
     """Unified result container for both expression parsing and visitor state management"""
 
     # Core parsing fields
-    filter_conditions: Dict[str, Any] = field(
-        default_factory=dict
-    )  # Unified filter field for all MongoDB conditions
+    filter_conditions: Dict[str, Any] = field(default_factory=dict)  # Unified filter field for all MongoDB conditions
     has_errors: bool = False
     error_message: Optional[str] = None
 
@@ -67,9 +65,7 @@ class ParseResult:
                 self.filter_conditions = other.filter_conditions
             else:
                 # If both have filters, combine them with $and
-                self.filter_conditions = {
-                    "$and": [self.filter_conditions, other.filter_conditions]
-                }
+                self.filter_conditions = {"$and": [self.filter_conditions, other.filter_conditions]}
 
         return self
 
@@ -119,9 +115,7 @@ class LoggingMixin:
             },
         )
 
-    def _log_operation_success(
-        self, operation: str, operation_id: int, processing_time: float, **extra_data
-    ):
+    def _log_operation_success(self, operation: str, operation_id: int, processing_time: float, **extra_data):
         """Log successful operation completion"""
         log_data = {
             "operation": operation,
@@ -215,18 +209,14 @@ class BaseHandler(ABC):
 
     def handle_expression(self, ctx: Any) -> ParseResult:
         """Handle expression parsing (to be overridden by expression handlers)"""
-        raise NotImplementedError(
-            "Expression handlers must implement handle_expression"
-        )
+        raise NotImplementedError("Expression handlers must implement handle_expression")
 
     def handle_visitor(self, ctx: Any, parse_result: "ParseResult") -> Any:
         """Handle visitor operations (to be overridden by visitor handlers)"""
         raise NotImplementedError("Visitor handlers must implement handle_visitor")
 
 
-class ComparisonExpressionHandler(
-    BaseHandler, ContextUtilsMixin, LoggingMixin, OperatorExtractorMixin
-):
+class ComparisonExpressionHandler(BaseHandler, ContextUtilsMixin, LoggingMixin, OperatorExtractorMixin):
     """Handles comparison expressions like field = value, field > value, etc."""
 
     def can_handle(self, ctx: Any) -> bool:
@@ -247,9 +237,7 @@ class ComparisonExpressionHandler(
 
         # Check various PartiQL expression types that represent comparisons
         return (
-            hasattr(ctx, "comparisonOperator")
-            or self._is_comparison_context(ctx)
-            or self._has_comparison_pattern(ctx)
+            hasattr(ctx, "comparisonOperator") or self._is_comparison_context(ctx) or self._has_comparison_pattern(ctx)
         )
 
     def handle_expression(self, ctx: Any) -> ParseResult:
@@ -278,14 +266,10 @@ class ComparisonExpressionHandler(
 
         except Exception as e:
             processing_time = (time.time() - start_time) * 1000
-            self._log_operation_error(
-                "comparison_parsing", ctx, operation_id, processing_time, e
-            )
+            self._log_operation_error("comparison_parsing", ctx, operation_id, processing_time, e)
             return ParseResult(has_errors=True, error_message=str(e))
 
-    def _build_mongo_filter(
-        self, field_name: str, operator: str, value: Any
-    ) -> Dict[str, Any]:
+    def _build_mongo_filter(self, field_name: str, operator: str, value: Any) -> Dict[str, Any]:
         """Build MongoDB filter from field, operator and value"""
         if operator == "=":
             return {field_name: value}
@@ -354,10 +338,7 @@ class ComparisonExpressionHandler(
                 for child in ctx.children:
                     child_text = self.get_context_text(child)
                     # Skip operators and quoted values
-                    if (
-                        child_text not in COMPARISON_OPERATORS
-                        and not child_text.startswith(("'", '"'))
-                    ):
+                    if child_text not in COMPARISON_OPERATORS and not child_text.startswith(("'", '"')):
                         return child_text
 
             return "unknown_field"
@@ -405,18 +386,12 @@ class ComparisonExpressionHandler(
             return None
 
 
-class LogicalExpressionHandler(
-    BaseHandler, ContextUtilsMixin, LoggingMixin, OperatorExtractorMixin
-):
+class LogicalExpressionHandler(BaseHandler, ContextUtilsMixin, LoggingMixin, OperatorExtractorMixin):
     """Handles logical expressions like AND, OR, NOT"""
 
     def can_handle(self, ctx: Any) -> bool:
         """Check if context represents a logical expression"""
-        return (
-            hasattr(ctx, "logicalOperator")
-            or self._is_logical_context(ctx)
-            or self._has_logical_operators(ctx)
-        )
+        return hasattr(ctx, "logicalOperator") or self._is_logical_context(ctx) or self._has_logical_operators(ctx)
 
     def _has_logical_operators(self, ctx: Any) -> bool:
         """Check if the expression text contains logical operators"""
@@ -428,9 +403,7 @@ class LogicalExpressionHandler(
             comparison_count = sum(1 for op in COMPARISON_OPERATORS if op in text)
 
             # If there are multiple comparison operations and logical operators, it's likely logical
-            has_logical_ops = any(
-                op in text_upper for op in LOGICAL_OPERATORS[:2]
-            )  # AND, OR only
+            has_logical_ops = any(op in text_upper for op in LOGICAL_OPERATORS[:2])  # AND, OR only
 
             return has_logical_ops and comparison_count > 1
         except Exception as e:
@@ -442,9 +415,9 @@ class LogicalExpressionHandler(
         try:
             context_name = self.get_context_type_name(ctx).lower()
             logical_indicators = ["logical", "and", "or"]
-            return any(
-                indicator in context_name for indicator in logical_indicators
-            ) or self._has_logical_operators(ctx)
+            return any(indicator in context_name for indicator in logical_indicators) or self._has_logical_operators(
+                ctx
+            )
         except Exception:
             return False
 
@@ -477,9 +450,7 @@ class LogicalExpressionHandler(
 
         except Exception as e:
             processing_time = (time.time() - start_time) * 1000
-            self._log_operation_error(
-                "logical_parsing", ctx, operation_id, processing_time, e
-            )
+            self._log_operation_error("logical_parsing", ctx, operation_id, processing_time, e)
             return ParseResult(has_errors=True, error_message=str(e))
 
     def _process_operands(self, operands: List[Any]) -> List[Dict[str, Any]]:
@@ -493,19 +464,13 @@ class LogicalExpressionHandler(
                 if not result.has_errors:
                     processed_operands.append(result.filter_conditions)
                 else:
-                    _logger.warning(
-                        f"Operand processing failed: {result.error_message}"
-                    )
+                    _logger.warning(f"Operand processing failed: {result.error_message}")
             else:
-                _logger.warning(
-                    f"No handler found for operand: {self.get_context_text(operand)}"
-                )
+                _logger.warning(f"No handler found for operand: {self.get_context_text(operand)}")
 
         return processed_operands
 
-    def _combine_operands(
-        self, operator: str, operands: List[Dict[str, Any]]
-    ) -> Dict[str, Any]:
+    def _combine_operands(self, operator: str, operands: List[Dict[str, Any]]) -> Dict[str, Any]:
         """Combine operands based on logical operator"""
         if not operands:
             return {}
@@ -521,9 +486,7 @@ class LogicalExpressionHandler(
         elif operator_upper == "NOT":
             return {"$not": operands[0]}
         else:
-            _logger.warning(
-                f"Unknown logical operator '{operator}', using empty filter"
-            )
+            _logger.warning(f"Unknown logical operator '{operator}', using empty filter")
             return {}
 
     def _extract_logical_operator(self, ctx: Any) -> str:
@@ -612,11 +575,7 @@ class FunctionExpressionHandler(BaseHandler, ContextUtilsMixin, LoggingMixin):
             arguments = self._extract_function_arguments(ctx)
 
             # For now, just return a placeholder - this would need full implementation
-            mongo_filter = {
-                "$expr": {
-                    self.FUNCTION_MAP.get(function_name.upper(), "$sum"): arguments
-                }
-            }
+            mongo_filter = {"$expr": {self.FUNCTION_MAP.get(function_name.upper(), "$sum"): arguments}}
 
             processing_time = (time.time() - start_time) * 1000
             self._log_operation_success(
@@ -630,9 +589,7 @@ class FunctionExpressionHandler(BaseHandler, ContextUtilsMixin, LoggingMixin):
 
         except Exception as e:
             processing_time = (time.time() - start_time) * 1000
-            self._log_operation_error(
-                "function_parsing", ctx, operation_id, processing_time, e
-            )
+            self._log_operation_error("function_parsing", ctx, operation_id, processing_time, e)
             return ParseResult(has_errors=True, error_message=str(e))
 
     def _is_function_context(self, ctx: Any) -> bool:
@@ -758,9 +715,7 @@ class SelectHandler(BaseHandler):
         """Check if this is a select context"""
         return hasattr(ctx, "projectionItems")
 
-    def handle_visitor(
-        self, ctx: PartiQLParser.SelectItemsContext, parse_result: "ParseResult"
-    ) -> Any:
+    def handle_visitor(self, ctx: PartiQLParser.SelectItemsContext, parse_result: "ParseResult") -> Any:
         projection = {}
 
         if hasattr(ctx, "projectionItems") and ctx.projectionItems():
@@ -789,10 +744,7 @@ class SelectHandler(BaseHandler):
             # Check if we have an alias
             if len(item.children) == 3:
                 # Pattern: expr AS symbolPrimitive
-                if (
-                    hasattr(item.children[1], "getText")
-                    and item.children[1].getText().upper() == "AS"
-                ):
+                if hasattr(item.children[1], "getText") and item.children[1].getText().upper() == "AS":
                     alias = item.children[2].getText()
             elif len(item.children) == 2:
                 # Pattern: expr symbolPrimitive (without AS)
@@ -808,9 +760,7 @@ class FromHandler(BaseHandler):
         """Check if this is a from context"""
         return hasattr(ctx, "tableReference")
 
-    def handle_visitor(
-        self, ctx: PartiQLParser.FromClauseContext, parse_result: "ParseResult"
-    ) -> Any:
+    def handle_visitor(self, ctx: PartiQLParser.FromClauseContext, parse_result: "ParseResult") -> Any:
         if hasattr(ctx, "tableReference") and ctx.tableReference():
             collection_name = ctx.tableReference().getText()
             parse_result.collection = collection_name
@@ -828,9 +778,7 @@ class WhereHandler(BaseHandler):
         """Check if this is a where context"""
         return hasattr(ctx, "exprSelect")
 
-    def handle_visitor(
-        self, ctx: PartiQLParser.WhereClauseSelectContext, parse_result: "ParseResult"
-    ) -> Any:
+    def handle_visitor(self, ctx: PartiQLParser.WhereClauseSelectContext, parse_result: "ParseResult") -> Any:
         if hasattr(ctx, "exprSelect") and ctx.exprSelect():
             try:
                 # Use enhanced expression handler for better parsing
@@ -838,9 +786,7 @@ class WhereHandler(BaseHandler):
                 parse_result.filter_conditions = filter_conditions
                 return filter_conditions
             except Exception as e:
-                _logger.warning(
-                    f"Failed to parse WHERE expression, falling back to text search: {e}"
-                )
+                _logger.warning(f"Failed to parse WHERE expression, falling back to text search: {e}")
                 # Fallback to simple text search
                 filter_text = ctx.exprSelect().getText()
                 fallback_filter = {"$text": {"$search": filter_text}}

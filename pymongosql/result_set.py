@@ -29,9 +29,7 @@ class ResultSet(CursorIterator):
         self._cached_results: List[Dict[str, Any]] = []
         self._cache_exhausted = False
         self._total_fetched = 0
-        self._description: Optional[
-            List[Tuple[str, str, None, None, None, None, None]]
-        ] = None
+        self._description: Optional[List[Tuple[str, str, None, None, None, None, None]]] = None
         self._errors: List[Dict[str, str]] = []
 
         # Build description from projection
@@ -125,8 +123,7 @@ class ResultSet(CursorIterator):
                     # Build description from first result
                     first_result = self._cached_results[0]
                     self._description = [
-                        (col_name, "VARCHAR", None, None, None, None, None)
-                        for col_name in first_result.keys()
+                        (col_name, "VARCHAR", None, None, None, None, None) for col_name in first_result.keys()
                     ]
             except Exception as e:
                 _logger.warning(f"Could not build dynamic description: {e}")
@@ -187,9 +184,7 @@ class ResultSet(CursorIterator):
                 remaining_docs = list(self._mongo_cursor)
                 if remaining_docs:
                     # Process results through projection mapping
-                    processed_docs = [
-                        self._process_document(doc) for doc in remaining_docs
-                    ]
+                    processed_docs = [self._process_document(doc) for doc in remaining_docs]
                     all_results.extend(processed_docs)
                     self._total_fetched += len(remaining_docs)
 

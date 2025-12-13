@@ -38,14 +38,10 @@ class QueryPlan:
         if not self.collection:
             errors.append("Collection name is required")
 
-        if self.limit_stage is not None and (
-            not isinstance(self.limit_stage, int) or self.limit_stage < 0
-        ):
+        if self.limit_stage is not None and (not isinstance(self.limit_stage, int) or self.limit_stage < 0):
             errors.append("Limit must be a non-negative integer")
 
-        if self.skip_stage is not None and (
-            not isinstance(self.skip_stage, int) or self.skip_stage < 0
-        ):
+        if self.skip_stage is not None and (not isinstance(self.skip_stage, int) or self.skip_stage < 0):
             errors.append("Skip must be a non-negative integer")
 
         if errors:
@@ -153,9 +149,7 @@ class MongoQueryBuilder:
         """Add a WHERE field IN (values) condition"""
         return self.filter({field: {"$in": values}})
 
-    def where_between(
-        self, field: str, min_val: Any, max_val: Any
-    ) -> "MongoQueryBuilder":
+    def where_between(self, field: str, min_val: Any, max_val: Any) -> "MongoQueryBuilder":
         """Add a WHERE field BETWEEN min AND max condition"""
         return self.filter({field: {"$gte": min_val, "$lte": max_val}})
 
@@ -165,9 +159,7 @@ class MongoQueryBuilder:
         regex_pattern = pattern.replace("%", ".*").replace("_", ".")
         return self.filter({field: {"$regex": regex_pattern, "$options": "i"}})
 
-    def _build_condition(
-        self, field: str, operator: str, value: Any
-    ) -> Optional[Dict[str, Any]]:
+    def _build_condition(self, field: str, operator: str, value: Any) -> Optional[Dict[str, Any]]:
         """Build a MongoDB condition from field, operator, and value"""
         operator_map = {
             "=": "$eq",

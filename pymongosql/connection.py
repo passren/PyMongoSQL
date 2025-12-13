@@ -74,9 +74,7 @@ class Connection:
         try:
             # Build connection string
             if self._username and self._password:
-                auth_string = (
-                    f"{quote_plus(self._username)}:{quote_plus(self._password)}@"
-                )
+                auth_string = f"{quote_plus(self._username)}:{quote_plus(self._password)}@"
             else:
                 auth_string = ""
 
@@ -107,9 +105,7 @@ class Connection:
             if self._database_name:
                 self._database = self._client[self._database_name]
 
-            _logger.info(
-                f"Successfully connected to MongoDB at {self._host}:{self._port}"
-            )
+            _logger.info(f"Successfully connected to MongoDB at {self._host}:{self._port}")
 
         except ConnectionFailure as e:
             _logger.error(f"Failed to connect to MongoDB: {e}")
@@ -258,9 +254,7 @@ class Connection:
         self._autocommit = True
 
     def rollback(self) -> None:
-        raise NotSupportedError(
-            "MongoDB doesn't support rollback in the traditional SQL sense"
-        )
+        raise NotSupportedError("MongoDB doesn't support rollback in the traditional SQL sense")
 
     def test_connection(self) -> bool:
         """Test if the connection is alive"""

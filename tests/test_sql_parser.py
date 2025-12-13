@@ -112,9 +112,7 @@ class TestSQLParser:
 
         query_plan = parser.get_query_plan()
         assert query_plan.collection == "users"
-        assert query_plan.filter_stage == {
-            "$and": [{"age": {"$gt": 25}}, {"status": "active"}]
-        }
+        assert query_plan.filter_stage == {"$and": [{"age": {"$gt": 25}}, {"status": "active"}]}
         assert query_plan.projection_stage == {"name": "name"}
 
     def test_select_with_or_condition(self):
@@ -126,9 +124,7 @@ class TestSQLParser:
 
         query_plan = parser.get_query_plan()
         assert query_plan.collection == "users"
-        assert query_plan.filter_stage == {
-            "$or": [{"age": {"$lt": 18}}, {"age": {"$gt": 65}}]
-        }
+        assert query_plan.filter_stage == {"$or": [{"age": {"$lt": 18}}, {"age": {"$gt": 65}}]}
         assert query_plan.projection_stage == {"name": "name"}
 
     def test_select_with_multiple_and_conditions(self):
@@ -173,9 +169,7 @@ class TestSQLParser:
             assert not parser.has_errors, f"Parser errors: {parser.errors}"
             query_plan = parser.get_query_plan()
             assert query_plan.collection == "users"
-            assert query_plan.filter_stage == {
-                "status": {"$in": ["active", "pending", "verified"]}
-            }
+            assert query_plan.filter_stage == {"status": {"$in": ["active", "pending", "verified"]}}
             assert query_plan.projection_stage == {"name": "name"}
         except (SqlSyntaxError, AssertionError) as e:
             pytest.skip(f"IN condition parsing not yet implemented: {e}")
@@ -203,9 +197,7 @@ class TestSQLParser:
             assert not parser.has_errors, f"Parser errors: {parser.errors}"
             query_plan = parser.get_query_plan()
             assert query_plan.collection == "users"
-            assert query_plan.filter_stage == {
-                "$and": [{"age": {"$gte": 25}}, {"age": {"$lte": 65}}]
-            }
+            assert query_plan.filter_stage == {"$and": [{"age": {"$gte": 25}}, {"age": {"$lte": 65}}]}
             assert query_plan.projection_stage == {"name": "name"}
         except (SqlSyntaxError, AssertionError) as e:
             pytest.skip(f"BETWEEN condition parsing not yet implemented: {e}")
@@ -269,10 +261,10 @@ class TestSQLParser:
     def test_complex_query_combination(self):
         """Test complex query with multiple clauses"""
         sql = """
-        SELECT name, email, age 
-        FROM users 
-        WHERE age > 21 AND status = 'active' 
-        ORDER BY name ASC 
+        SELECT name, email, age
+        FROM users
+        WHERE age > 21 AND status = 'active'
+        ORDER BY name ASC
         LIMIT 50
         """
         parser = SQLParser(sql)
@@ -281,9 +273,7 @@ class TestSQLParser:
             assert not parser.has_errors, f"Parser errors: {parser.errors}"
             query_plan = parser.get_query_plan()
             assert query_plan.collection == "users"
-            assert query_plan.filter_stage == {
-                "$and": [{"age": {"$gt": 21}}, {"status": "active"}]
-            }
+            assert query_plan.filter_stage == {"$and": [{"age": {"$gt": 21}}, {"status": "active"}]}
             assert query_plan.projection_stage == {
                 "name": "name",
                 "email": "email",

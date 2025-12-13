@@ -101,9 +101,7 @@ class MongoSQLParserVisitor(PartiQLParserVisitor):
             _logger.warning(f"Error processing FROM clause: {e}")
             return self.visitChildren(ctx)
 
-    def visitWhereClauseSelect(
-        self, ctx: PartiQLParser.WhereClauseSelectContext
-    ) -> Any:
+    def visitWhereClauseSelect(self, ctx: PartiQLParser.WhereClauseSelectContext) -> Any:
         """Handle WHERE clause for filtering"""
         _logger.debug("Processing WHERE clause")
         try:

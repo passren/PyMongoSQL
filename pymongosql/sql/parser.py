@@ -140,9 +140,7 @@ class SQLParser(metaclass=ABCMeta):
             if not query_plan.validate():
                 raise SqlSyntaxError("Generated query plan is invalid")
 
-            _logger.debug(
-                f"Generated QueryPlan for collection: {query_plan.collection}"
-            )
+            _logger.debug(f"Generated QueryPlan for collection: {query_plan.collection}")
             return query_plan
 
         except Exception as e:

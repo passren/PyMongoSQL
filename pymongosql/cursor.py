@@ -111,13 +111,9 @@ class Cursor(BaseCursor, CursorIterator):
             find_projection = None
             if query_plan.projection_stage:
                 # Convert {"field": "alias"} to {"field": 1} for MongoDB
-                find_projection = {
-                    field: 1 for field in query_plan.projection_stage.keys()
-                }
+                find_projection = {field: 1 for field in query_plan.projection_stage.keys()}
 
-            _logger.debug(
-                f"Executing MongoDB query: filter={find_filter}, projection={find_projection}"
-            )
+            _logger.debug(f"Executing MongoDB query: filter={find_filter}, projection={find_projection}")
 
             # Execute find query
             self._mongo_cursor = collection.find(find_filter, find_projection)
@@ -125,9 +121,7 @@ class Cursor(BaseCursor, CursorIterator):
             # Apply sort if specified
             if query_plan.sort_stage:
                 sort_spec = [
-                    (field, direction)
-                    for sort_dict in query_plan.sort_stage
-                    for field, direction in sort_dict.items()
+                    (field, direction) for sort_dict in query_plan.sort_stage for field, direction in sort_dict.items()
                 ]
                 self._mongo_cursor = self._mongo_cursor.sort(sort_spec)
 
@@ -144,9 +138,7 @@ class Cursor(BaseCursor, CursorIterator):
                 mongo_cursor=self._mongo_cursor, query_plan=query_plan, **self._kwargs
             )
 
-            _logger.info(
-                f"Query executed successfully on collection '{query_plan.collection}'"
-            )
+            _logger.info(f"Query executed successfully on collection '{query_plan.collection}'")
 
         except PyMongoError as e:
             _logger.error(f"MongoDB query execution failed: {e}")
@@ -155,9 +147,7 @@ class Cursor(BaseCursor, CursorIterator):
             _logger.error(f"Unexpected error during query execution: {e}")
             raise OperationalError(f"Query execution error: {e}")
 
-    def execute(
-        self: _T, operation: str, parameters: Optional[Dict[str, Any]] = None
-    ) -> _T:
+    def execute(self: _T, operation: str, parameters: Optional[Dict[str, Any]] = None) -> _T:
         """Execute a SQL statement
 
         Args:
@@ -170,9 +160,7 @@ class Cursor(BaseCursor, CursorIterator):
         self._check_closed()
 
         if parameters:
-            _logger.warning(
-                "Parameter substitution not yet implemented, ignoring parameters"
-            )
+            _logger.warning("Parameter substitution not yet implemented, ignoring parameters")
 
         try:
             # Parse SQL to QueryPlan
@@ -202,9 +190,7 @@ class Cursor(BaseCursor, CursorIterator):
         self._check_closed()
 
         # For now, just execute once and ignore parameters
-        _logger.warning(
-            "executemany not fully implemented, executing once without parameters"
-        )
+        _logger.warning("executemany not fully implemented, executing once without parameters")
         self.execute(operation)
 
     def execute_transaction(self) -> None:
