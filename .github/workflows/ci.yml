@@ -81,7 +81,7 @@ jobs:
         python -m pytest tests/ --cov=pymongosql --cov-report=term-missing --cov-report=xml
 
     - name: Upload coverage reports
-      if: github.event_name == 'push' && secrets.CODECOV_TOKEN
+      if: github.event_name == 'push' && ${{ secrets.CODECOV_TOKEN }}
       uses: codecov/codecov-action@v3
       with:
         token: ${{ secrets.CODECOV_TOKEN }}
