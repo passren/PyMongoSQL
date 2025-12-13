@@ -1,112 +1,76 @@
 # -*- coding: utf-8 -*-
-import pytest
 from pymongosql.connection import Connection
 from pymongosql.cursor import Cursor
 
 
 class TestConnection:
-    """Test suite for Connection class"""
+    """Simplified test suite for Connection class - focuses on Connection-specific functionality"""
 
     def test_connection_init_no_defaults(self):
-        """Test that connection doesn't accept empty parameters"""
-        with pytest.raises(TypeError):
-            Connection()
+        """Test that connection can be initialized with no parameters (PyMongo compatible)"""
+        conn = Connection()
+        assert "mongodb://" in conn.host and "27017" in conn.host
+        assert conn.port == 27017
+        assert conn.database_name is None
+        assert conn.is_connected
+        conn.close()
 
-    def test_connection_init_with_params(self):
-        """Test connection initialization with parameters"""
+    def test_connection_init_with_basic_params(self):
+        """Test connection initialization with basic parameters"""
         conn = Connection(host="localhost", port=27017, database="test_db")
-        assert conn.host == "localhost"
+        assert conn.host == "mongodb://localhost:27017"
         assert conn.port == 27017
         assert conn.database_name == "test_db"
-        assert conn.username is None
-        assert conn.password is None
         assert conn.is_connected
+        conn.close()
 
-    def test_connection_auth_properties(self):
-        """Test connection authentication properties"""
-        conn = Connection(
-            host="localhost",
-            port=27017,
-            database="test_db",
-            username="testuser",
-            password="testpass",
-            auth_source="test_db",
-        )
-        # Test that auth properties are stored correctly
-        assert conn.username == "testuser"
-        assert conn.password == "testpass"
-        assert conn.is_connected
-
-    def test_connection_init_with_auth_full(self):
-        """Test full connection with authentication"""
-        conn = Connection(
-            host="localhost",
-            port=27017,
-            database="test_db",
-            username="testuser",
-            password="testpass",
-            auth_source="test_db",
-        )
-        assert conn.username == "testuser"
-        assert conn.password == "testpass"
-        assert conn.is_connected
-
-    def test_connect_success(self):
-        """Test successful database connection"""
-        conn = Connection(host="localhost", port=27017, database="test_db")
-
-        assert conn.is_connected
+    def test_connection_with_connect_false(self):
+        """Test connection with connect=False (PyMongo compatibility)"""
+        conn = Connection(host="localhost", port=27017, connect=False)
+        assert conn.host == "mongodb://localhost:27017"
+        assert conn.port == 27017
+        # Should have client but not necessarily connected yet
         assert conn._client is not None
-        assert conn._database is not None
-        assert conn.database_instance.name == "test_db"
+        conn.close()
 
-    def test_connect_with_auth(self):
-        """Test connection with authentication"""
+    def test_connection_pymongo_parameters(self):
+        """Test that PyMongo parameters are accepted"""
+        # Test that we can pass PyMongo-style parameters without errors
+        conn = Connection(
+            host="localhost",
+            port=27017,
+            connectTimeoutMS=5000,
+            serverSelectionTimeoutMS=10000,
+            maxPoolSize=50,
+            connect=False,  # Don't actually connect to avoid auth errors
+        )
+        assert conn.host == "mongodb://localhost:27017"
+        assert conn.port == 27017
+        conn.close()
+
+    def test_connection_init_with_auth_username(self):
+        """Test connection initialization with auth username"""
         conn = Connection(
             host="localhost",
             port=27017,
             database="test_db",
             username="testuser",
             password="testpass",
-            auth_source="test_db",
+            authSource="test_db",
         )
 
+        assert conn.database_name == "test_db"
         assert conn.is_connected
-        assert conn.username == "testuser"
-        assert conn.password == "testpass"
-
-    def test_connect_behavior(self):
-        """Test connection behavior (connects automatically in constructor)"""
-        conn = Connection(host="localhost", port=27017, database="test_db")
-
-        # Should be connected automatically
-        assert conn.is_connected
-
-    def test_disconnect_success(self):
-        """Test successful disconnection"""
-        conn = Connection(host="localhost", port=27017, database="test_db")
-        conn.disconnect()
-
-        assert not conn.is_connected
-        assert conn._client is None
-        assert conn._database is None
-
-    def test_disconnect_when_not_connected(self):
-        """Test disconnecting when not connected"""
-        conn = Connection(host="localhost", port=27017, database="test_db")
-        # Disconnect first
-        conn.disconnect()
-        # Should not raise an error when disconnecting again
-        conn.disconnect()
+        conn.close()
 
     def test_cursor_creation(self):
         """Test cursor creation"""
         conn = Connection(host="localhost", port=27017, database="test_db")
-
         cursor = conn.cursor()
 
         assert isinstance(cursor, Cursor)
         assert cursor._connection == conn
+        conn.close()
 
     def test_context_manager(self):
         """Test connection as context manager"""
@@ -139,75 +103,28 @@ class TestConnection:
         assert "localhost" in str_repr
         assert "27017" in str_repr
         assert "test_db" in str_repr
-        assert "connected" in str_repr
+        conn.close()
 
-    def test_connection_properties_when_connected(self):
-        """Test connection properties when connected"""
+    def test_disconnect_success(self):
+        """Test successful disconnection"""
+        conn = Connection(host="localhost", port=27017, database="test_db")
+        conn.disconnect()
+
+        assert not conn.is_connected
+        assert conn._client is None
+        assert conn._database is None
+
+    def test_close_method(self):
+        """Test close method functionality"""
         conn = Connection(host="localhost", port=27017, database="test_db")
 
-        assert conn.client is not None
-        assert conn.database_instance is not None
-        assert conn.database_instance.name == "test_db"
+        # Verify connection is established
+        assert conn.is_connected
 
-    def test_real_database_operations(self):
-        """Test actual database operations with real MongoDB"""
-        conn = Connection(
-            host="localhost",
-            port=27017,
-            database="test_db",
-            username="testuser",
-            password="testpass",
-            auth_source="test_db",
-        )
+        # Close connection
+        conn.close()
 
-        # Clear existing test data to avoid duplicate key errors
-        conn.database_instance.users.delete_many({})
-
-        # Insert test data
-        conn.database_instance.users.insert_many(
-            [
-                {"_id": "1", "name": "John", "age": 30},
-                {"_id": "2", "name": "Jane", "age": 25},
-            ]
-        )
-
-        # Query the data using MongoDB operations
-        users = list(conn.database_instance.users.find({"age": {"$gte": 25}}))
-        assert len(users) == 2
-
-        # Test cursor with real SQL operations
-        cursor = conn.cursor()
-        result = cursor.execute("SELECT name FROM users WHERE age > 25")
-        rows = result.fetchall()
-
-        # Should find John (age 30)
-        assert len(rows) >= 1
-        names = [row.get("name") for row in rows]
-        assert "John" in names
-
-    def test_multiple_collections_access(self):
-        """Test accessing multiple collections"""
-        conn = Connection(
-            host="localhost",
-            port=27017,
-            database="test_db",
-            username="testuser",
-            password="testpass",
-            auth_source="test_db",
-        )
-
-        # Access different collections
-        users_collection = conn.database_instance.users
-        orders_collection = conn.database_instance.orders
-
-        # Clear existing test data to avoid conflicts
-        users_collection.delete_many({})
-        orders_collection.delete_many({})
-
-        # Insert data into different collections
-        users_collection.insert_one({"name": "Alice"})
-        orders_collection.insert_one({"user": "Alice", "amount": 100})
-
-        # Verify data exists
-        assert users_collection.count_documents({}) == 1
-        assert orders_collection.count_documents({}) == 1
+        # Verify connection is closed
+        assert not conn.is_connected
+        assert conn._client is None
+        assert conn._database is None

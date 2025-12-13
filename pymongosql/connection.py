@@ -1,12 +1,13 @@
 # -*- coding: utf-8 -*-
 import logging
-from typing import Optional, Type
-from urllib.parse import quote_plus
+from typing import Optional, Type, Union, Sequence, Any
 
 from pymongo import MongoClient
 from pymongo.database import Database
 from pymongo.collection import Collection
+from pymongo.client_session import ClientSession
 from pymongo.errors import ConnectionFailure
+from bson.codec_options import TypeRegistry
 
 from .error import NotSupportedError, DatabaseError, OperationalError
 from .common import BaseCursor
@@ -20,83 +21,72 @@ class Connection:
 
     def __init__(
         self,
-        host: str,
-        port: int,
-        database: str = None,
-        username: str = None,
-        password: str = None,
-        auth_source: str = None,
-        ssl: bool = None,
-        ssl_cert_reqs: str = None,
-        connection_timeout: int = None,
-        server_selection_timeout: int = None,
-        **kwargs,
+        host: Optional[Union[str, Sequence[str]]] = None,
+        port: Optional[int] = None,
+        document_class: Optional[Type[Any]] = None,
+        tz_aware: Optional[bool] = None,
+        connect: Optional[bool] = None,
+        type_registry: Optional[TypeRegistry] = None,
+        **kwargs: Any,
     ) -> None:
-        """Initialize MongoDB connection
+        """Initialize MongoDB connection with full PyMongo Client compatibility.
 
-        Args:
-            host: MongoDB host (required)
-            port: MongoDB port (required)
-            database: Default database name (optional)
-            username: Username for authentication (optional)
-            password: Password for authentication (optional)
-            auth_source: Authentication database (optional)
-            ssl: Enable SSL (optional)
-            ssl_cert_reqs: SSL certificate requirements (optional)
-            connection_timeout: Connection timeout in ms (optional)
-            server_selection_timeout: Server selection timeout in ms (optional)
-            **kwargs: Additional PyMongo connection parameters
+        This constructor has the exact same signature as PyMongo's MongoClient
+        to ensure full compatibility. All parameters are passed through directly
+        to the underlying MongoClient.
+
+        See PyMongo MongoClient documentation for full parameter details.
+        https://www.mongodb.com/docs/languages/python/pymongo-driver/current/connect/mongoclient/
         """
-        self._host = host
-        self._port = port
-        self._database_name = database
-        self._username = username
-        self._password = password
-        self._auth_source = auth_source
-        self._ssl = ssl
-        self._ssl_cert_reqs = ssl_cert_reqs
-        self._connection_timeout = connection_timeout
-        self._server_selection_timeout = server_selection_timeout
+        # Extract commonly used parameters for backward compatibility
+        self._host = host or "localhost"
+        self._port = port or 27017
 
+        # Handle database parameter separately (not a MongoClient parameter)
+        self._database_name = kwargs.pop("database", None)  # Remove from kwargs
+
+        # Store all PyMongo parameters to pass through directly
+        self._pymongo_params = kwargs.copy()
+
+        # Add explicit parameters to kwargs for MongoClient
+        if host is not None:
+            self._pymongo_params["host"] = host
+        if port is not None:
+            self._pymongo_params["port"] = port
+        if document_class is not None:
+            self._pymongo_params["document_class"] = document_class
+        if tz_aware is not None:
+            self._pymongo_params["tz_aware"] = tz_aware
+        if connect is not None:
+            self._pymongo_params["connect"] = connect
+        if type_registry is not None:
+            self._pymongo_params["type_registry"] = type_registry
+
+        # Connection state
         self._autocommit = True
         self._in_transaction = False
         self._client: Optional[MongoClient] = None
         self._database: Optional[Database] = None
+        self._session: Optional[ClientSession] = None
         self.cursor_pool = []
         self.cursor_class = Cursor
-        self.cursor_kwargs = kwargs
+        self.cursor_kwargs = {}
 
-        # Establish connection
-        self._connect()
+        # Establish connection - respect connect parameter (default is True in PyMongo)
+        if connect is not False:  # Connect by default, unless explicitly set to False
+            self._connect()
+        else:
+            # Just create the client without testing connection
+            self._client = MongoClient(**self._pymongo_params)
+            if self._database_name:
+                self._database = self._client[self._database_name]
 
     def _connect(self) -> None:
         """Establish connection to MongoDB"""
         try:
-            # Build connection string
-            if self._username and self._password:
-                auth_string = f"{quote_plus(self._username)}:{quote_plus(self._password)}@"
-            else:
-                auth_string = ""
-
-            connection_string = f"mongodb://{auth_string}{self._host}:{self._port}/"
-
-            # Connection options with defaults only when needed
-            options = {}
-
-            if self._connection_timeout is not None:
-                options["connectTimeoutMS"] = self._connection_timeout
-            if self._server_selection_timeout is not None:
-                options["serverSelectionTimeoutMS"] = self._server_selection_timeout
-            if self._ssl is not None:
-                options["ssl"] = self._ssl
-            if self._ssl_cert_reqs is not None:
-                options["ssl_cert_reqs"] = self._ssl_cert_reqs
-
-            if self._username and self._auth_source:
-                options["authSource"] = self._auth_source
-
-            # Create client
-            self._client = MongoClient(connection_string, **options)
+            # Create client with all PyMongo parameters - PyMongo handles connection string building internally
+            # We pass all parameters directly to match MongoClient behavior exactly
+            self._client = MongoClient(**self._pymongo_params)
 
             # Test connection
             self._client.admin.command("ping")
@@ -166,8 +156,27 @@ class Connection:
 
     @property
     def host(self) -> str:
-        """Get the hostname"""
-        return self._host
+        """Get the MongoDB connection string/URL used by PyMongo"""
+        if self._client is None:
+            # If not connected yet, construct basic connection string
+            if isinstance(self._host, str):
+                return f"mongodb://{self._host}:{self._port}"
+            elif isinstance(self._host, list):
+                hosts = [f"{h}:{self._port}" if ":" not in str(h) else str(h) for h in self._host]
+                return f"mongodb://{','.join(hosts)}"
+            else:
+                return f"mongodb://localhost:{self._port}"
+        else:
+            # Return the actual connection string from PyMongo client
+            # PyMongo stores the connection info in the client
+            nodes = self._client.nodes
+            if nodes:
+                # Get primary node or first available node
+                node = next(iter(nodes))
+                return f"mongodb://{node[0]}:{node[1]}"
+            else:
+                # Fallback to original host/port
+                return f"mongodb://{self._host}:{self._port}"
 
     @property
     def port(self) -> int:
@@ -179,20 +188,16 @@ class Connection:
         """Get the database name"""
         return self._database_name
 
-    @property
-    def username(self) -> str:
-        """Get the username"""
-        return self._username
-
-    @property
-    def password(self) -> str:
-        """Get the password"""
-        return self._password
-
     def __enter__(self):
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
+        # If there's an active transaction, abort it on exception
+        if exc_type is not None and self._session and self._session.in_transaction:
+            try:
+                self._abort_transaction()
+            except Exception as e:
+                _logger.error(f"Error aborting transaction during exit: {e}")
         self.close()
 
     @property
@@ -204,6 +209,11 @@ class Connection:
     def database_instance(self):
         """Get the database instance"""
         return self._database
+
+    @property
+    def session(self) -> Optional[ClientSession]:
+        """Get the current session"""
+        return self._session
 
     def disconnect(self) -> None:
         """Disconnect from MongoDB (alias for close)"""
@@ -234,6 +244,10 @@ class Connection:
                 cursor.close()
             self.cursor_pool.clear()
 
+            # End session if active
+            if self._session is not None:
+                self._end_session()
+
             # Close client connection
             if self._client:
                 self._client.close()
@@ -244,17 +258,111 @@ class Connection:
         except Exception as e:
             _logger.error(f"Error closing connection: {e}")
 
-    def begin(self) -> None:
-        self._autocommit = False
-        self._in_transaction = True
+    def _start_session(self, **kwargs) -> ClientSession:
+        """Start a new PyMongo session (internal method)
 
-    def commit(self) -> None:
-        """Commit transaction (MongoDB doesn't support traditional transactions in the same way)"""
+        Args:
+            **kwargs: Additional options for session creation (causal_consistency, default_transaction_options, etc.)
+
+        Returns:
+            ClientSession: PyMongo session object
+        """
+        if self._client is None:
+            raise OperationalError("No active connection")
+
+        session = self._client.start_session(**kwargs)
+        self._session = session
+        _logger.info("Started new MongoDB session")
+        return session
+
+    def _end_session(self) -> None:
+        """End the current session (internal method)"""
+        if self._session is not None:
+            self._session.end_session()
+            self._session = None
+            _logger.info("Ended MongoDB session")
+
+    def _start_transaction(self, **kwargs) -> None:
+        """Start a transaction within the current session (internal method)
+
+        Args:
+            **kwargs: Transaction options (read_concern, write_concern, read_preference, max_commit_time_ms)
+        """
+        if self._session is None:
+            # Auto-create session if not exists
+            self._start_session()
+
+        if self._session is None:
+            raise OperationalError("No active session")
+
+        self._session.start_transaction(**kwargs)
+        self._in_transaction = True
+        self._autocommit = False
+        _logger.info("Started MongoDB transaction")
+
+    def _commit_transaction(self) -> None:
+        """Commit the current transaction (internal method)"""
+        if self._session is None:
+            raise OperationalError("No active session")
+
+        if not self._session.in_transaction:
+            raise OperationalError("No active transaction to commit")
+
+        self._session.commit_transaction()
         self._in_transaction = False
         self._autocommit = True
+        _logger.info("Committed MongoDB transaction")
+
+    def _abort_transaction(self) -> None:
+        """Abort the current transaction (internal method)"""
+        if self._session is None:
+            raise OperationalError("No active session")
+
+        if not self._session.in_transaction:
+            raise OperationalError("No active transaction to abort")
+
+        self._session.abort_transaction()
+        self._in_transaction = False
+        self._autocommit = True
+        _logger.info("Aborted MongoDB transaction")
+
+    def _with_transaction(self, callback, **kwargs):
+        """Execute a callback within a transaction (internal method)
+
+        Args:
+            callback: Function to execute within transaction
+            **kwargs: Transaction options
+
+        Returns:
+            Result of callback function
+        """
+        if self._session is None:
+            self._start_session()
+
+        if self._session is None:
+            raise OperationalError("No active session")
+
+        return self._session.with_transaction(callback, **kwargs)
+
+    def begin(self) -> None:
+        """Begin transaction (DB-API 2.0 standard method)"""
+        self._start_transaction()
+
+    def commit(self) -> None:
+        """Commit transaction (DB-API 2.0 standard method)"""
+        if self._session and self._session.in_transaction:
+            self._commit_transaction()
+        else:
+            # Fallback for non-session based operations
+            self._in_transaction = False
+            self._autocommit = True
 
     def rollback(self) -> None:
-        raise NotSupportedError("MongoDB doesn't support rollback in the traditional SQL sense")
+        """Rollback transaction (DB-API 2.0 standard method)"""
+        if self._session and self._session.in_transaction:
+            self._abort_transaction()
+        else:
+            raise NotSupportedError("MongoDB doesn't support rollback without an active transaction")
 
     def test_connection(self) -> bool:
         """Test if the connection is alive"""
@@ -266,3 +374,81 @@ class Connection:
         except Exception as e:
             _logger.error(f"Connection test failed: {e}")
             return False
+
+    def session_context(self, **kwargs):
+        """Context manager for session handling
+
+        Usage:
+            with conn.session_context() as session:
+                # operations with session
+                pass
+        """
+        return SessionContext(self, **kwargs)
+
+
+class SessionContext:
+    """Context manager for PyMongo sessions"""
+
+    def __init__(self, connection: Connection, **session_kwargs):
+        self.connection = connection
+        self.session_kwargs = session_kwargs
+        self.session = None
+
+    def __enter__(self) -> ClientSession:
+        self.session = self.connection._start_session(**self.session_kwargs)
+        return self.session
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        if self.session:
+            # If there's an exception and an active transaction, abort it
+            if exc_type is not None and self.session.in_transaction:
+                try:
+                    self.session.abort_transaction()
+                except Exception as e:
+                    _logger.error(f"Error aborting transaction: {e}")
+
+            # End the session
+            self.connection._end_session()
+
+    def transaction(self, **transaction_kwargs):
+        """Start a transaction context within this session
+
+        Usage:
+            with conn.session_context() as session:
+                with session_context.transaction():
+                    # operations within transaction
+                    pass
+        """
+        return TransactionContext(self.connection, **transaction_kwargs)
+
+
+class TransactionContext:
+    """Context manager for PyMongo transactions"""
+
+    def __init__(self, connection: Connection, **transaction_kwargs):
+        self.connection = connection
+        self.transaction_kwargs = transaction_kwargs
+
+    def __enter__(self):
+        self.connection._start_transaction(**self.transaction_kwargs)
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        if exc_type is not None:
+            # Exception occurred, abort transaction
+            try:
+                self.connection._abort_transaction()
+            except Exception as e:
+                _logger.error(f"Error aborting transaction: {e}")
+        else:
+            # No exception, commit transaction
+            try:
+                self.connection._commit_transaction()
+            except Exception as e:
+                _logger.error(f"Error committing transaction: {e}")
+                # Try to abort after failed commit
+                try:
+                    self.connection._abort_transaction()
+                except Exception:
+                    pass
+                raise
