@@ -12,10 +12,11 @@ jobs:
     strategy:
       matrix:
         python-version: ['3.9', '3.10', '3.11', '3.12', '3.13', '3.14']
+        mongodb-version: ['7.0', '8.0']
     
     services:
       mongodb:
-        image: mongo:8.0
+        image: mongo:${{ matrix.mongodb-version }}
         env:
           MONGO_INITDB_ROOT_USERNAME: admin
           MONGO_INITDB_ROOT_PASSWORD: secret
@@ -39,9 +40,9 @@ jobs:
       uses: actions/cache@v3
       with:
         path: ~/.cache/pip
-        key: ${{ runner.os }}-py${{ matrix.python-version }}-pip-${{ hashFiles('**/requirements-test.txt') }}
+        key: ${{ runner.os }}-py${{ matrix.python-version }}-mongo${{ matrix.mongodb-version }}-pip-${{ hashFiles('**/requirements-test.txt') }}
         restore-keys: |
-          ${{ runner.os }}-py${{ matrix.python-version }}-pip-
+          ${{ runner.os }}-py${{ matrix.python-version }}-mongo${{ matrix.mongodb-version }}-pip-
 
     - name: Install MongoDB shell
       run: |
@@ -74,7 +75,7 @@ jobs:
     - name: Set up test database
       run: |
         echo "Setting up test database..."
-        python tests/mongo_test_helper.py setup || true
+        python tests/run_test_server.py setup || true
 
     - name: Run tests
       run: |

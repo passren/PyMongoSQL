@@ -30,7 +30,7 @@ def check_docker():
         return False, f"Docker check failed: {e}"
 
 
-def start_mongodb_docker():
+def start_mongodb_docker(version="8.0"):
     """Start MongoDB in Docker container"""
     print("Checking Docker availability...")
     docker_ok, docker_msg = check_docker()
@@ -63,7 +63,7 @@ def start_mongodb_docker():
         )
 
         # Start new container with authentication
-        print("  Starting new MongoDB 8.0 container with auth...")
+        print(f"  Starting new MongoDB {version} container with auth...")
         result = subprocess.run(
             [
                 "docker",
@@ -79,7 +79,7 @@ def start_mongodb_docker():
                 "MONGO_INITDB_ROOT_PASSWORD=secret",
                 "-e",
                 "MONGO_INITDB_DATABASE=test_db",
-                "mongo:8.0",
+                f"mongo:{version}",
             ],
             capture_output=True,
             text=True,
@@ -220,19 +220,21 @@ def suggest_alternatives():
 
 def main():
     """Main function"""
-    if len(sys.argv) != 2:
+    if len(sys.argv) < 2 or len(sys.argv) > 3:
         print(
-            "Usage: python mongo_test_helper.py [start|stop|setup|status|alternatives|test]"
+            "Usage: python run_test_server.py [start|stop|setup|status|alternatives|test] [version]"
         )
+        print("Version examples: 7.0, 8.0 (default: 8.0)")
         sys.exit(1)
 
     command = sys.argv[1]
+    version = sys.argv[2] if len(sys.argv) == 3 else "8.0"
 
     if command == "start":
-        if start_mongodb_docker():
+        if start_mongodb_docker(version):
             if wait_for_mongodb():
                 setup_test_data()
-                print("\n✅ MongoDB test instance is ready!")
+                print(f"\n✅ MongoDB {version} test instance is ready!")
                 print("Connection: mongodb://localhost:27017/test_db")
             else:
                 print("❌ MongoDB failed to start properly")
