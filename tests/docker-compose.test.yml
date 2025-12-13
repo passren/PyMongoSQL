@@ -1,0 +1,12 @@
+version: '3.8'
+services:
+  test-mongodb:
+    image: mongo:8.0
+    container_name: pymongosql-test-db
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: secret
+      MONGO_INITDB_DATABASE: test_db
+    command: --quiet --logpath /dev/null

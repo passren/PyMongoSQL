@@ -79,7 +79,9 @@ class CursorIterator(metaclass=ABCMeta):
 
     @arraysize.setter
     def arraysize(self, value: int) -> None:
-        if value <= 0 or value > self.DEFAULT_FETCH_SIZE:
+        if value <= 0:
+            raise ValueError("arraysize must be positive")
+        if value > self.DEFAULT_FETCH_SIZE:
             raise ProgrammingError(
                 f"MaxResults is more than maximum allowed length {self.DEFAULT_FETCH_SIZE}."
             )

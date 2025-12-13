@@ -1,8 +1,15 @@
 # -*- coding: utf-8 -*-
 import logging
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, TypeVar, Tuple
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, TypeVar, Tuple, Iterator
+
+from pymongo.cursor import Cursor as MongoCursor
+from pymongo.errors import PyMongoError
 
 from .common import BaseCursor, CursorIterator
+from .sql.parser import SQLParser
+from .sql.builder import QueryPlan
+from .error import DatabaseError, OperationalError, ProgrammingError, SqlSyntaxError
+from .result_set import ResultSet
 
 if TYPE_CHECKING:
     from .connection import Connection
@@ -12,6 +19,8 @@ _T = TypeVar("_T", bound="Cursor")
 
 
 class Cursor(BaseCursor, CursorIterator):
+    """SQL-compatible cursor that translates SQL to MongoDB operations"""
+
     NO_RESULT_SET = "No result set."
 
     def __init__(self, connection: "Connection", **kwargs) -> None:
@@ -20,13 +29,18 @@ class Cursor(BaseCursor, CursorIterator):
             **kwargs,
         )
         self._kwargs = kwargs
+        self._result_set: Optional[ResultSet] = None
+        self._result_set_class = ResultSet
+        self._current_query_plan: Optional[QueryPlan] = None
+        self._mongo_cursor: Optional[MongoCursor] = None
+        self._is_closed = False
 
     @property
-    def result_set(self) -> Optional[CursorIterator]:
+    def result_set(self) -> Optional[ResultSet]:
         return self._result_set
 
     @result_set.setter
-    def result_set(self, val) -> None:
+    def result_set(self, val: ResultSet) -> None:
         self._result_set = val
 
     @property
@@ -34,11 +48,11 @@ class Cursor(BaseCursor, CursorIterator):
         return self._result_set is not None
 
     @property
-    def result_set_class(self) -> Optional[CursorIterator]:
+    def result_set_class(self) -> Optional[type]:
         return self._result_set_class
 
     @result_set_class.setter
-    def result_set_class(self, val) -> None:
+    def result_set_class(self, val: type) -> None:
         self._result_set_class = val
 
     @property
@@ -53,34 +67,225 @@ class Cursor(BaseCursor, CursorIterator):
     def description(
         self,
     ) -> Optional[List[Tuple[str, str, None, None, None, None, None]]]:
-        return self._result_set.description
+        return self._result_set.description if self._result_set else None
 
     @property
     def errors(self) -> List[Dict[str, str]]:
-        return self._result_set.errors
+        return self._result_set.errors if self._result_set else []
+
+    def _check_closed(self) -> None:
+        """Check if cursor is closed"""
+        if self._is_closed:
+            raise ProgrammingError("Cursor is closed")
+
+    def _parse_sql(self, sql: str) -> QueryPlan:
+        """Parse SQL statement and return QueryPlan"""
+        try:
+            parser = SQLParser(sql)
+            query_plan = parser.get_query_plan()
+
+            if not query_plan.validate():
+                raise SqlSyntaxError("Generated query plan is invalid")
+
+            return query_plan
+
+        except SqlSyntaxError:
+            raise
+        except Exception as e:
+            _logger.error(f"SQL parsing failed: {e}")
+            raise SqlSyntaxError(f"Failed to parse SQL: {e}")
+
+    def _execute_query_plan(self, query_plan: QueryPlan) -> None:
+        """Execute a QueryPlan against MongoDB"""
+        try:
+            # Get collection
+            if not query_plan.collection:
+                raise ProgrammingError("No collection specified in query")
+
+            collection = self.connection.get_collection(query_plan.collection)
+
+            # Build MongoDB query
+            find_filter = query_plan.filter_stage or {}
+
+            # Convert projection stage from alias mapping to MongoDB format
+            find_projection = None
+            if query_plan.projection_stage:
+                # Convert {"field": "alias"} to {"field": 1} for MongoDB
+                find_projection = {
+                    field: 1 for field in query_plan.projection_stage.keys()
+                }
+
+            _logger.debug(
+                f"Executing MongoDB query: filter={find_filter}, projection={find_projection}"
+            )
+
+            # Execute find query
+            self._mongo_cursor = collection.find(find_filter, find_projection)
+
+            # Apply sort if specified
+            if query_plan.sort_stage:
+                sort_spec = [
+                    (field, direction)
+                    for sort_dict in query_plan.sort_stage
+                    for field, direction in sort_dict.items()
+                ]
+                self._mongo_cursor = self._mongo_cursor.sort(sort_spec)
+
+            # Apply skip if specified
+            if query_plan.skip_stage:
+                self._mongo_cursor = self._mongo_cursor.skip(query_plan.skip_stage)
+
+            # Apply limit if specified
+            if query_plan.limit_stage:
+                self._mongo_cursor = self._mongo_cursor.limit(query_plan.limit_stage)
+
+            # Create result set
+            self._result_set = self._result_set_class(
+                mongo_cursor=self._mongo_cursor, query_plan=query_plan, **self._kwargs
+            )
+
+            _logger.info(
+                f"Query executed successfully on collection '{query_plan.collection}'"
+            )
+
+        except PyMongoError as e:
+            _logger.error(f"MongoDB query execution failed: {e}")
+            raise DatabaseError(f"Query execution failed: {e}")
+        except Exception as e:
+            _logger.error(f"Unexpected error during query execution: {e}")
+            raise OperationalError(f"Query execution error: {e}")
 
     def execute(
-        self: _T, operation: str, parameters: Optional[List[Dict[str, Any]]] = None
-    ) -> _T: ...
+        self: _T, operation: str, parameters: Optional[Dict[str, Any]] = None
+    ) -> _T:
+        """Execute a SQL statement
+
+        Args:
+            operation: SQL statement to execute
+            parameters: Parameters for the SQL statement (not yet implemented)
+
+        Returns:
+            Self for method chaining
+        """
+        self._check_closed()
+
+        if parameters:
+            _logger.warning(
+                "Parameter substitution not yet implemented, ignoring parameters"
+            )
+
+        try:
+            # Parse SQL to QueryPlan
+            self._current_query_plan = self._parse_sql(operation)
+
+            # Execute the query plan
+            self._execute_query_plan(self._current_query_plan)
+
+            return self
+
+        except (SqlSyntaxError, DatabaseError, OperationalError, ProgrammingError):
+            # Re-raise known errors
+            raise
+        except Exception as e:
+            _logger.error(f"Unexpected error during execute: {e}")
+            raise DatabaseError(f"Execute failed: {e}")
 
     def executemany(
         self,
         operation: str,
         seq_of_parameters: List[Optional[Dict[str, Any]]],
-    ) -> None: ...
+    ) -> None:
+        """Execute a SQL statement multiple times with different parameters
 
-    def execute_transaction(self) -> None: ...
+        Note: This is not yet fully implemented for MongoDB operations
+        """
+        self._check_closed()
 
-    def flush(self) -> None: ...
+        # For now, just execute once and ignore parameters
+        _logger.warning(
+            "executemany not fully implemented, executing once without parameters"
+        )
+        self.execute(operation)
 
-    def fetchone(
-        self,
-    ) -> Optional[Dict[Any, Optional[Any]]]: ...
+    def execute_transaction(self) -> None:
+        """Execute transaction (MongoDB has limited transaction support)"""
+        self._check_closed()
 
-    def fetchmany(self, size: int = None) -> Optional[Dict[Any, Optional[Any]]]: ...
+        # MongoDB transactions are complex and require specific setup
+        # For now, this is a placeholder
+        raise NotImplementedError("Transaction support not yet implemented")
 
-    def fetchall(
-        self,
-    ) -> Optional[Dict[Any, Optional[Any]]]: ...
+    def flush(self) -> None:
+        """Flush any pending operations"""
+        # In MongoDB context, this might involve ensuring writes are acknowledged
+        # For now, this is a no-op
+        pass
 
-    def close(self) -> None: ...
+    def fetchone(self) -> Optional[Dict[str, Any]]:
+        """Fetch the next row from the result set"""
+        self._check_closed()
+
+        if not self.has_result_set:
+            raise ProgrammingError(self.NO_RESULT_SET)
+
+        return self._result_set.fetchone()
+
+    def fetchmany(self, size: Optional[int] = None) -> List[Dict[str, Any]]:
+        """Fetch multiple rows from the result set"""
+        self._check_closed()
+
+        if not self.has_result_set:
+            raise ProgrammingError(self.NO_RESULT_SET)
+
+        return self._result_set.fetchmany(size)
+
+    def fetchall(self) -> List[Dict[str, Any]]:
+        """Fetch all remaining rows from the result set"""
+        self._check_closed()
+
+        if not self.has_result_set:
+            raise ProgrammingError(self.NO_RESULT_SET)
+
+        return self._result_set.fetchall()
+
+    def close(self) -> None:
+        """Close the cursor and free resources"""
+        try:
+            if self._mongo_cursor:
+                # Close MongoDB cursor
+                try:
+                    self._mongo_cursor.close()
+                except Exception as e:
+                    _logger.warning(f"Error closing MongoDB cursor: {e}")
+                finally:
+                    self._mongo_cursor = None
+
+            if self._result_set:
+                # Close result set
+                try:
+                    self._result_set.close()
+                except Exception as e:
+                    _logger.warning(f"Error closing result set: {e}")
+                finally:
+                    self._result_set = None
+
+            self._is_closed = True
+
+            # Remove from connection's cursor pool
+            try:
+                self.connection.cursor_pool.remove(self)
+            except (ValueError, AttributeError):
+                pass  # Cursor not in pool or connection gone
+
+            _logger.debug("Cursor closed successfully")
+
+        except Exception as e:
+            _logger.error(f"Error during cursor close: {e}")
+
+    def __del__(self):
+        """Destructor to ensure resources are cleaned up"""
+        if not self._is_closed:
+            try:
+                self.close()
+            except Exception:
+                pass  # Ignore errors during cleanup
