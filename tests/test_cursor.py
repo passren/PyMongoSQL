@@ -38,7 +38,7 @@ class TestCursor:
         rows = self.cursor.result_set.fetchall()
 
         # Should return 19 users with age > 25 from the test dataset
-        assert len(rows) == 1  # 19 out of 22 users are over 25
+        assert len(rows) == 19  # 19 out of 22 users are over 25
         if len(rows) > 0:
             assert "name" in rows[0]
             assert "email" in rows[0]
@@ -101,15 +101,15 @@ class TestCursor:
         assert isinstance(self.cursor.result_set, ResultSet)
         rows = self.cursor.result_set.fetchall()
 
-        # Should return all 2 users sorted by age descending
-        assert len(rows) == 2
+        # Should return all 22 users sorted by age descending
+        assert len(rows) == 22
 
         # Check that names are present
         assert all("name" in row for row in rows)
 
         # Verify that we have actual user names from the dataset
         names = [row["name"] for row in rows]
-        assert "John" in names  # First user from dataset
+        assert "John Doe" in names  # First user from dataset
 
     def test_execute_complex_query(self):
         """Test executing complex query with multiple clauses"""
@@ -164,7 +164,7 @@ class TestCursor:
         rows = self.cursor.result_set.fetchall()
 
         # Should return users with aliased field names
-        assert len(rows) == 2
+        assert len(rows) == 22
 
         # Check that alias fields are present if aliasing works
         for row in rows:
@@ -229,11 +229,11 @@ class TestCursor:
 
         # Test fetchall
         rows = self.cursor.fetchall()
-        assert len(rows) == 2  # Should get all 22 test users
+        assert len(rows) == 22  # Should get all 22 test users
 
         # Verify all rows have expected structure
         names = [row["name"] for row in rows]
-        assert "John" in names  # First user from dataset
+        assert "John Doe" in names  # First user from dataset
 
     def test_close(self):
         """Test cursor close"""
