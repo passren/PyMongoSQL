@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 import logging
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Iterator, Union
+from typing import Any, Dict, List, Optional, Tuple
 
 from pymongo.cursor import Cursor as MongoCursor
 from pymongo.errors import PyMongoError
@@ -8,9 +8,6 @@ from pymongo.errors import PyMongoError
 from .error import ProgrammingError, DatabaseError
 from .common import CursorIterator
 from .sql.builder import QueryPlan
-
-if TYPE_CHECKING:
-    from .connection import Connection
 
 _logger = logging.getLogger(__name__)
 

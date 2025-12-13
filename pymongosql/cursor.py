@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 import logging
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, TypeVar, Tuple, Iterator
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, TypeVar, Tuple
 
 from pymongo.cursor import Cursor as MongoCursor
 from pymongo.errors import PyMongoError

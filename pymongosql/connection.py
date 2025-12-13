@@ -1,12 +1,12 @@
 # -*- coding: utf-8 -*-
 import logging
-from typing import Optional, Type, Dict, Any, Union
+from typing import Optional, Type
 from urllib.parse import quote_plus
 
 from pymongo import MongoClient
 from pymongo.database import Database
 from pymongo.collection import Collection
-from pymongo.errors import PyMongoError, ConnectionFailure
+from pymongo.errors import ConnectionFailure
 
 from .error import NotSupportedError, DatabaseError, OperationalError
 from .common import BaseCursor
