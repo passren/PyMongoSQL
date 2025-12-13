@@ -1,0 +1,444 @@
+[
+  {
+    "_id": "sup1",
+    "name": "TechSupply Co",
+    "contact_person": "Mike Chen",
+    "email": "mike@techsupply.com",
+    "phone": "+1-555-0123",
+    "address": {
+      "street": "789 Industrial Blvd",
+      "city": "Austin",
+      "state": "TX",
+      "zipcode": "78701",
+      "country": "USA"
+    },
+    "categories": [
+      "Electronics",
+      "Accessories"
+    ],
+    "rating": 4.7,
+    "active": true,
+    "contract_start": "2022-01-01T00:00:00Z",
+    "contract_end": "2025-12-31T23:59:59Z"
+  },
+  {
+    "_id": "sup2",
+    "name": "Educational Publishers Inc",
+    "contact_person": "Sarah Johnson",
+    "email": "sarah@edupublishers.com",
+    "phone": "+1-555-0456",
+    "address": {
+      "street": "456 Knowledge Ave",
+      "city": "Boston",
+      "state": "MA",
+      "zipcode": "02101",
+      "country": "USA"
+    },
+    "categories": [
+      "Books",
+      "Educational Materials"
+    ],
+    "rating": 4.9,
+    "active": true,
+    "contract_start": "2021-06-01T00:00:00Z",
+    "contract_end": "2024-05-31T23:59:59Z"
+  },
+  {
+    "_id": "sup3",
+    "name": "Display Solutions Ltd",
+    "contact_person": "James Rodriguez",
+    "email": "james@displaysolutions.com",
+    "phone": "+1-555-0789",
+    "address": {
+      "street": "321 Monitor St",
+      "city": "San Jose",
+      "state": "CA",
+      "zipcode": "95101",
+      "country": "USA"
+    },
+    "categories": [
+      "Displays",
+      "Professional Equipment"
+    ],
+    "rating": 4.5,
+    "active": true,
+    "contract_start": "2023-01-01T00:00:00Z",
+    "contract_end": "2026-12-31T23:59:59Z"
+  },
+  {
+    "_id": "sup4",
+    "name": "Furniture Solutions Inc",
+    "contact_person": "Lisa Wang",
+    "email": "lisa@furnituresolutions.com",
+    "phone": "+1-555-0111",
+    "address": {
+      "street": "456 Furniture Ave",
+      "city": "Grand Rapids",
+      "state": "MI",
+      "zipcode": "49503",
+      "country": "USA"
+    },
+    "categories": [
+      "Office Furniture",
+      "Ergonomic Equipment"
+    ],
+    "rating": 4.6,
+    "active": true,
+    "contract_start": "2022-06-01T00:00:00Z",
+    "contract_end": "2025-05-31T23:59:59Z"
+  },
+  {
+    "_id": "sup5",
+    "name": "Software Distributors Ltd",
+    "contact_person": "Mark Thompson",
+    "email": "mark@softwaredist.com",
+    "phone": "+1-555-0222",
+    "address": {
+      "street": "789 Software Blvd",
+      "city": "Redmond",
+      "state": "WA",
+      "zipcode": "98052",
+      "country": "USA"
+    },
+    "categories": [
+      "Software",
+      "Digital Tools"
+    ],
+    "rating": 4.8,
+    "active": true,
+    "contract_start": "2021-01-01T00:00:00Z",
+    "contract_end": "2024-12-31T23:59:59Z"
+  },
+  {
+    "_id": "sup6",
+    "name": "Mobile Device Warehouse",
+    "contact_person": "Jennifer Chen",
+    "email": "jennifer@mobilewarehouse.com",
+    "phone": "+1-555-0333",
+    "address": {
+      "street": "123 Mobile St",
+      "city": "Cupertino",
+      "state": "CA",
+      "zipcode": "95014",
+      "country": "USA"
+    },
+    "categories": [
+      "Smartphones",
+      "Tablets",
+      "Mobile Accessories"
+    ],
+    "rating": 4.4,
+    "active": true,
+    "contract_start": "2022-03-01T00:00:00Z",
+    "contract_end": "2025-02-28T23:59:59Z"
+  },
+  {
+    "_id": "sup7",
+    "name": "Security Systems Corp",
+    "contact_person": "David Miller",
+    "email": "david@securitysystems.com",
+    "phone": "+1-555-0444",
+    "address": {
+      "street": "567 Security Way",
+      "city": "Arlington",
+      "state": "VA",
+      "zipcode": "22201",
+      "country": "USA"
+    },
+    "categories": [
+      "Security Cameras",
+      "Surveillance Equipment"
+    ],
+    "rating": 4.7,
+    "active": true,
+    "contract_start": "2021-09-01T00:00:00Z",
+    "contract_end": "2024-08-31T23:59:59Z"
+  },
+  {
+    "_id": "sup8",
+    "name": "Appliance Direct",
+    "contact_person": "Maria Garcia",
+    "email": "maria@appliancedirect.com",
+    "phone": "+1-555-0555",
+    "address": {
+      "street": "890 Appliance Row",
+      "city": "Louisville",
+      "state": "KY",
+      "zipcode": "40202",
+      "country": "USA"
+    },
+    "categories": [
+      "Kitchen Appliances",
+      "Office Appliances"
+    ],
+    "rating": 4.3,
+    "active": true,
+    "contract_start": "2022-08-01T00:00:00Z",
+    "contract_end": "2025-07-31T23:59:59Z"
+  },
+  {
+    "_id": "sup9",
+    "name": "Network Solutions Pro",
+    "contact_person": "Robert Lee",
+    "email": "robert@networksolutions.com",
+    "phone": "+1-555-0666",
+    "address": {
+      "street": "234 Network Dr",
+      "city": "Plano",
+      "state": "TX",
+      "zipcode": "75023",
+      "country": "USA"
+    },
+    "categories": [
+      "Network Equipment",
+      "Connectivity Solutions"
+    ],
+    "rating": 4.9,
+    "active": true,
+    "contract_start": "2023-01-01T00:00:00Z",
+    "contract_end": "2026-12-31T23:59:59Z"
+  },
+  {
+    "_id": "sup10",
+    "name": "Audio Visual Experts",
+    "contact_person": "Susan Adams",
+    "email": "susan@avexperts.com",
+    "phone": "+1-555-0777",
+    "address": {
+      "street": "345 AV Boulevard",
+      "city": "Nashville",
+      "state": "TN",
+      "zipcode": "37201",
+      "country": "USA"
+    },
+    "categories": [
+      "Audio Equipment",
+      "Video Equipment"
+    ],
+    "rating": 4.6,
+    "active": true,
+    "contract_start": "2022-04-01T00:00:00Z",
+    "contract_end": "2025-03-31T23:59:59Z"
+  },
+  {
+    "_id": "sup11",
+    "name": "Storage Systems Inc",
+    "contact_person": "Kevin Park",
+    "email": "kevin@storagesystems.com",
+    "phone": "+1-555-0888",
+    "address": {
+      "street": "678 Storage Lane",
+      "city": "Santa Clara",
+      "state": "CA",
+      "zipcode": "95051",
+      "country": "USA"
+    },
+    "categories": [
+      "Data Storage",
+      "Backup Solutions"
+    ],
+    "rating": 4.5,
+    "active": true,
+    "contract_start": "2023-02-01T00:00:00Z",
+    "contract_end": "2026-01-31T23:59:59Z"
+  },
+  {
+    "_id": "sup12",
+    "name": "Input Device Specialists",
+    "contact_person": "Nancy Brown",
+    "email": "nancy@inputdevices.com",
+    "phone": "+1-555-0999",
+    "address": {
+      "street": "901 Input Way",
+      "city": "Logitech",
+      "state": "CA",
+      "zipcode": "94041",
+      "country": "USA"
+    },
+    "categories": [
+      "Keyboards",
+      "Mice",
+      "Input Accessories"
+    ],
+    "rating": 4.7,
+    "active": true,
+    "contract_start": "2022-05-01T00:00:00Z",
+    "contract_end": "2025-04-30T23:59:59Z"
+  },
+  {
+    "_id": "sup13",
+    "name": "Wearable Tech Solutions",
+    "contact_person": "Alex Kim",
+    "email": "alex@wearabletech.com",
+    "phone": "+1-555-1010",
+    "address": {
+      "street": "123 Wearable St",
+      "city": "Fitbit",
+      "state": "CA",
+      "zipcode": "94107",
+      "country": "USA"
+    },
+    "categories": [
+      "Smart Watches",
+      "Fitness Trackers"
+    ],
+    "rating": 4.4,
+    "active": true,
+    "contract_start": "2023-03-01T00:00:00Z",
+    "contract_end": "2026-02-28T23:59:59Z"
+  },
+  {
+    "_id": "sup14",
+    "name": "Connectivity Hub",
+    "contact_person": "Tom Wilson",
+    "email": "tom@connectivityhub.com",
+    "phone": "+1-555-1111",
+    "address": {
+      "street": "456 Hub Circle",
+      "city": "Portland",
+      "state": "OR",
+      "zipcode": "97201",
+      "country": "USA"
+    },
+    "categories": [
+      "USB Hubs",
+      "Adapters",
+      "Cables"
+    ],
+    "rating": 4.2,
+    "active": true,
+    "contract_start": "2022-07-01T00:00:00Z",
+    "contract_end": "2025-06-30T23:59:59Z"
+  },
+  {
+    "_id": "sup15",
+    "name": "Smart Home Technologies",
+    "contact_person": "Emma Davis",
+    "email": "emma@smarthometech.com",
+    "phone": "+1-555-1212",
+    "address": {
+      "street": "789 Smart Ave",
+      "city": "Phoenix",
+      "state": "AZ",
+      "zipcode": "85001",
+      "country": "USA"
+    },
+    "categories": [
+      "Smart Home",
+      "IoT Devices"
+    ],
+    "rating": 4.8,
+    "active": true,
+    "contract_start": "2023-04-01T00:00:00Z",
+    "contract_end": "2026-03-31T23:59:59Z"
+  },
+  {
+    "_id": "sup16",
+    "name": "Gaming Gear Pro",
+    "contact_person": "Chris Johnson",
+    "email": "chris@gaminggear.com",
+    "phone": "+1-555-1313",
+    "address": {
+      "street": "234 Gaming Blvd",
+      "city": "Los Angeles",
+      "state": "CA",
+      "zipcode": "90210",
+      "country": "USA"
+    },
+    "categories": [
+      "Gaming Accessories",
+      "Gaming Peripherals"
+    ],
+    "rating": 4.6,
+    "active": true,
+    "contract_start": "2022-10-01T00:00:00Z",
+    "contract_end": "2025-09-30T23:59:59Z"
+  },
+  {
+    "_id": "sup17",
+    "name": "Professional Solutions Ltd",
+    "contact_person": "Rachel Green",
+    "email": "rachel@prosolutions.com",
+    "phone": "+1-555-1414",
+    "address": {
+      "street": "567 Professional Way",
+      "city": "Atlanta",
+      "state": "GA",
+      "zipcode": "30301",
+      "country": "USA"
+    },
+    "categories": [
+      "Professional Equipment",
+      "Enterprise Solutions"
+    ],
+    "rating": 4.9,
+    "active": true,
+    "contract_start": "2021-11-01T00:00:00Z",
+    "contract_end": "2024-10-31T23:59:59Z"
+  },
+  {
+    "_id": "sup18",
+    "name": "Budget Electronics",
+    "contact_person": "Mike Davis",
+    "email": "mike@budgetelectronics.com",
+    "phone": "+1-555-1515",
+    "address": {
+      "street": "890 Budget St",
+      "city": "Detroit",
+      "state": "MI",
+      "zipcode": "48201",
+      "country": "USA"
+    },
+    "categories": [
+      "Consumer Electronics",
+      "Accessories"
+    ],
+    "rating": 3.8,
+    "active": true,
+    "contract_start": "2023-05-01T00:00:00Z",
+    "contract_end": "2025-04-30T23:59:59Z"
+  },
+  {
+    "_id": "sup19",
+    "name": "Premium Tech Supply",
+    "contact_person": "Laura Martinez",
+    "email": "laura@premiumtech.com",
+    "phone": "+1-555-1616",
+    "address": {
+      "street": "123 Premium Ave",
+      "city": "Miami",
+      "state": "FL",
+      "zipcode": "33101",
+      "country": "USA"
+    },
+    "categories": [
+      "High-End Electronics",
+      "Professional Displays"
+    ],
+    "rating": 4.9,
+    "active": true,
+    "contract_start": "2022-01-01T00:00:00Z",
+    "contract_end": "2025-12-31T23:59:59Z"
+  },
+  {
+    "_id": "sup20",
+    "name": "Discontinued Suppliers Inc",
+    "contact_person": "John Inactive",
+    "email": "john@discontinued.com",
+    "phone": "+1-555-0000",
+    "address": {
+      "street": "999 Closed Rd",
+      "city": "Nowhere",
+      "state": "XX",
+      "zipcode": "00000",
+      "country": "USA"
+    },
+    "categories": [
+      "Obsolete Products"
+    ],
+    "rating": 2.1,
+    "active": false,
+    "contract_start": "2018-01-01T00:00:00Z",
+    "contract_end": "2020-12-31T23:59:59Z"
+  }
+]

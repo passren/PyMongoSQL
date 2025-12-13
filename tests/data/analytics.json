@@ -1,0 +1,39 @@
+[
+  {
+    "_id": "analytics_2023_12",
+    "period": "2023-12",
+    "type": "monthly",
+    "metrics": {
+      "total_revenue": 1624.99,
+      "total_orders": 2,
+      "unique_customers": 2,
+      "average_order_value": 812.495,
+      "conversion_rate": 0.056,
+      "bounce_rate": 0.32,
+      "page_views": 1250,
+      "session_duration": 345.6
+    },
+    "top_products": [
+      "p1",
+      "p4",
+      "p2"
+    ],
+    "top_categories": [
+      "Electronics"
+    ],
+    "geographic_data": {
+      "USA": {
+        "orders": 2,
+        "revenue": 1624.99,
+        "states": [
+          "NY",
+          "CA"
+        ]
+      }
+    },
+    "created_at": "2023-12-01T00:00:00Z",
+    "updated_at": "2023-12-12T23:59:59Z",
+    "data_quality_score": 0.95,
+    "is_finalized": false
+  }
+]

@@ -1,0 +1,428 @@
+[
+  {
+    "_id": "cat1",
+    "name": "Electronics",
+    "description": "Electronic devices and accessories",
+    "active": true,
+    "parent_category": null,
+    "subcategories": [
+      "Computers",
+      "Accessories",
+      "Displays"
+    ],
+    "created_at": "2022-01-01T00:00:00Z",
+    "product_count": 3,
+    "average_price": 541.83,
+    "metadata": {
+      "tax_rate": 0.08,
+      "shipping_weight_factor": 1.2,
+      "return_policy_days": 30
+    }
+  },
+  {
+    "_id": "cat2",
+    "name": "Education",
+    "description": "Books, courses, and educational materials",
+    "active": true,
+    "parent_category": null,
+    "subcategories": [
+      "Books",
+      "Online Courses",
+      "Certificates"
+    ],
+    "created_at": "2022-01-01T00:00:00Z",
+    "product_count": 1,
+    "average_price": 15.99,
+    "metadata": {
+      "tax_rate": 0.0,
+      "shipping_weight_factor": 0.8,
+      "return_policy_days": 14
+    }
+  },
+  {
+    "_id": "cat3",
+    "name": "Furniture",
+    "description": "Office and home furniture",
+    "active": true,
+    "parent_category": null,
+    "subcategories": [
+      "Office Furniture",
+      "Home Furniture",
+      "Ergonomic"
+    ],
+    "created_at": "2022-01-01T00:00:00Z",
+    "product_count": 2,
+    "average_price": 249.99,
+    "metadata": {
+      "tax_rate": 0.08,
+      "shipping_weight_factor": 2.5,
+      "return_policy_days": 30
+    }
+  },
+  {
+    "_id": "cat4",
+    "name": "Software",
+    "description": "Software applications and digital tools",
+    "active": true,
+    "parent_category": null,
+    "subcategories": [
+      "Productivity",
+      "Development Tools",
+      "Security"
+    ],
+    "created_at": "2022-01-01T00:00:00Z",
+    "product_count": 1,
+    "average_price": 19.99,
+    "metadata": {
+      "tax_rate": 0.0,
+      "shipping_weight_factor": 0.0,
+      "return_policy_days": 7
+    }
+  },
+  {
+    "_id": "cat5",
+    "name": "Security",
+    "description": "Security and surveillance equipment",
+    "active": true,
+    "parent_category": null,
+    "subcategories": [
+      "Cameras",
+      "Access Control",
+      "Monitoring"
+    ],
+    "created_at": "2022-01-01T00:00:00Z",
+    "product_count": 1,
+    "average_price": 159.99,
+    "metadata": {
+      "tax_rate": 0.08,
+      "shipping_weight_factor": 1.1,
+      "return_policy_days": 30
+    }
+  },
+  {
+    "_id": "cat6",
+    "name": "Appliances",
+    "description": "Home and office appliances",
+    "active": true,
+    "parent_category": null,
+    "subcategories": [
+      "Kitchen",
+      "Office",
+      "Personal Care"
+    ],
+    "created_at": "2022-01-01T00:00:00Z",
+    "product_count": 1,
+    "average_price": 249.99,
+    "metadata": {
+      "tax_rate": 0.08,
+      "shipping_weight_factor": 3.0,
+      "return_policy_days": 30
+    }
+  },
+  {
+    "_id": "cat7",
+    "name": "Audio Equipment",
+    "description": "Audio devices and accessories",
+    "active": true,
+    "parent_category": "cat1",
+    "subcategories": [
+      "Headphones",
+      "Speakers",
+      "Microphones"
+    ],
+    "created_at": "2022-02-01T00:00:00Z",
+    "product_count": 1,
+    "average_price": 89.99,
+    "metadata": {
+      "tax_rate": 0.08,
+      "shipping_weight_factor": 0.8,
+      "return_policy_days": 30
+    }
+  },
+  {
+    "_id": "cat8",
+    "name": "Storage Devices",
+    "description": "Data storage and backup solutions",
+    "active": true,
+    "parent_category": "cat1",
+    "subcategories": [
+      "External Drives",
+      "USB Storage",
+      "Network Storage"
+    ],
+    "created_at": "2022-02-01T00:00:00Z",
+    "product_count": 1,
+    "average_price": 149.99,
+    "metadata": {
+      "tax_rate": 0.08,
+      "shipping_weight_factor": 0.5,
+      "return_policy_days": 30
+    }
+  },
+  {
+    "_id": "cat9",
+    "name": "Mobile Devices",
+    "description": "Smartphones, tablets, and mobile accessories",
+    "active": true,
+    "parent_category": "cat1",
+    "subcategories": [
+      "Smartphones",
+      "Tablets",
+      "Accessories"
+    ],
+    "created_at": "2022-02-01T00:00:00Z",
+    "product_count": 3,
+    "average_price": 410.32,
+    "metadata": {
+      "tax_rate": 0.08,
+      "shipping_weight_factor": 0.4,
+      "return_policy_days": 15
+    }
+  },
+  {
+    "_id": "cat10",
+    "name": "Network Equipment",
+    "description": "Networking hardware and connectivity solutions",
+    "active": true,
+    "parent_category": "cat1",
+    "subcategories": [
+      "Routers",
+      "Switches",
+      "Access Points"
+    ],
+    "created_at": "2022-02-01T00:00:00Z",
+    "product_count": 1,
+    "average_peripheral": 179.99,
+    "metadata": {
+      "tax_rate": 0.08,
+      "shipping_weight_factor": 1.2,
+      "return_policy_days": 30
+    }
+  },
+  {
+    "_id": "cat11",
+    "name": "Input Devices",
+    "description": "Keyboards, mice, and input accessories",
+    "active": true,
+    "parent_category": "cat1",
+    "subcategories": [
+      "Keyboards",
+      "Mice",
+      "Drawing Tablets"
+    ],
+    "created_at": "2022-02-01T00:00:00Z",
+    "product_count": 2,
+    "average_price": 77.74,
+    "metadata": {
+      "tax_rate": 0.08,
+      "shipping_weight_factor": 0.6,
+      "return_policy_days": 30
+    }
+  },
+  {
+    "_id": "cat12",
+    "name": "Video Equipment",
+    "description": "Cameras, displays, and video accessories",
+    "active": true,
+    "parent_category": "cat1",
+    "subcategories": [
+      "Webcams",
+      "Monitors",
+      "Video Cameras"
+    ],
+    "created_at": "2022-02-01T00:00:00Z",
+    "product_count": 2,
+    "average_price": 369.99,
+    "metadata": {
+      "tax_rate": 0.08,
+      "shipping_weight_factor": 1.8,
+      "return_policy_days": 30
+    }
+  },
+  {
+    "_id": "cat13",
+    "name": "Connectivity",
+    "description": "Adapters, hubs, and connectivity solutions",
+    "active": true,
+    "parent_category": "cat1",
+    "subcategories": [
+      "USB Hubs",
+      "Adapters",
+      "Cables"
+    ],
+    "created_at": "2022-02-01T00:00:00Z",
+    "product_count": 1,
+    "average_price": 39.99,
+    "metadata": {
+      "tax_rate": 0.08,
+      "shipping_weight_factor": 0.2,
+      "return_policy_days": 30
+    }
+  },
+  {
+    "_id": "cat14",
+    "name": "Online Courses",
+    "description": "Digital learning and certification courses",
+    "active": true,
+    "parent_category": "cat2",
+    "subcategories": [
+      "Programming",
+      "Design",
+      "Business"
+    ],
+    "created_at": "2022-03-01T00:00:00Z",
+    "product_count": 1,
+    "average_price": 49.99,
+    "metadata": {
+      "tax_rate": 0.0,
+      "shipping_weight_factor": 0.0,
+      "return_policy_days": 30
+    }
+  },
+  {
+    "_id": "cat15",
+    "name": "Technical Books",
+    "description": "Programming, technology, and computer science books",
+    "active": true,
+    "parent_category": "cat2",
+    "subcategories": [
+      "Programming",
+      "Data Science",
+      "Computer Science"
+    ],
+    "created_at": "2022-03-01T00:00:00Z",
+    "product_count": 2,
+    "average_price": 52.99,
+    "metadata": {
+      "tax_rate": 0.0,
+      "shipping_weight_factor": 0.8,
+      "return_policy_days": 14
+    }
+  },
+  {
+    "_id": "cat16",
+    "name": "Wearable Technology",
+    "description": "Smart watches, fitness trackers, and wearables",
+    "active": true,
+    "parent_category": "cat1",
+    "subcategories": [
+      "Smart Watches",
+      "Fitness Trackers",
+      "Health Monitors"
+    ],
+    "created_at": "2022-04-01T00:00:00Z",
+    "product_count": 1,
+    "average_price": 199.99,
+    "metadata": {
+      "tax_rate": 0.08,
+      "shipping_weight_factor": 0.1,
+      "return_policy_days": 30
+    }
+  },
+  {
+    "_id": "cat17",
+    "name": "Professional Equipment",
+    "description": "High-end equipment for professional use",
+    "active": true,
+    "parent_category": null,
+    "subcategories": [
+      "Broadcasting",
+      "Photography",
+      "Engineering"
+    ],
+    "created_at": "2022-04-01T00:00:00Z",
+    "product_count": 0,
+    "average_price": 0.0,
+    "metadata": {
+      "tax_rate": 0.08,
+      "shipping_weight_factor": 2.0,
+      "return_policy_days": 14
+    }
+  },
+  {
+    "_id": "cat18",
+    "name": "Gaming",
+    "description": "Gaming peripherals and accessories",
+    "active": true,
+    "parent_category": "cat1",
+    "subcategories": [
+      "Gaming Keyboards",
+      "Gaming Mice",
+      "Gaming Headsets"
+    ],
+    "created_at": "2022-05-01T00:00:00Z",
+    "product_count": 1,
+    "average_price": 129.99,
+    "metadata": {
+      "tax_rate": 0.08,
+      "shipping_weight_factor": 0.8,
+      "return_policy_days": 30
+    }
+  },
+  {
+    "_id": "cat19",
+    "name": "Smart Home",
+    "description": "Home automation and smart home devices",
+    "active": true,
+    "parent_category": null,
+    "subcategories": [
+      "Smart Cameras",
+      "Smart Lights",
+      "Smart Sensors"
+    ],
+    "created_at": "2022-05-01T00:00:00Z",
+    "product_count": 1,
+    "average_price": 159.99,
+    "metadata": {
+      "tax_rate": 0.08,
+      "shipping_weight_factor": 0.5,
+      "return_policy_days": 30
+    }
+  },
+  {
+    "_id": "cat20",
+    "name": "Discontinued",
+    "description": "Products no longer in active production",
+    "active": false,
+    "parent_category": null,
+    "subcategories": [],
+    "created_at": "2022-01-01T00:00:00Z",
+    "product_count": 0,
+    "average_price": 0.0,
+    "metadata": {
+      "tax_rate": 0.08,
+      "shipping_weight_factor": 1.0,
+      "return_policy_days": 7
+    }
+  },
+  {
+    "_id": "cat21",
+    "name": "Broken Category",
+    "description": "Category with invalid parent reference",
+    "active": true,
+    "parent_category": "catINVALID",
+    "subcategories": [
+      "Nonexistent Sub"
+    ],
+    "created_at": "2023-01-01T00:00:00Z",
+    "product_count": 0,
+    "average_price": 0.0,
+    "metadata": {
+      "tax_rate": 0.0,
+      "shipping_weight_factor": 0.0,
+      "return_policy_days": 0
+    }
+  },
+  {
+    "_id": "cat22",
+    "name": "Orphaned Category",
+    "description": "Category referencing missing parent",
+    "active": false,
+    "parent_category": "catGHOST",
+    "subcategories": [],
+    "created_at": "2020-01-01T00:00:00Z",
+    "product_count": -1,
+    "average_price": null,
+    "metadata": null
+  }
+]

@@ -1,0 +1,1196 @@
+[
+  {
+    "_id": "1",
+    "name": "John Doe",
+    "age": 30,
+    "email": "john@example.com",
+    "active": true,
+    "balance": 1250.75,
+    "tags": [
+      "developer",
+      "python",
+      "mongodb"
+    ],
+    "address": {
+      "street": "123 Main St",
+      "city": "New York",
+      "zipcode": "10001",
+      "coordinates": [
+        40.7128,
+        -74.006
+      ]
+    },
+    "metadata": null,
+    "profile": {
+      "bio": "Software engineer with 5+ years experience",
+      "social": {
+        "twitter": "@johndoe",
+        "linkedin": "linkedin.com/in/johndoe"
+      },
+      "skills": [
+        "Python",
+        "JavaScript",
+        "MongoDB",
+        "SQL"
+      ],
+      "certifications": []
+    },
+    "created_at": "2023-01-15T09:30:00Z",
+    "login_count": 42,
+    "salary": 85000.5,
+    "is_premium": false,
+    "favorite_products": [
+      "p1",
+      "p4"
+    ],
+    "purchased_products": [
+      "p1",
+      "p2"
+    ],
+    "owned_products": [],
+    "department_id": "dept1"
+  },
+  {
+    "_id": "2",
+    "name": "Jane Smith",
+    "age": 25,
+    "email": "jane@example.com",
+    "active": true,
+    "balance": 2750.0,
+    "tags": [
+      "designer",
+      "ui",
+      "ux"
+    ],
+    "address": {
+      "street": "456 Oak Ave",
+      "city": "San Francisco",
+      "zipcode": "94102",
+      "coordinates": [
+        37.7749,
+        -122.4194
+      ]
+    },
+    "metadata": {
+      "department": "Design",
+      "employee_id": "EMP001",
+      "hire_date": "2022-03-01"
+    },
+    "profile": {
+      "bio": "Creative designer passionate about user experience",
+      "social": {
+        "twitter": "@janesmith",
+        "portfolio": "janesmith.design"
+      },
+      "skills": [
+        "Figma",
+        "Adobe XD",
+        "Sketch",
+        "HTML/CSS"
+      ],
+      "certifications": [
+        "UX Design Certification",
+        "Adobe Certified Expert"
+      ]
+    },
+    "created_at": "2022-03-01T14:22:30Z",
+    "login_count": 156,
+    "salary": 72000.0,
+    "is_premium": true,
+    "favorite_products": [
+      "p2",
+      "p3",
+      "p4"
+    ],
+    "purchased_products": [
+      "p4"
+    ],
+    "owned_products": [
+      "p3"
+    ],
+    "department_id": "dept2"
+  },
+  {
+    "_id": "3",
+    "name": "Bob Johnson",
+    "age": 35,
+    "email": "bob@example.com",
+    "active": false,
+    "balance": 0,
+    "tags": null,
+    "address": {
+      "street": "789 Pine St",
+      "city": "Seattle",
+      "zipcode": "98101",
+      "coordinates": [
+        47.6062,
+        -122.3321
+      ]
+    },
+    "metadata": {
+      "department": "DevOps",
+      "employee_id": "EMP002",
+      "hire_date": "2020-01-15",
+      "termination_date": "2024-06-30"
+    },
+    "profile": {
+      "bio": "",
+      "social": {},
+      "skills": [
+        "Docker",
+        "Kubernetes",
+        "AWS",
+        "Terraform"
+      ],
+      "certifications": [
+        "AWS Solutions Architect",
+        "CKA"
+      ]
+    },
+    "created_at": "2020-01-15T08:00:00Z",
+    "login_count": 0,
+    "salary": null,
+    "is_premium": false,
+    "favorite_products": [],
+    "purchased_products": [],
+    "owned_products": [
+      "p1",
+      "p2"
+    ],
+    "department_id": "dept3"
+  },
+  {
+    "_id": "4",
+    "name": "Alice Williams",
+    "age": 28,
+    "email": "alice@example.com",
+    "active": true,
+    "balance": -150.25,
+    "tags": [
+      "manager",
+      "leadership",
+      "agile"
+    ],
+    "address": {
+      "street": "321 Elm Dr",
+      "city": "Austin",
+      "zipcode": "73301",
+      "coordinates": [
+        30.2672,
+        -97.7431
+      ]
+    },
+    "metadata": {
+      "department": "Product",
+      "employee_id": "EMP003",
+      "hire_date": "2021-09-15",
+      "reports": [
+        "EMP001",
+        "EMP004",
+        "EMP005"
+      ]
+    },
+    "profile": {
+      "bio": "Product manager focused on data-driven decisions",
+      "social": {
+        "linkedin": "linkedin.com/in/alicewilliams",
+        "medium": "@alicewilliams"
+      },
+      "skills": [
+        "Product Management",
+        "Analytics",
+        "Scrum",
+        "JIRA"
+      ],
+      "certifications": [
+        "Certified Scrum Master",
+        "Product Management Certificate"
+      ]
+    },
+    "created_at": "2021-09-15T10:15:45Z",
+    "login_count": 89,
+    "salary": 95000.75,
+    "is_premium": true,
+    "favorite_products": [
+      "p1",
+      "p2",
+      "p3",
+      "p4"
+    ],
+    "purchased_products": [],
+    "owned_products": [
+      "p4"
+    ],
+    "department_id": "dept2"
+  },
+  {
+    "_id": "5",
+    "name": "Charlie Brown",
+    "age": 29,
+    "email": "charlie@example.com",
+    "active": true,
+    "balance": 450.25,
+    "tags": [
+      "analyst",
+      "data",
+      "sql"
+    ],
+    "address": {
+      "street": "555 Data Lane",
+      "city": "Chicago",
+      "zipcode": "60601",
+      "coordinates": [
+        41.8781,
+        -87.6298
+      ]
+    },
+    "metadata": {
+      "department": "Analytics",
+      "employee_id": "EMP006",
+      "hire_date": "2023-02-01"
+    },
+    "profile": {
+      "bio": "Data analyst focused on business intelligence",
+      "social": {
+        "linkedin": "linkedin.com/in/charliebrown"
+      },
+      "skills": [
+        "SQL",
+        "Python",
+        "Tableau",
+        "Excel"
+      ],
+      "certifications": [
+        "Tableau Desktop Specialist"
+      ]
+    },
+    "created_at": "2023-02-01T12:00:00Z",
+    "login_count": 67,
+    "salary": 68000.0,
+    "is_premium": false,
+    "favorite_products": [
+      "p1",
+      "p3"
+    ],
+    "purchased_products": [
+      "p3"
+    ],
+    "owned_products": [],
+    "department_id": "dept4"
+  },
+  {
+    "_id": "6",
+    "name": "Diana Prince",
+    "age": 32,
+    "email": "diana@example.com",
+    "active": true,
+    "balance": 3200.8,
+    "tags": [
+      "security",
+      "cybersecurity",
+      "compliance"
+    ],
+    "address": {
+      "street": "777 Security Blvd",
+      "city": "Washington",
+      "zipcode": "20001",
+      "coordinates": [
+        38.9072,
+        -77.0369
+      ]
+    },
+    "metadata": {
+      "department": "Security",
+      "employee_id": "EMP007",
+      "hire_date": "2021-11-15"
+    },
+    "profile": {
+      "bio": "Cybersecurity specialist with government experience",
+      "social": {
+        "linkedin": "linkedin.com/in/dianaprince"
+      },
+      "skills": [
+        "Security Auditing",
+        "Penetration Testing",
+        "CISSP",
+        "Risk Assessment"
+      ],
+      "certifications": [
+        "CISSP",
+        "CEH",
+        "Security+"
+      ]
+    },
+    "created_at": "2021-11-15T09:00:00Z",
+    "login_count": 234,
+    "salary": 92000.0,
+    "is_premium": true,
+    "favorite_products": [
+      "p4"
+    ],
+    "purchased_products": [
+      "p1",
+      "p4"
+    ],
+    "owned_products": [],
+    "department_id": "dept5"
+  },
+  {
+    "_id": "7",
+    "name": "Edward Miller",
+    "age": 41,
+    "email": "edward@example.com",
+    "active": false,
+    "balance": -200.0,
+    "tags": [
+      "consultant",
+      "freelance"
+    ],
+    "address": {
+      "street": "999 Freelance Ave",
+      "city": "Portland",
+      "zipcode": "97201",
+      "coordinates": [
+        45.5152,
+        -122.6784
+      ]
+    },
+    "metadata": null,
+    "profile": {
+      "bio": "Independent consultant specializing in digital transformation",
+      "social": {
+        "website": "edwardmiller.consulting"
+      },
+      "skills": [
+        "Business Analysis",
+        "Project Management",
+        "Change Management"
+      ],
+      "certifications": [
+        "PMP",
+        "Business Analysis Professional"
+      ]
+    },
+    "created_at": "2019-05-20T16:30:00Z",
+    "login_count": 12,
+    "salary": null,
+    "is_premium": false,
+    "favorite_products": [],
+    "purchased_products": [
+      "p2",
+      "p3"
+    ],
+    "owned_products": [],
+    "department_id": null
+  },
+  {
+    "_id": "8",
+    "name": "Fiona Green",
+    "age": 26,
+    "email": "fiona@example.com",
+    "active": true,
+    "balance": 1800.5,
+    "tags": [
+      "marketing",
+      "content",
+      "social"
+    ],
+    "address": {
+      "street": "111 Content St",
+      "city": "Los Angeles",
+      "zipcode": "90210",
+      "coordinates": [
+        34.0522,
+        -118.2437
+      ]
+    },
+    "metadata": {
+      "department": "Marketing",
+      "employee_id": "EMP008",
+      "hire_date": "2022-08-10"
+    },
+    "profile": {
+      "bio": "Digital marketing specialist with social media expertise",
+      "social": {
+        "twitter": "@fionagreen",
+        "instagram": "@fiona.content"
+      },
+      "skills": [
+        "Content Marketing",
+        "SEO",
+        "Social Media",
+        "Google Analytics"
+      ],
+      "certifications": [
+        "Google Analytics",
+        "HubSpot Content Marketing"
+      ]
+    },
+    "created_at": "2022-08-10T11:45:00Z",
+    "login_count": 145,
+    "salary": 55000.0,
+    "is_premium": false,
+    "favorite_products": [
+      "p2",
+      "p4"
+    ],
+    "purchased_products": [
+      "p2"
+    ],
+    "owned_products": [],
+    "department_id": "dept6"
+  },
+  {
+    "_id": "9",
+    "name": "George Wilson",
+    "age": 38,
+    "email": "george@example.com",
+    "active": true,
+    "balance": 5200.75,
+    "tags": [
+      "sales",
+      "enterprise",
+      "b2b"
+    ],
+    "address": {
+      "street": "222 Sales Plaza",
+      "city": "Dallas",
+      "zipcode": "75201",
+      "coordinates": [
+        32.7767,
+        -96.797
+      ]
+    },
+    "metadata": {
+      "department": "Sales",
+      "employee_id": "EMP009",
+      "hire_date": "2020-03-01"
+    },
+    "profile": {
+      "bio": "Enterprise sales manager with 10+ years experience",
+      "social": {
+        "linkedin": "linkedin.com/in/georgewilson"
+      },
+      "skills": [
+        "Enterprise Sales",
+        "CRM",
+        "Negotiation",
+        "Account Management"
+      ],
+      "certifications": [
+        "Salesforce Administrator",
+        "Sales Professional"
+      ]
+    },
+    "created_at": "2020-03-01T08:30:00Z",
+    "login_count": 298,
+    "salary": 105000.0,
+    "is_premium": true,
+    "favorite_products": [
+      "p1",
+      "p4"
+    ],
+    "purchased_products": [
+      "p1",
+      "p2",
+      "p4"
+    ],
+    "owned_products": [],
+    "department_id": "dept7"
+  },
+  {
+    "_id": "10",
+    "name": "Helen Davis",
+    "age": 33,
+    "email": "helen@example.com",
+    "active": true,
+    "balance": 2100.0,
+    "tags": [
+      "hr",
+      "people",
+      "culture"
+    ],
+    "address": {
+      "street": "333 People Way",
+      "city": "Miami",
+      "zipcode": "33101",
+      "coordinates": [
+        25.7617,
+        -80.1918
+      ]
+    },
+    "metadata": {
+      "department": "Human Resources",
+      "employee_id": "EMP010",
+      "hire_date": "2021-01-15"
+    },
+    "profile": {
+      "bio": "HR business partner focused on employee development",
+      "social": {
+        "linkedin": "linkedin.com/in/helendavis"
+      },
+      "skills": [
+        "HR Management",
+        "Employee Relations",
+        "Compensation",
+        "Training"
+      ],
+      "certifications": [
+        "SHRM-CP",
+        "PHR"
+      ]
+    },
+    "created_at": "2021-01-15T10:00:00Z",
+    "login_count": 189,
+    "salary": 75000.0,
+    "is_premium": true,
+    "favorite_products": [
+      "p3"
+    ],
+    "purchased_products": [
+      "p3"
+    ],
+    "owned_products": [],
+    "department_id": "dept8"
+  },
+  {
+    "_id": "11",
+    "name": "Ivan Rodriguez",
+    "age": 27,
+    "email": "ivan@example.com",
+    "active": true,
+    "balance": 890.25,
+    "tags": [
+      "qa",
+      "testing",
+      "automation"
+    ],
+    "address": {
+      "street": "444 Quality Ln",
+      "city": "Phoenix",
+      "zipcode": "85001",
+      "coordinates": [
+        33.4484,
+        -112.074
+      ]
+    },
+    "metadata": {
+      "department": "Quality Assurance",
+      "employee_id": "EMP011",
+      "hire_date": "2022-05-01"
+    },
+    "profile": {
+      "bio": "QA engineer specializing in test automation",
+      "social": {
+        "github": "github.com/ivanrodriguez"
+      },
+      "skills": [
+        "Test Automation",
+        "Selenium",
+        "API Testing",
+        "Performance Testing"
+      ],
+      "certifications": [
+        "ISTQB Foundation Level"
+      ]
+    },
+    "created_at": "2022-05-01T09:15:00Z",
+    "login_count": 156,
+    "salary": 62000.0,
+    "is_premium": false,
+    "favorite_products": [
+      "p1",
+      "p2"
+    ],
+    "purchased_products": [
+      "p2"
+    ],
+    "owned_products": [],
+    "department_id": "dept9"
+  },
+  {
+    "_id": "12",
+    "name": "Julia Thompson",
+    "age": 31,
+    "email": "julia@example.com",
+    "active": true,
+    "balance": 4500.9,
+    "tags": [
+      "finance",
+      "accounting",
+      "budget"
+    ],
+    "address": {
+      "street": "555 Finance St",
+      "city": "Boston",
+      "zipcode": "02101",
+      "coordinates": [
+        42.3601,
+        -71.0589
+      ]
+    },
+    "metadata": {
+      "department": "Finance",
+      "employee_id": "EMP012",
+      "hire_date": "2020-09-01"
+    },
+    "profile": {
+      "bio": "Senior financial analyst with CPA certification",
+      "social": {
+        "linkedin": "linkedin.com/in/juliathompson"
+      },
+      "skills": [
+        "Financial Analysis",
+        "Budgeting",
+        "Excel",
+        "SAP"
+      ],
+      "certifications": [
+        "CPA",
+        "CFA Level 1"
+      ]
+    },
+    "created_at": "2020-09-01T08:00:00Z",
+    "login_count": 267,
+    "salary": 78000.0,
+    "is_premium": true,
+    "favorite_products": [
+      "p1",
+      "p3",
+      "p4"
+    ],
+    "purchased_products": [
+      "p1"
+    ],
+    "owned_products": [],
+    "department_id": "dept10"
+  },
+  {
+    "_id": "13",
+    "name": "Kevin Lee",
+    "age": 24,
+    "email": "kevin@example.com",
+    "active": true,
+    "balance": 320.5,
+    "tags": [
+      "intern",
+      "student",
+      "mobile"
+    ],
+    "address": {
+      "street": "666 Campus Dr",
+      "city": "Berkeley",
+      "zipcode": "94720",
+      "coordinates": [
+        37.8719,
+        -122.2585
+      ]
+    },
+    "metadata": {
+      "department": "Mobile Development",
+      "employee_id": "INTERN001",
+      "hire_date": "2023-06-01"
+    },
+    "profile": {
+      "bio": "Computer science student interning in mobile development",
+      "social": {
+        "github": "github.com/kevinlee",
+        "twitter": "@kevinlee_dev"
+      },
+      "skills": [
+        "React Native",
+        "Flutter",
+        "iOS",
+        "Android"
+      ],
+      "certifications": []
+    },
+    "created_at": "2023-06-01T09:00:00Z",
+    "login_count": 89,
+    "salary": 45000.0,
+    "is_premium": false,
+    "favorite_products": [
+      "p1",
+      "p2"
+    ],
+    "purchased_products": [],
+    "owned_products": [],
+    "department_id": "dept11"
+  },
+  {
+    "_id": "14",
+    "name": "Laura Martinez",
+    "age": 36,
+    "email": "laura@example.com",
+    "active": true,
+    "balance": 2800.75,
+    "tags": [
+      "legal",
+      "compliance",
+      "contracts"
+    ],
+    "address": {
+      "street": "777 Legal Ave",
+      "city": "Atlanta",
+      "zipcode": "30301",
+      "coordinates": [
+        33.749,
+        -84.388
+      ]
+    },
+    "metadata": {
+      "department": "Legal",
+      "employee_id": "EMP013",
+      "hire_date": "2019-11-01"
+    },
+    "profile": {
+      "bio": "Corporate attorney specializing in technology contracts",
+      "social": {
+        "linkedin": "linkedin.com/in/lauramartinez"
+      },
+      "skills": [
+        "Contract Law",
+        "Intellectual Property",
+        "Compliance",
+        "Risk Management"
+      ],
+      "certifications": [
+        "J.D.",
+        "Bar Admission"
+      ]
+    },
+    "created_at": "2019-11-01T10:30:00Z",
+    "login_count": 201,
+    "salary": 125000.0,
+    "is_premium": true,
+    "favorite_products": [
+      "p3",
+      "p4"
+    ],
+    "purchased_products": [
+      "p3"
+    ],
+    "owned_products": [],
+    "department_id": "dept12"
+  },
+  {
+    "_id": "15",
+    "name": "Michael Chang",
+    "age": 42,
+    "email": "michael@example.com",
+    "active": false,
+    "balance": 0.0,
+    "tags": [
+      "contractor",
+      "consultant"
+    ],
+    "address": {
+      "street": "888 Contract Rd",
+      "city": "Denver",
+      "zipcode": "80201",
+      "coordinates": [
+        39.7392,
+        -104.9903
+      ]
+    },
+    "metadata": null,
+    "profile": {
+      "bio": "Former technical architect, now independent consultant",
+      "social": {},
+      "skills": [
+        "System Architecture",
+        "Cloud Migration",
+        "Enterprise Integration"
+      ],
+      "certifications": [
+        "AWS Solutions Architect",
+        "TOGAF"
+      ]
+    },
+    "created_at": "2018-03-15T14:00:00Z",
+    "login_count": 5,
+    "salary": null,
+    "is_premium": false,
+    "favorite_products": [],
+    "purchased_products": [
+      "p1"
+    ],
+    "owned_products": [],
+    "department_id": null
+  },
+  {
+    "_id": "16",
+    "name": "Nancy White",
+    "age": 39,
+    "email": "nancy@example.com",
+    "active": true,
+    "balance": 3600.25,
+    "tags": [
+      "operations",
+      "logistics",
+      "supply"
+    ],
+    "address": {
+      "street": "999 Operations Blvd",
+      "city": "Nashville",
+      "zipcode": "37201",
+      "coordinates": [
+        36.1627,
+        -86.7816
+      ]
+    },
+    "metadata": {
+      "department": "Operations",
+      "employee_id": "EMP014",
+      "hire_date": "2020-07-01"
+    },
+    "profile": {
+      "bio": "Operations manager with supply chain expertise",
+      "social": {
+        "linkedin": "linkedin.com/in/nancywhite"
+      },
+      "skills": [
+        "Supply Chain Management",
+        "Logistics",
+        "Process Improvement",
+        "Lean Six Sigma"
+      ],
+      "certifications": [
+        "Six Sigma Green Belt",
+        "Supply Chain Professional"
+      ]
+    },
+    "created_at": "2020-07-01T08:45:00Z",
+    "login_count": 223,
+    "salary": 82000.0,
+    "is_premium": true,
+    "favorite_products": [
+      "p2",
+      "p3"
+    ],
+    "purchased_products": [
+      "p2",
+      "p3"
+    ],
+    "owned_products": [],
+    "department_id": "dept13"
+  },
+  {
+    "_id": "17",
+    "name": "Oscar Garcia",
+    "age": 28,
+    "email": "oscar@example.com",
+    "active": true,
+    "balance": 1200.0,
+    "tags": [
+      "support",
+      "customer",
+      "technical"
+    ],
+    "address": {
+      "street": "111 Support Center",
+      "city": "San Diego",
+      "zipcode": "92101",
+      "coordinates": [
+        32.7157,
+        -117.1611
+      ]
+    },
+    "metadata": {
+      "department": "Customer Support",
+      "employee_id": "EMP015",
+      "hire_date": "2021-12-01"
+    },
+    "profile": {
+      "bio": "Technical support specialist with customer service focus",
+      "social": {
+        "twitter": "@oscargarcia_support"
+      },
+      "skills": [
+        "Technical Support",
+        "Customer Service",
+        "Troubleshooting",
+        "Zendesk"
+      ],
+      "certifications": [
+        "CompTIA A+",
+        "Customer Service Professional"
+      ]
+    },
+    "created_at": "2021-12-01T10:15:00Z",
+    "login_count": 198,
+    "salary": 48000.0,
+    "is_premium": false,
+    "favorite_products": [
+      "p1",
+      "p4"
+    ],
+    "purchased_products": [
+      "p4"
+    ],
+    "owned_products": [],
+    "department_id": "dept14"
+  },
+  {
+    "_id": "18",
+    "name": "Patricia Johnson",
+    "age": 45,
+    "email": "patricia@example.com",
+    "active": true,
+    "balance": 8500.5,
+    "tags": [
+      "executive",
+      "ceo",
+      "leadership"
+    ],
+    "address": {
+      "street": "1 Executive Plaza",
+      "city": "New York",
+      "zipcode": "10005",
+      "coordinates": [
+        40.7589,
+        -73.9851
+      ]
+    },
+    "metadata": {
+      "department": "Executive",
+      "employee_id": "CEO001",
+      "hire_date": "2018-01-01"
+    },
+    "profile": {
+      "bio": "Chief Executive Officer with 20+ years leadership experience",
+      "social": {
+        "linkedin": "linkedin.com/in/patriciajohnson",
+        "twitter": "@patricia_ceo"
+      },
+      "skills": [
+        "Strategic Leadership",
+        "Business Development",
+        "M&A",
+        "Board Relations"
+      ],
+      "certifications": [
+        "Executive MBA",
+        "Board Certification"
+      ]
+    },
+    "created_at": "2018-01-01T00:00:00Z",
+    "login_count": 456,
+    "salary": 250000.0,
+    "is_premium": true,
+    "favorite_products": [
+      "p1",
+      "p4"
+    ],
+    "purchased_products": [
+      "p1",
+      "p4"
+    ],
+    "owned_products": [
+      "p1",
+      "p2",
+      "p3",
+      "p4"
+    ],
+    "department_id": "dept15"
+  },
+  {
+    "_id": "19",
+    "name": "Robert Taylor",
+    "age": 34,
+    "email": "robert@example.com",
+    "active": true,
+    "balance": 1750.25,
+    "tags": [
+      "research",
+      "ai",
+      "machine learning"
+    ],
+    "address": {
+      "street": "222 Research Park",
+      "city": "Palo Alto",
+      "zipcode": "94301",
+      "coordinates": [
+        37.4419,
+        -122.143
+      ]
+    },
+    "metadata": {
+      "department": "Research & Development",
+      "employee_id": "EMP016",
+      "hire_date": "2022-01-10"
+    },
+    "profile": {
+      "bio": "AI researcher with PhD in Computer Science",
+      "social": {
+        "linkedin": "linkedin.com/in/roberttaylor",
+        "researchgate": "researchgate.net/profile/Robert_Taylor"
+      },
+      "skills": [
+        "Machine Learning",
+        "Deep Learning",
+        "Python",
+        "TensorFlow",
+        "PyTorch"
+      ],
+      "certifications": [
+        "PhD Computer Science",
+        "Google Cloud ML Engineer"
+      ]
+    },
+    "created_at": "2022-01-10T09:30:00Z",
+    "login_count": 167,
+    "salary": 135000.0,
+    "is_premium": true,
+    "favorite_products": [
+      "p1"
+    ],
+    "purchased_products": [
+      "p1"
+    ],
+    "owned_products": [],
+    "department_id": "dept16"
+  },
+  {
+    "_id": "20",
+    "name": "Susan Anderson",
+    "age": 30,
+    "email": "susan@example.com",
+    "active": true,
+    "balance": 2250.75,
+    "tags": [
+      "training",
+      "education",
+      "development"
+    ],
+    "address": {
+      "street": "333 Learning Way",
+      "city": "Orlando",
+      "zipcode": "32801",
+      "coordinates": [
+        28.5383,
+        -81.3792
+      ]
+    },
+    "metadata": {
+      "department": "Learning & Development",
+      "employee_id": "EMP017",
+      "hire_date": "2021-04-15"
+    },
+    "profile": {
+      "bio": "Learning and development specialist focused on technical training",
+      "social": {
+        "linkedin": "linkedin.com/in/susananderson"
+      },
+      "skills": [
+        "Instructional Design",
+        "Training Development",
+        "E-Learning",
+        "Adult Learning"
+      ],
+      "certifications": [
+        "Certified Professional in Learning and Performance",
+        "Instructional Design"
+      ]
+    },
+    "created_at": "2021-04-15T11:00:00Z",
+    "login_count": 178,
+    "salary": 65000.0,
+    "is_premium": false,
+    "favorite_products": [
+      "p3"
+    ],
+    "purchased_products": [
+      "p3"
+    ],
+    "owned_products": [],
+    "department_id": "dept17"
+  },
+  {
+    "_id": "21",
+    "name": "Invalid User One",
+    "age": 25,
+    "email": "invalid1@example.com",
+    "active": true,
+    "balance": 500.0,
+    "tags": [
+      "orphaned",
+      "test"
+    ],
+    "address": {
+      "street": "404 Not Found St",
+      "city": "Missing City",
+      "zipcode": "00000",
+      "coordinates": [
+        0.0,
+        0.0
+      ]
+    },
+    "metadata": {
+      "department": "Non-existent",
+      "employee_id": "INVALID001",
+      "hire_date": "2023-01-01"
+    },
+    "profile": {
+      "bio": "User with invalid foreign keys for testing",
+      "social": {},
+      "skills": [
+        "Testing",
+        "Data Integrity"
+      ],
+      "certifications": []
+    },
+    "created_at": "2023-01-01T00:00:00Z",
+    "login_count": 1,
+    "salary": 50000.0,
+    "is_premium": false,
+    "favorite_products": [
+      "p99",
+      "p88",
+      "p77"
+    ],
+    "purchased_products": [
+      "p66",
+      "p55"
+    ],
+    "owned_products": [
+      "p44"
+    ],
+    "department_id": "dept99"
+  },
+  {
+    "_id": "22",
+    "name": "Broken Reference User",
+    "age": 30,
+    "email": "broken@example.com",
+    "active": false,
+    "balance": -100.0,
+    "tags": null,
+    "address": {
+      "street": "500 Error Ave",
+      "city": "Null City",
+      "zipcode": "NULL",
+      "coordinates": null
+    },
+    "metadata": null,
+    "profile": {
+      "bio": "",
+      "social": {},
+      "skills": [],
+      "certifications": []
+    },
+    "created_at": "2020-01-01T00:00:00Z",
+    "login_count": 0,
+    "salary": null,
+    "is_premium": false,
+    "favorite_products": [
+      "pXXX",
+      "pYYY"
+    ],
+    "purchased_products": [],
+    "owned_products": [
+      "pZZZ"
+    ],
+    "department_id": "deptXYZ"
+  }
+]

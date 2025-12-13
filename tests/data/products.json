@@ -1,0 +1,2016 @@
+[
+  {
+    "_id": "p1",
+    "name": "Laptop",
+    "price": 1000.99,
+    "category": "Electronics",
+    "in_stock": true,
+    "quantity": 50,
+    "tags": [
+      "computer",
+      "portable",
+      "work"
+    ],
+    "specifications": {
+      "cpu": "Intel i7",
+      "ram": "16GB",
+      "storage": "512GB SSD",
+      "screen": {
+        "size": 15.6,
+        "resolution": "1920x1080",
+        "type": "LED"
+      },
+      "ports": [
+        "USB-A",
+        "USB-C",
+        "HDMI",
+        "Audio Jack"
+      ],
+      "weight": 2.1
+    },
+    "reviews": [
+      {
+        "user_id": "1",
+        "rating": 5,
+        "comment": "Excellent laptop for development work",
+        "date": "2023-11-20T16:30:00Z",
+        "helpful_votes": 12
+      },
+      {
+        "user_id": "2",
+        "rating": 4,
+        "comment": "Good performance but battery could be better",
+        "date": "2023-11-18T09:45:00Z",
+        "helpful_votes": 8
+      }
+    ],
+    "created_at": "2023-01-10T12:00:00Z",
+    "updated_at": "2023-11-25T14:22:15Z",
+    "discount_percentage": 15.5,
+    "warranty_years": 2,
+    "manufacturer": "TechCorp",
+    "model_number": "TC-LP-2023-001",
+    "created_by": "3",
+    "featured_by": "1",
+    "assigned_category_id": "cat1",
+    "supplier_id": "sup1"
+  },
+  {
+    "_id": "p2",
+    "name": "Wireless Mouse",
+    "price": 25.5,
+    "category": "Electronics",
+    "in_stock": true,
+    "quantity": 200,
+    "tags": [
+      "mouse",
+      "wireless",
+      "ergonomic"
+    ],
+    "specifications": {
+      "connection": "Bluetooth 5.0",
+      "battery_life": "12 months",
+      "dpi": [
+        800,
+        1200,
+        1600,
+        2400
+      ],
+      "buttons": 6,
+      "weight": 0.095,
+      "dimensions": {
+        "length": 11.2,
+        "width": 6.8,
+        "height": 3.9
+      },
+      "colors": [
+        "black",
+        "white",
+        "silver"
+      ]
+    },
+    "reviews": [
+      {
+        "user_id": "3",
+        "rating": 4,
+        "comment": "Comfortable to use for long periods",
+        "date": "2023-10-15T11:20:00Z",
+        "helpful_votes": 5
+      }
+    ],
+    "created_at": "2023-02-20T08:30:00Z",
+    "updated_at": "2023-12-01T10:15:30Z",
+    "discount_percentage": 0,
+    "warranty_years": 1,
+    "manufacturer": "MouseTech",
+    "model_number": null,
+    "created_by": "3",
+    "featured_by": "2",
+    "assigned_category_id": "cat1",
+    "supplier_id": "sup1"
+  },
+  {
+    "_id": "p3",
+    "name": "Programming Book",
+    "price": 15.99,
+    "category": "Education",
+    "in_stock": false,
+    "quantity": 0,
+    "tags": [
+      "book",
+      "programming",
+      "python"
+    ],
+    "specifications": {
+      "author": "Dr. Jane Code",
+      "publisher": "Tech Publishing",
+      "pages": 450,
+      "isbn": "978-1234567890",
+      "language": "English",
+      "edition": 3,
+      "format": [
+        "paperback",
+        "ebook",
+        "audiobook"
+      ],
+      "topics": [
+        "Python basics",
+        "Data structures",
+        "Algorithms",
+        "Web development"
+      ],
+      "difficulty": "beginner"
+    },
+    "reviews": [],
+    "created_at": "2022-08-05T15:45:00Z",
+    "updated_at": "2023-12-10T09:30:45Z",
+    "discount_percentage": null,
+    "warranty_years": 0,
+    "manufacturer": "Tech Publishing",
+    "model_number": "TPB-PY-2022",
+    "created_by": "2",
+    "featured_by": "4",
+    "assigned_category_id": "cat2",
+    "supplier_id": "sup2"
+  },
+  {
+    "_id": "p4",
+    "name": "4K Monitor",
+    "price": 599.0,
+    "category": "Electronics",
+    "in_stock": true,
+    "quantity": 15,
+    "tags": [
+      "monitor",
+      "4k",
+      "display",
+      "professional"
+    ],
+    "specifications": {
+      "screen_size": 27,
+      "resolution": "3840x2160",
+      "panel_type": "IPS",
+      "refresh_rate": 60,
+      "color_gamut": "99% sRGB",
+      "brightness": 350,
+      "contrast_ratio": "1000:1",
+      "inputs": [
+        "HDMI 2.0",
+        "DisplayPort 1.4",
+        "USB-C"
+      ],
+      "adjustments": {
+        "height": true,
+        "tilt": true,
+        "swivel": true,
+        "pivot": false
+      },
+      "vesa_mount": "100x100"
+    },
+    "reviews": [
+      {
+        "user_id": "4",
+        "rating": 5,
+        "comment": "Crystal clear display, perfect for design work",
+        "date": "2023-12-05T14:15:00Z",
+        "helpful_votes": 15
+      },
+      {
+        "user_id": "1",
+        "rating": 5,
+        "comment": "Great color accuracy and build quality",
+        "date": "2023-11-28T10:30:00Z",
+        "helpful_votes": 22
+      }
+    ],
+    "created_at": "2023-05-12T11:00:00Z",
+    "updated_at": "2023-12-12T16:45:20Z",
+    "discount_percentage": 10.0,
+    "warranty_years": 3,
+    "manufacturer": "DisplayTech",
+    "model_number": "DT-4K27-PRO",
+    "created_by": "4",
+    "featured_by": "1",
+    "assigned_category_id": "cat1",
+    "supplier_id": "sup3"
+  },
+  {
+    "_id": "p5",
+    "name": "Mechanical Keyboard",
+    "price": 129.99,
+    "category": "Electronics",
+    "in_stock": true,
+    "quantity": 75,
+    "tags": [
+      "keyboard",
+      "mechanical",
+      "gaming"
+    ],
+    "specifications": {
+      "switch_type": "Cherry MX Blue",
+      "layout": "full-size",
+      "backlight": "RGB",
+      "connection": "USB-C",
+      "key_count": 104,
+      "weight": 1.2
+    },
+    "reviews": [
+      {
+        "user_id": "5",
+        "rating": 5,
+        "comment": "Excellent tactile feedback for coding",
+        "date": "2023-12-08T14:20:00Z",
+        "helpful_votes": 18
+      }
+    ],
+    "created_at": "2023-03-15T10:00:00Z",
+    "updated_at": "2023-12-12T09:15:00Z",
+    "discount_percentage": 5.0,
+    "warranty_years": 2,
+    "manufacturer": "KeyTech",
+    "model_number": "KT-MK-2023",
+    "created_by": "5",
+    "featured_by": "11",
+    "assigned_category_id": "cat1",
+    "supplier_id": "sup1"
+  },
+  {
+    "_id": "p6",
+    "name": "Python Programming Course",
+    "price": 49.99,
+    "category": "Education",
+    "in_stock": true,
+    "quantity": 999,
+    "tags": [
+      "course",
+      "online",
+      "python",
+      "programming"
+    ],
+    "specifications": {
+      "duration_hours": 40,
+      "level": "intermediate",
+      "language": "English",
+      "format": "video",
+      "certificate": true,
+      "instructor": "Dr. Sarah Code"
+    },
+    "reviews": [
+      {
+        "user_id": "13",
+        "rating": 4,
+        "comment": "Great course structure and examples",
+        "date": "2023-11-30T16:45:00Z",
+        "helpful_votes": 24
+      }
+    ],
+    "created_at": "2023-04-01T12:30:00Z",
+    "updated_at": "2023-12-10T15:20:00Z",
+    "discount_percentage": 20.0,
+    "warranty_years": 0,
+    "manufacturer": "EduTech Platform",
+    "model_number": "COURSE-PY-001",
+    "created_by": "20",
+    "featured_by": "5",
+    "assigned_category_id": "cat2",
+    "supplier_id": "sup2"
+  },
+  {
+    "_id": "p7",
+    "name": "USB-C Hub",
+    "price": 39.99,
+    "category": "Electronics",
+    "in_stock": true,
+    "quantity": 120,
+    "tags": [
+      "hub",
+      "usb-c",
+      "adapter",
+      "connectivity"
+    ],
+    "specifications": {
+      "ports": [
+        "USB-A x3",
+        "USB-C",
+        "HDMI",
+        "Ethernet"
+      ],
+      "power_delivery": "100W",
+      "data_transfer": "USB 3.0",
+      "dimensions": {
+        "length": 12.0,
+        "width": 3.5,
+        "height": 1.2
+      }
+    },
+    "reviews": [],
+    "created_at": "2023-05-20T09:45:00Z",
+    "updated_at": "2023-12-05T11:30:00Z",
+    "discount_percentage": 0,
+    "warranty_years": 1,
+    "manufacturer": "ConnectTech",
+    "model_number": "CT-HUB-7IN1",
+    "created_by": "9",
+    "featured_by": "6",
+    "assigned_category_id": "cat1",
+    "supplier_id": "sup1"
+  },
+  {
+    "_id": "p8",
+    "name": "Standing Desk",
+    "price": 299.99,
+    "category": "Furniture",
+    "in_stock": true,
+    "quantity": 25,
+    "tags": [
+      "desk",
+      "standing",
+      "ergonomic",
+      "adjustable"
+    ],
+    "specifications": {
+      "height_range": "71-121 cm",
+      "weight_capacity": "80 kg",
+      "desktop_size": "120x60 cm",
+      "material": "bamboo",
+      "motor_type": "dual motor",
+      "memory_presets": 3
+    },
+    "reviews": [
+      {
+        "user_id": "10",
+        "rating": 4,
+        "comment": "Smooth height adjustment, great build quality",
+        "date": "2023-10-25T13:15:00Z",
+        "helpful_votes": 16
+      }
+    ],
+    "created_at": "2023-06-10T14:00:00Z",
+    "updated_at": "2023-11-28T10:45:00Z",
+    "discount_percentage": 12.5,
+    "warranty_years": 5,
+    "manufacturer": "ErgoFurniture",
+    "model_number": "EF-SD-120",
+    "created_by": "16",
+    "featured_by": "10",
+    "assigned_category_id": "cat3",
+    "supplier_id": "sup4"
+  },
+  {
+    "_id": "p9",
+    "name": "Webcam HD",
+    "price": 79.99,
+    "category": "Electronics",
+    "in_stock": true,
+    "quantity": 95,
+    "tags": [
+      "webcam",
+      "streaming",
+      "video",
+      "hd"
+    ],
+    "specifications": {
+      "resolution": "1080p",
+      "frame_rate": "30fps",
+      "field_of_view": "78 degrees",
+      "microphone": "built-in stereo",
+      "connection": "USB-A",
+      "auto_focus": true
+    },
+    "reviews": [
+      {
+        "user_id": "8",
+        "rating": 5,
+        "comment": "Perfect for video calls and streaming",
+        "date": "2023-11-15T12:30:00Z",
+        "helpful_votes": 22
+      }
+    ],
+    "created_at": "2023-07-05T11:20:00Z",
+    "updated_at": "2023-12-01T14:10:00Z",
+    "discount_percentage": 8.0,
+    "warranty_years": 2,
+    "manufacturer": "StreamTech",
+    "model_number": "ST-WC-HD1080",
+    "created_by": "8",
+    "featured_by": "17",
+    "assigned_category_id": "cat1",
+    "supplier_id": "sup1"
+  },
+  {
+    "_id": "p10",
+    "name": "Project Management Software",
+    "price": 19.99,
+    "category": "Software",
+    "in_stock": true,
+    "quantity": 500,
+    "tags": [
+      "software",
+      "project",
+      "management",
+      "saas"
+    ],
+    "specifications": {
+      "license_type": "monthly subscription",
+      "max_users": 10,
+      "storage": "100GB",
+      "integrations": [
+        "Slack",
+        "Google Drive",
+        "Microsoft Teams"
+      ],
+      "mobile_app": true,
+      "api_access": true
+    },
+    "reviews": [
+      {
+        "user_id": "4",
+        "rating": 5,
+        "comment": "Great for managing team projects",
+        "date": "2023-09-20T15:45:00Z",
+        "helpful_votes": 31
+      }
+    ],
+    "created_at": "2023-08-01T16:00:00Z",
+    "updated_at": "2023-12-11T09:30:00Z",
+    "discount_percentage": 25.0,
+    "warranty_years": 0,
+    "manufacturer": "ProjectFlow Inc",
+    "model_number": "PF-PRO-2023",
+    "created_by": "4",
+    "featured_by": "16",
+    "assigned_category_id": "cat4",
+    "supplier_id": "sup5"
+  },
+  {
+    "_id": "p11",
+    "name": "Bluetooth Headphones",
+    "price": 89.99,
+    "category": "Electronics",
+    "in_stock": true,
+    "quantity": 85,
+    "tags": [
+      "headphones",
+      "bluetooth",
+      "wireless",
+      "audio"
+    ],
+    "specifications": {
+      "driver_size": "40mm",
+      "frequency_range": "20Hz-20kHz",
+      "battery_life": "25 hours",
+      "noise_cancellation": "active",
+      "bluetooth_version": "5.0",
+      "weight": 0.25
+    },
+    "reviews": [
+      {
+        "user_id": "7",
+        "rating": 4,
+        "comment": "Good sound quality and comfort",
+        "date": "2023-08-15T10:20:00Z",
+        "helpful_votes": 14
+      }
+    ],
+    "created_at": "2023-08-20T13:15:00Z",
+    "updated_at": "2023-11-25T16:40:00Z",
+    "discount_percentage": 15.0,
+    "warranty_years": 1,
+    "manufacturer": "AudioTech",
+    "model_number": "AT-BT-PRO25",
+    "created_by": "12",
+    "featured_by": "7",
+    "assigned_category_id": "cat1",
+    "supplier_id": "sup1"
+  },
+  {
+    "_id": "p12",
+    "name": "Data Science Textbook",
+    "price": 89.99,
+    "category": "Education",
+    "in_stock": false,
+    "quantity": 0,
+    "tags": [
+      "book",
+      "data science",
+      "statistics",
+      "analysis"
+    ],
+    "specifications": {
+      "author": "Prof. Data Analytics",
+      "publisher": "Academic Press",
+      "pages": 650,
+      "isbn": "978-9876543210",
+      "language": "English",
+      "edition": 2,
+      "format": [
+        "hardcover",
+        "ebook"
+      ]
+    },
+    "reviews": [
+      {
+        "user_id": "5",
+        "rating": 5,
+        "comment": "Comprehensive coverage of data science concepts",
+        "date": "2023-07-10T14:30:00Z",
+        "helpful_votes": 42
+      }
+    ],
+    "created_at": "2023-01-30T12:00:00Z",
+    "updated_at": "2023-12-08T11:15:00Z",
+    "discount_percentage": null,
+    "warranty_years": 0,
+    "manufacturer": "Academic Press",
+    "model_number": "AP-DS-2023",
+    "created_by": "19",
+    "featured_by": "5",
+    "assigned_category_id": "cat2",
+    "supplier_id": "sup2"
+  },
+  {
+    "_id": "p13",
+    "name": "External SSD Drive",
+    "price": 149.99,
+    "category": "Electronics",
+    "in_stock": true,
+    "quantity": 45,
+    "tags": [
+      "storage",
+      "ssd",
+      "external",
+      "portable"
+    ],
+    "specifications": {
+      "capacity": "1TB",
+      "interface": "USB 3.2 Gen 2",
+      "read_speed": "1050 MB/s",
+      "write_speed": "1000 MB/s",
+      "dimensions": {
+        "length": 10.5,
+        "width": 5.7,
+        "height": 1.1
+      },
+      "weight": 0.08
+    },
+    "reviews": [
+      {
+        "user_id": "11",
+        "rating": 5,
+        "comment": "Super fast and reliable for backups",
+        "date": "2023-10-05T09:25:00Z",
+        "helpful_votes": 28
+      }
+    ],
+    "created_at": "2023-09-12T15:30:00Z",
+    "updated_at": "2023-12-03T12:20:00Z",
+    "discount_percentage": 18.0,
+    "warranty_years": 3,
+    "manufacturer": "StoragePro",
+    "model_number": "SP-SSD-1TB",
+    "created_by": "19",
+    "featured_by": "11",
+    "assigned_category_id": "cat1",
+    "supplier_id": "sup1"
+  },
+  {
+    "_id": "p14",
+    "name": "Office Chair",
+    "price": 199.99,
+    "category": "Furniture",
+    "in_stock": true,
+    "quantity": 35,
+    "tags": [
+      "chair",
+      "office",
+      "ergonomic",
+      "comfortable"
+    ],
+    "specifications": {
+      "material": "mesh back, fabric seat",
+      "adjustments": [
+        "height",
+        "tilt",
+        "armrests"
+      ],
+      "weight_capacity": "120 kg",
+      "seat_dimensions": {
+        "width": 50,
+        "depth": 48
+      },
+      "color_options": [
+        "black",
+        "gray",
+        "blue"
+      ]
+    },
+    "reviews": [
+      {
+        "user_id": "14",
+        "rating": 4,
+        "comment": "Comfortable for long work sessions",
+        "date": "2023-11-02T11:40:00Z",
+        "helpful_votes": 19
+      }
+    ],
+    "created_at": "2023-10-15T10:45:00Z",
+    "updated_at": "2023-12-07T14:55:00Z",
+    "discount_percentage": 10.0,
+    "warranty_years": 2,
+    "manufacturer": "ComfortSeating",
+    "model_number": "CS-ERGO-200",
+    "created_by": "16",
+    "featured_by": "14",
+    "assigned_category_id": "cat3",
+    "supplier_id": "sup4"
+  },
+  {
+    "_id": "p15",
+    "name": "Smartphone",
+    "price": 699.99,
+    "category": "Electronics",
+    "in_stock": true,
+    "quantity": 30,
+    "tags": [
+      "phone",
+      "smartphone",
+      "mobile",
+      "5g"
+    ],
+    "specifications": {
+      "screen_size": "6.1 inch",
+      "storage": "128GB",
+      "ram": "6GB",
+      "camera": "48MP main, 12MP ultra-wide",
+      "battery": "4000mAh",
+      "os": "Android 13",
+      "5g": true
+    },
+    "reviews": [
+      {
+        "user_id": "13",
+        "rating": 5,
+        "comment": "Excellent camera quality and performance",
+        "date": "2023-11-20T16:10:00Z",
+        "helpful_votes": 35
+      }
+    ],
+    "created_at": "2023-11-01T09:00:00Z",
+    "updated_at": "2023-12-09T13:25:00Z",
+    "discount_percentage": 5.0,
+    "warranty_years": 1,
+    "manufacturer": "MobileTech",
+    "model_number": "MT-SP-2023",
+    "created_by": "13",
+    "featured_by": "13",
+    "assigned_category_id": "cat1",
+    "supplier_id": "sup6"
+  },
+  {
+    "_id": "p16",
+    "name": "Security Camera",
+    "price": 159.99,
+    "category": "Electronics",
+    "in_stock": true,
+    "quantity": 55,
+    "tags": [
+      "security",
+      "camera",
+      "surveillance",
+      "wireless"
+    ],
+    "specifications": {
+      "resolution": "4K",
+      "night_vision": true,
+      "field_of_view": "110 degrees",
+      "storage": "cloud and local",
+      "connectivity": "WiFi 6",
+      "weatherproof": "IP65",
+      "two_way_audio": true
+    },
+    "reviews": [
+      {
+        "user_id": "6",
+        "rating": 5,
+        "comment": "Excellent security features and image quality",
+        "date": "2023-10-18T14:50:00Z",
+        "helpful_votes": 26
+      }
+    ],
+    "created_at": "2023-09-25T11:30:00Z",
+    "updated_at": "2023-12-04T15:10:00Z",
+    "discount_percentage": 7.5,
+    "warranty_years": 2,
+    "manufacturer": "SecureTech",
+    "model_number": "ST-CAM-4K",
+    "created_by": "6",
+    "featured_by": "6",
+    "assigned_category_id": "cat5",
+    "supplier_id": "sup7"
+  },
+  {
+    "_id": "p17",
+    "name": "Coffee Machine",
+    "price": 249.99,
+    "category": "Appliances",
+    "in_stock": true,
+    "quantity": 20,
+    "tags": [
+      "coffee",
+      "machine",
+      "espresso",
+      "appliance"
+    ],
+    "specifications": {
+      "type": "espresso machine",
+      "water_capacity": "1.8L",
+      "pressure": "15 bar",
+      "grinder": "built-in burr grinder",
+      "milk_frother": "automatic",
+      "programmable": true,
+      "cup_sizes": [
+        "espresso",
+        "lungo",
+        "americano"
+      ]
+    },
+    "reviews": [
+      {
+        "user_id": "15",
+        "rating": 4,
+        "comment": "Makes great coffee, easy to use",
+        "date": "2023-09-12T08:30:00Z",
+        "helpful_votes": 21
+      }
+    ],
+    "created_at": "2023-08-30T12:15:00Z",
+    "updated_at": "2023-11-30T16:45:00Z",
+    "discount_percentage": 20.0,
+    "warranty_years": 2,
+    "manufacturer": "CoffeeTech",
+    "model_number": "CT-ESP-2500",
+    "created_by": "18",
+    "featured_by": "15",
+    "assigned_category_id": "cat6",
+    "supplier_id": "sup8"
+  },
+  {
+    "_id": "p18",
+    "name": "Tablet",
+    "price": 329.99,
+    "category": "Electronics",
+    "in_stock": true,
+    "quantity": 40,
+    "tags": [
+      "tablet",
+      "portable",
+      "touch",
+      "digital"
+    ],
+    "specifications": {
+      "screen_size": "10.9 inch",
+      "resolution": "2360x1640",
+      "storage": "64GB",
+      "ram": "4GB",
+      "os": "TabletOS 5.0",
+      "battery_life": "10 hours",
+      "stylus_support": true
+    },
+    "reviews": [
+      {
+        "user_id": "20",
+        "rating": 4,
+        "comment": "Great for reading and note-taking",
+        "date": "2023-12-01T13:20:00Z",
+        "helpful_votes": 17
+      }
+    ],
+    "created_at": "2023-11-10T14:40:00Z",
+    "updated_at": "2023-12-11T10:55:00Z",
+    "discount_percentage": 12.0,
+    "warranty_years": 1,
+    "manufacturer": "TabletCorp",
+    "model_number": "TC-TAB-109",
+    "created_by": "20",
+    "featured_by": "20",
+    "assigned_category_id": "cat1",
+    "supplier_id": "sup6"
+  },
+  {
+    "_id": "p19",
+    "name": "Smart Watch",
+    "price": 199.99,
+    "category": "Electronics",
+    "in_stock": true,
+    "quantity": 65,
+    "tags": [
+      "watch",
+      "smart",
+      "fitness",
+      "wearable"
+    ],
+    "specifications": {
+      "display": "1.4 inch AMOLED",
+      "battery_life": "7 days",
+      "water_resistance": "5ATM",
+      "sensors": [
+        "heart rate",
+        "GPS",
+        "accelerometer",
+        "gyroscope"
+      ],
+      "connectivity": [
+        "Bluetooth",
+        "WiFi"
+      ],
+      "compatibility": [
+        "iOS",
+        "Android"
+      ]
+    },
+    "reviews": [
+      {
+        "user_id": "9",
+        "rating": 5,
+        "comment": "Excellent fitness tracking features",
+        "date": "2023-11-25T12:05:00Z",
+        "helpful_votes": 33
+      }
+    ],
+    "created_at": "2023-10-20T15:20:00Z",
+    "updated_at": "2023-12-06T11:30:00Z",
+    "discount_percentage": 15.0,
+    "warranty_years": 1,
+    "manufacturer": "WearableTech",
+    "model_number": "WT-SW-2023",
+    "created_by": "17",
+    "featured_by": "9",
+    "assigned_category_id": "cat1",
+    "supplier_id": "sup6"
+  },
+  {
+    "_id": "p20",
+    "name": "Network Router",
+    "price": 179.99,
+    "category": "Electronics",
+    "in_stock": true,
+    "quantity": 28,
+    "tags": [
+      "router",
+      "network",
+      "wifi",
+      "internet"
+    ],
+    "specifications": {
+      "wifi_standard": "WiFi 6E",
+      "max_speed": "3000 Mbps",
+      "coverage": "3000 sq ft",
+      "ethernet_ports": 4,
+      "usb_ports": 2,
+      "security": "WPA3",
+      "mesh_compatible": true
+    },
+    "reviews": [
+      {
+        "user_id": "19",
+        "rating": 5,
+        "comment": "Excellent coverage and speed improvements",
+        "date": "2023-11-08T16:15:00Z",
+        "helpful_votes": 29
+      }
+    ],
+    "created_at": "2023-10-05T13:50:00Z",
+    "updated_at": "2023-12-10T14:25:00Z",
+    "discount_percentage": 10.0,
+    "warranty_years": 3,
+    "manufacturer": "NetworkPro",
+    "model_number": "NP-RT-6E3000",
+    "created_by": "11",
+    "featured_by": "19",
+    "assigned_category_id": "cat1",
+    "supplier_id": "sup9"
+  },
+  {
+    "_id": "p21",
+    "name": "Orphaned Product",
+    "price": 99.99,
+    "category": "Invalid Category",
+    "in_stock": false,
+    "quantity": 0,
+    "tags": [
+      "orphaned",
+      "broken",
+      "test"
+    ],
+    "specifications": {
+      "type": "test product with broken references",
+      "purpose": "data integrity testing"
+    },
+    "reviews": [
+      {
+        "user_id": "999",
+        "rating": 1,
+        "comment": "This user doesn't exist",
+        "date": "2023-01-01T00:00:00Z",
+        "helpful_votes": 0
+      }
+    ],
+    "created_at": "2023-01-01T00:00:00Z",
+    "updated_at": "2023-01-01T00:00:00Z",
+    "discount_percentage": 0,
+    "warranty_years": 0,
+    "manufacturer": "Unknown",
+    "model_number": "INVALID-001",
+    "created_by": "999",
+    "featured_by": "888",
+    "assigned_category_id": "catXXX",
+    "supplier_id": "supINVALID"
+  },
+  {
+    "_id": "p22",
+    "name": "Missing References Item",
+    "price": 0.01,
+    "category": "Test",
+    "in_stock": true,
+    "quantity": 1,
+    "tags": [],
+    "specifications": {},
+    "reviews": [],
+    "created_at": "2020-01-01T00:00:00Z",
+    "updated_at": "2020-01-01T00:00:00Z",
+    "discount_percentage": null,
+    "warranty_years": null,
+    "manufacturer": null,
+    "model_number": null,
+    "created_by": "777",
+    "featured_by": "666",
+    "assigned_category_id": "catNONE",
+    "supplier_id": "supMISSING"
+  },
+  {
+    "_id": "p23",
+    "name": "4K Monitor",
+    "price": 399.99,
+    "category": "Electronics",
+    "in_stock": true,
+    "quantity": 45,
+    "tags": ["monitor", "4K", "gaming", "professional"],
+    "specifications": {
+      "screen_size": 27.0,
+      "resolution": "3840x2160",
+      "refresh_rate": 144,
+      "panel_type": "IPS",
+      "response_time": "1ms",
+      "connectivity": ["HDMI 2.1", "DisplayPort 1.4", "USB-C"]
+    },
+    "reviews": [
+      {
+        "user_id": "5",
+        "rating": 5,
+        "comment": "Excellent color accuracy and sharp display",
+        "date": "2023-11-22T10:15:00Z",
+        "helpful_votes": 15
+      }
+    ],
+    "created_at": "2023-03-15T08:00:00Z",
+    "updated_at": "2023-11-26T16:30:00Z",
+    "discount_percentage": 10.0,
+    "warranty_years": 3,
+    "manufacturer": "DisplayTech",
+    "model_number": "DT-4K27-144",
+    "created_by": "3",
+    "featured_by": "2",
+    "assigned_category_id": "cat1",
+    "supplier_id": "sup3"
+  },
+  {
+    "_id": "p24",
+    "name": "Mechanical Keyboard",
+    "price": 129.99,
+    "category": "Electronics",
+    "in_stock": true,
+    "quantity": 78,
+    "tags": ["keyboard", "mechanical", "gaming", "RGB"],
+    "specifications": {
+      "switch_type": "Cherry MX Blue",
+      "layout": "Full Size",
+      "backlight": "RGB",
+      "connection": ["USB-C", "Wireless 2.4GHz", "Bluetooth"],
+      "battery_life": "40 hours",
+      "key_count": 104
+    },
+    "reviews": [
+      {
+        "user_id": "8",
+        "rating": 4,
+        "comment": "Great tactile feel, a bit noisy though",
+        "date": "2023-11-20T14:20:00Z",
+        "helpful_votes": 22
+      }
+    ],
+    "created_at": "2023-04-12T11:30:00Z",
+    "updated_at": "2023-11-25T09:45:00Z",
+    "discount_percentage": 15.0,
+    "warranty_years": 2,
+    "manufacturer": "KeyMaster",
+    "model_number": "KM-MX104-RGB",
+    "created_by": "4",
+    "featured_by": "1",
+    "assigned_category_id": "cat1",
+    "supplier_id": "sup4"
+  },
+  {
+    "_id": "p25",
+    "name": "Coffee Maker",
+    "price": 89.99,
+    "category": "Home & Garden",
+    "in_stock": true,
+    "quantity": 32,
+    "tags": ["coffee", "kitchen", "appliance"],
+    "specifications": {
+      "capacity": "12 cups",
+      "auto_shutoff": true,
+      "programmable": true,
+      "brew_strength": ["mild", "regular", "bold"],
+      "water_filtration": true,
+      "dimensions": {
+        "height": 14.2,
+        "width": 8.7,
+        "depth": 11.5
+      }
+    },
+    "reviews": [
+      {
+        "user_id": "12",
+        "rating": 4,
+        "comment": "Makes great coffee, easy to use",
+        "date": "2023-11-18T07:30:00Z",
+        "helpful_votes": 18
+      }
+    ],
+    "created_at": "2023-05-20T15:45:00Z",
+    "updated_at": "2023-11-24T12:20:00Z",
+    "discount_percentage": 20.0,
+    "warranty_years": 1,
+    "manufacturer": "BrewMaster",
+    "model_number": "BM-CM-12",
+    "created_by": "6",
+    "featured_by": "3",
+    "assigned_category_id": "cat5",
+    "supplier_id": "sup5"
+  },
+  {
+    "_id": "p26",
+    "name": "Yoga Mat",
+    "price": 34.99,
+    "category": "Sports & Recreation",
+    "in_stock": true,
+    "quantity": 150,
+    "tags": ["yoga", "fitness", "exercise", "mat"],
+    "specifications": {
+      "material": "Natural rubber",
+      "thickness": "6mm",
+      "dimensions": {
+        "length": 183,
+        "width": 61
+      },
+      "weight": 2.2,
+      "texture": "Non-slip",
+      "eco_friendly": true
+    },
+    "reviews": [
+      {
+        "user_id": "15",
+        "rating": 5,
+        "comment": "Perfect grip and cushioning",
+        "date": "2023-11-21T18:45:00Z",
+        "helpful_votes": 27
+      }
+    ],
+    "created_at": "2023-06-10T09:15:00Z",
+    "updated_at": "2023-11-22T14:10:00Z",
+    "discount_percentage": 0.0,
+    "warranty_years": 1,
+    "manufacturer": "ZenFit",
+    "model_number": "ZF-YM-6MM",
+    "created_by": "7",
+    "featured_by": "5",
+    "assigned_category_id": "cat6",
+    "supplier_id": "sup6"
+  },
+  {
+    "_id": "p27",
+    "name": "Bluetooth Headphones",
+    "price": 199.99,
+    "category": "Electronics",
+    "in_stock": true,
+    "quantity": 65,
+    "tags": ["headphones", "bluetooth", "wireless", "noise-canceling"],
+    "specifications": {
+      "driver_size": "40mm",
+      "frequency_response": "20Hz - 20kHz",
+      "battery_life": "30 hours",
+      "charging_time": "2 hours",
+      "noise_cancellation": "Active",
+      "weight": 250
+    },
+    "reviews": [
+      {
+        "user_id": "9",
+        "rating": 5,
+        "comment": "Amazing sound quality and comfort",
+        "date": "2023-11-19T16:20:00Z",
+        "helpful_votes": 31
+      }
+    ],
+    "created_at": "2023-07-05T13:20:00Z",
+    "updated_at": "2023-11-23T11:35:00Z",
+    "discount_percentage": 25.0,
+    "warranty_years": 2,
+    "manufacturer": "SoundWave",
+    "model_number": "SW-BT-NC30",
+    "created_by": "8",
+    "featured_by": "4",
+    "assigned_category_id": "cat1",
+    "supplier_id": "sup7"
+  },
+  {
+    "_id": "p28",
+    "name": "Desk Lamp",
+    "price": 45.99,
+    "category": "Home & Garden",
+    "in_stock": true,
+    "quantity": 88,
+    "tags": ["lamp", "LED", "adjustable", "desk"],
+    "specifications": {
+      "light_type": "LED",
+      "brightness_levels": 5,
+      "color_temperature": ["3000K", "4000K", "6500K"],
+      "adjustable_arm": true,
+      "touch_control": true,
+      "power_consumption": "12W",
+      "usb_charging_port": true
+    },
+    "reviews": [
+      {
+        "user_id": "11",
+        "rating": 4,
+        "comment": "Great for reading and work",
+        "date": "2023-11-17T21:10:00Z",
+        "helpful_votes": 14
+      }
+    ],
+    "created_at": "2023-08-12T10:50:00Z",
+    "updated_at": "2023-11-24T15:25:00Z",
+    "discount_percentage": 12.0,
+    "warranty_years": 2,
+    "manufacturer": "LightCraft",
+    "model_number": "LC-DL-LED12",
+    "created_by": "9",
+    "featured_by": "6",
+    "assigned_category_id": "cat5",
+    "supplier_id": "sup8"
+  },
+  {
+    "_id": "p29",
+    "name": "Gaming Chair",
+    "price": 299.99,
+    "category": "Furniture",
+    "in_stock": true,
+    "quantity": 22,
+    "tags": ["chair", "gaming", "ergonomic", "office"],
+    "specifications": {
+      "material": "PU leather",
+      "adjustable_height": true,
+      "lumbar_support": true,
+      "armrest": "4D adjustable",
+      "weight_capacity": "150kg",
+      "recline_angle": "90-180 degrees",
+      "casters": "360-degree swivel"
+    },
+    "reviews": [
+      {
+        "user_id": "13",
+        "rating": 4,
+        "comment": "Comfortable for long gaming sessions",
+        "date": "2023-11-16T12:30:00Z",
+        "helpful_votes": 19
+      }
+    ],
+    "created_at": "2023-09-03T14:15:00Z",
+    "updated_at": "2023-11-25T17:40:00Z",
+    "discount_percentage": 18.0,
+    "warranty_years": 3,
+    "manufacturer": "GameSeat",
+    "model_number": "GS-GC-PRO",
+    "created_by": "10",
+    "featured_by": "7",
+    "assigned_category_id": "cat7",
+    "supplier_id": "sup9"
+  },
+  {
+    "_id": "p30",
+    "name": "Portable Speaker",
+    "price": 79.99,
+    "category": "Electronics",
+    "in_stock": true,
+    "quantity": 95,
+    "tags": ["speaker", "bluetooth", "portable", "waterproof"],
+    "specifications": {
+      "battery_life": "24 hours",
+      "waterproof_rating": "IPX7",
+      "bluetooth_version": "5.0",
+      "output_power": "20W",
+      "frequency_range": "65Hz - 20kHz",
+      "weight": 680,
+      "charging_port": "USB-C"
+    },
+    "reviews": [
+      {
+        "user_id": "14",
+        "rating": 5,
+        "comment": "Great sound for outdoor activities",
+        "date": "2023-11-15T09:45:00Z",
+        "helpful_votes": 25
+      }
+    ],
+    "created_at": "2023-10-08T16:25:00Z",
+    "updated_at": "2023-11-26T13:15:00Z",
+    "discount_percentage": 22.0,
+    "warranty_years": 1,
+    "manufacturer": "AudioBlast",
+    "model_number": "AB-PS-20W",
+    "created_by": "11",
+    "featured_by": "8",
+    "assigned_category_id": "cat1",
+    "supplier_id": "sup10"
+  },
+  {
+    "_id": "p31",
+    "name": "Electric Toothbrush",
+    "price": 119.99,
+    "category": "Health & Beauty",
+    "in_stock": true,
+    "quantity": 55,
+    "tags": ["toothbrush", "electric", "health", "dental"],
+    "specifications": {
+      "brushing_modes": ["Clean", "White", "Sensitive", "Gum Care"],
+      "battery_life": "2 weeks",
+      "charging_time": "12 hours",
+      "pressure_sensor": true,
+      "timer": "2 minutes",
+      "replacement_heads": 2,
+      "travel_case": true
+    },
+    "reviews": [
+      {
+        "user_id": "16",
+        "rating": 4,
+        "comment": "Much better than manual brushing",
+        "date": "2023-11-14T08:20:00Z",
+        "helpful_votes": 16
+      }
+    ],
+    "created_at": "2023-11-01T11:40:00Z",
+    "updated_at": "2023-11-27T10:05:00Z",
+    "discount_percentage": 15.0,
+    "warranty_years": 2,
+    "manufacturer": "DentalCare",
+    "model_number": "DC-ET-PRO",
+    "created_by": "12",
+    "featured_by": "9",
+    "assigned_category_id": "cat8",
+    "supplier_id": "sup11"
+  },
+  {
+    "_id": "p32",
+    "name": "Running Shoes",
+    "price": 149.99,
+    "category": "Sports & Recreation",
+    "in_stock": true,
+    "quantity": 120,
+    "tags": ["shoes", "running", "athletic", "comfort"],
+    "specifications": {
+      "sole_material": "EVA foam",
+      "upper_material": "Mesh fabric",
+      "weight": 280,
+      "drop": "10mm",
+      "sizes": ["7", "8", "9", "10", "11", "12"],
+      "colors": ["black", "white", "blue", "red"],
+      "cushioning": "High"
+    },
+    "reviews": [
+      {
+        "user_id": "17",
+        "rating": 5,
+        "comment": "Perfect for daily runs",
+        "date": "2023-11-13T06:15:00Z",
+        "helpful_votes": 33
+      }
+    ],
+    "created_at": "2023-02-14T09:30:00Z",
+    "updated_at": "2023-11-28T14:50:00Z",
+    "discount_percentage": 20.0,
+    "warranty_years": 1,
+    "manufacturer": "RunFast",
+    "model_number": "RF-RS-280",
+    "created_by": "13",
+    "featured_by": "10",
+    "assigned_category_id": "cat6",
+    "supplier_id": "sup12"
+  },
+  {
+    "_id": "p33",
+    "name": "Air Purifier",
+    "price": 199.99,
+    "category": "Home & Garden",
+    "in_stock": true,
+    "quantity": 38,
+    "tags": ["air purifier", "HEPA", "home", "health"],
+    "specifications": {
+      "coverage_area": "300 sq ft",
+      "filtration": ["Pre-filter", "HEPA", "Carbon"],
+      "noise_level": "25dB",
+      "air_changes_per_hour": 5,
+      "smart_controls": true,
+      "filter_life": "12 months",
+      "energy_star": true
+    },
+    "reviews": [
+      {
+        "user_id": "18",
+        "rating": 4,
+        "comment": "Noticeably cleaner air",
+        "date": "2023-11-12T15:40:00Z",
+        "helpful_votes": 21
+      }
+    ],
+    "created_at": "2023-03-22T13:20:00Z",
+    "updated_at": "2023-11-29T09:10:00Z",
+    "discount_percentage": 10.0,
+    "warranty_years": 3,
+    "manufacturer": "AirClean",
+    "model_number": "AC-AP-300",
+    "created_by": "14",
+    "featured_by": "11",
+    "assigned_category_id": "cat5",
+    "supplier_id": "sup13"
+  },
+  {
+    "_id": "p34",
+    "name": "Smart Watch",
+    "price": 249.99,
+    "category": "Electronics",
+    "in_stock": true,
+    "quantity": 72,
+    "tags": ["smartwatch", "fitness", "notifications", "GPS"],
+    "specifications": {
+      "display": "1.4 inch AMOLED",
+      "battery_life": "7 days",
+      "water_resistance": "50m",
+      "sensors": ["Heart rate", "GPS", "Accelerometer", "Gyroscope"],
+      "connectivity": ["Bluetooth 5.0", "Wi-Fi"],
+      "storage": "4GB",
+      "operating_system": "WearOS"
+    },
+    "reviews": [
+      {
+        "user_id": "19",
+        "rating": 4,
+        "comment": "Great fitness tracking features",
+        "date": "2023-11-11T19:25:00Z",
+        "helpful_votes": 28
+      }
+    ],
+    "created_at": "2023-04-18T12:10:00Z",
+    "updated_at": "2023-11-30T16:35:00Z",
+    "discount_percentage": 15.0,
+    "warranty_years": 2,
+    "manufacturer": "TechTime",
+    "model_number": "TT-SW-14",
+    "created_by": "15",
+    "featured_by": "12",
+    "assigned_category_id": "cat1",
+    "supplier_id": "sup14"
+  },
+  {
+    "_id": "p35",
+    "name": "Blender",
+    "price": 89.99,
+    "category": "Home & Garden",
+    "in_stock": true,
+    "quantity": 45,
+    "tags": ["blender", "kitchen", "smoothie", "appliance"],
+    "specifications": {
+      "power": "1000W",
+      "capacity": "64 oz",
+      "speeds": 10,
+      "pulse_function": true,
+      "dishwasher_safe": true,
+      "material": "BPA-free plastic",
+      "blade_type": "Stainless steel"
+    },
+    "reviews": [
+      {
+        "user_id": "20",
+        "rating": 5,
+        "comment": "Makes perfect smoothies every time",
+        "date": "2023-11-10T11:50:00Z",
+        "helpful_votes": 24
+      }
+    ],
+    "created_at": "2023-05-25T14:45:00Z",
+    "updated_at": "2023-12-01T08:20:00Z",
+    "discount_percentage": 25.0,
+    "warranty_years": 2,
+    "manufacturer": "BlendMaster",
+    "model_number": "BM-BL-1000",
+    "created_by": "16",
+    "featured_by": "13",
+    "assigned_category_id": "cat5",
+    "supplier_id": "sup15"
+  },
+  {
+    "_id": "p36",
+    "name": "Wireless Charger",
+    "price": 39.99,
+    "category": "Electronics",
+    "in_stock": true,
+    "quantity": 180,
+    "tags": ["charger", "wireless", "Qi", "phone"],
+    "specifications": {
+      "charging_standard": "Qi",
+      "output_power": ["5W", "7.5W", "10W", "15W"],
+      "compatibility": ["iPhone", "Samsung", "Google Pixel"],
+      "led_indicator": true,
+      "case_friendly": "up to 5mm",
+      "temperature_protection": true,
+      "dimensions": {
+        "diameter": 10,
+        "thickness": 0.8
+      }
+    },
+    "reviews": [
+      {
+        "user_id": "21",
+        "rating": 4,
+        "comment": "Convenient and fast charging",
+        "date": "2023-11-09T14:15:00Z",
+        "helpful_votes": 17
+      }
+    ],
+    "created_at": "2023-06-12T10:25:00Z",
+    "updated_at": "2023-12-02T12:45:00Z",
+    "discount_percentage": 20.0,
+    "warranty_years": 1,
+    "manufacturer": "PowerWave",
+    "model_number": "PW-WC-15W",
+    "created_by": "17",
+    "featured_by": "14",
+    "assigned_category_id": "cat1",
+    "supplier_id": "sup16"
+  },
+  {
+    "_id": "p37",
+    "name": "Kitchen Scale",
+    "price": 29.99,
+    "category": "Home & Garden",
+    "in_stock": true,
+    "quantity": 95,
+    "tags": ["scale", "kitchen", "digital", "precision"],
+    "specifications": {
+      "capacity": "5kg",
+      "precision": "1g",
+      "units": ["g", "kg", "oz", "lb"],
+      "display": "LCD",
+      "auto_shutoff": true,
+      "tare_function": true,
+      "battery_type": "AAA",
+      "platform_size": "21x16cm"
+    },
+    "reviews": [
+      {
+        "user_id": "22",
+        "rating": 4,
+        "comment": "Accurate and easy to use",
+        "date": "2023-11-08T09:30:00Z",
+        "helpful_votes": 13
+      }
+    ],
+    "created_at": "2023-07-20T16:10:00Z",
+    "updated_at": "2023-12-03T14:25:00Z",
+    "discount_percentage": 15.0,
+    "warranty_years": 2,
+    "manufacturer": "PrecisionScale",
+    "model_number": "PS-KS-5KG",
+    "created_by": "18",
+    "featured_by": "15",
+    "assigned_category_id": "cat5",
+    "supplier_id": "sup17"
+  },
+  {
+    "_id": "p38",
+    "name": "Phone Case",
+    "price": 19.99,
+    "category": "Electronics",
+    "in_stock": true,
+    "quantity": 250,
+    "tags": ["phone case", "protection", "shockproof", "clear"],
+    "specifications": {
+      "material": "TPU + PC",
+      "drop_protection": "6 feet",
+      "compatibility": ["iPhone 15", "iPhone 14", "iPhone 13"],
+      "wireless_charging": true,
+      "button_protection": true,
+      "transparency": "Crystal clear",
+      "thickness": "1.2mm"
+    },
+    "reviews": [
+      {
+        "user_id": "1",
+        "rating": 5,
+        "comment": "Great protection without bulk",
+        "date": "2023-11-07T17:45:00Z",
+        "helpful_votes": 35
+      }
+    ],
+    "created_at": "2023-08-15T11:20:00Z",
+    "updated_at": "2023-12-04T09:40:00Z",
+    "discount_percentage": 30.0,
+    "warranty_years": 1,
+    "manufacturer": "ShieldCase",
+    "model_number": "SC-PC-CLEAR",
+    "created_by": "19",
+    "featured_by": "16",
+    "assigned_category_id": "cat1",
+    "supplier_id": "sup18"
+  },
+  {
+    "_id": "p39",
+    "name": "Water Bottle",
+    "price": 24.99,
+    "category": "Sports & Recreation",
+    "in_stock": true,
+    "quantity": 165,
+    "tags": ["water bottle", "insulated", "stainless steel", "eco-friendly"],
+    "specifications": {
+      "capacity": "750ml",
+      "material": "304 stainless steel",
+      "insulation": "Double wall vacuum",
+      "temperature_retention": "24h cold / 12h hot",
+      "leak_proof": true,
+      "dishwasher_safe": false,
+      "colors": ["black", "blue", "pink", "green", "silver"]
+    },
+    "reviews": [
+      {
+        "user_id": "3",
+        "rating": 5,
+        "comment": "Keeps drinks cold all day",
+        "date": "2023-11-06T13:20:00Z",
+        "helpful_votes": 29
+      }
+    ],
+    "created_at": "2023-09-10T15:35:00Z",
+    "updated_at": "2023-12-05T11:15:00Z",
+    "discount_percentage": 0.0,
+    "warranty_years": 1,
+    "manufacturer": "HydroFlask",
+    "model_number": "HF-WB-750",
+    "created_by": "20",
+    "featured_by": "17",
+    "assigned_category_id": "cat6",
+    "supplier_id": "sup19"
+  },
+  {
+    "_id": "p40",
+    "name": "Webcam",
+    "price": 69.99,
+    "category": "Electronics",
+    "in_stock": true,
+    "quantity": 85,
+    "tags": ["webcam", "HD", "streaming", "video call"],
+    "specifications": {
+      "resolution": "1080p",
+      "frame_rate": "30fps",
+      "field_of_view": "90 degrees",
+      "auto_focus": true,
+      "microphone": "Built-in stereo",
+      "connection": "USB 2.0",
+      "compatibility": ["Windows", "Mac", "Linux"]
+    },
+    "reviews": [
+      {
+        "user_id": "4",
+        "rating": 4,
+        "comment": "Good quality for video calls",
+        "date": "2023-11-05T10:25:00Z",
+        "helpful_votes": 18
+      }
+    ],
+    "created_at": "2023-10-12T12:50:00Z",
+    "updated_at": "2023-12-06T16:30:00Z",
+    "discount_percentage": 20.0,
+    "warranty_years": 2,
+    "manufacturer": "ViewCam",
+    "model_number": "VC-HD-1080",
+    "created_by": "21",
+    "featured_by": "18",
+    "assigned_category_id": "cat1",
+    "supplier_id": "sup20"
+  },
+  {
+    "_id": "p41",
+    "name": "Essential Oils Set",
+    "price": 49.99,
+    "category": "Health & Beauty",
+    "in_stock": true,
+    "quantity": 75,
+    "tags": ["essential oils", "aromatherapy", "natural", "relaxation"],
+    "specifications": {
+      "oils_included": ["Lavender", "Eucalyptus", "Peppermint", "Tea Tree", "Lemon", "Orange"],
+      "bottle_size": "10ml each",
+      "purity": "100% pure",
+      "extraction_method": "Steam distillation",
+      "packaging": "Dark glass bottles",
+      "includes_diffuser": false
+    },
+    "reviews": [
+      {
+        "user_id": "6",
+        "rating": 5,
+        "comment": "Amazing scents, very relaxing",
+        "date": "2023-11-04T20:10:00Z",
+        "helpful_votes": 26
+      }
+    ],
+    "created_at": "2023-11-15T14:15:00Z",
+    "updated_at": "2023-12-07T13:45:00Z",
+    "discount_percentage": 25.0,
+    "warranty_years": 1,
+    "manufacturer": "AromaBliss",
+    "model_number": "AB-EO-SET6",
+    "created_by": "22",
+    "featured_by": "19",
+    "assigned_category_id": "cat8",
+    "supplier_id": "sup1"
+  },
+  {
+    "_id": "p42",
+    "name": "Portable Charger",
+    "price": 34.99,
+    "category": "Electronics",
+    "in_stock": true,
+    "quantity": 140,
+    "tags": ["power bank", "portable", "USB", "fast charging"],
+    "specifications": {
+      "capacity": "10000mAh",
+      "input_ports": ["USB-C", "Micro-USB"],
+      "output_ports": ["USB-A x2", "USB-C"],
+      "fast_charging": ["PD 18W", "QC 3.0"],
+      "display": "LED indicator",
+      "weight": 220,
+      "safety_features": ["Overcharge", "Overvoltage", "Short circuit"]
+    },
+    "reviews": [
+      {
+        "user_id": "7",
+        "rating": 4,
+        "comment": "Reliable backup power",
+        "date": "2023-11-03T12:35:00Z",
+        "helpful_votes": 22
+      }
+    ],
+    "created_at": "2023-01-25T09:40:00Z",
+    "updated_at": "2023-12-08T10:20:00Z",
+    "discount_percentage": 15.0,
+    "warranty_years": 2,
+    "manufacturer": "PowerBank",
+    "model_number": "PB-PC-10K",
+    "created_by": "1",
+    "featured_by": "20",
+    "assigned_category_id": "cat1",
+    "supplier_id": "sup2"
+  },
+  {
+    "_id": "p43",
+    "name": "Resistance Bands Set",
+    "price": 19.99,
+    "category": "Sports & Recreation",
+    "in_stock": true,
+    "quantity": 200,
+    "tags": ["resistance bands", "fitness", "home gym", "exercise"],
+    "specifications": {
+      "resistance_levels": ["Light", "Medium", "Heavy", "Extra Heavy"],
+      "material": "Natural latex",
+      "handles": "Comfortable grip",
+      "door_anchor": true,
+      "ankle_straps": true,
+      "carrying_bag": true,
+      "exercise_guide": true
+    },
+    "reviews": [
+      {
+        "user_id": "10",
+        "rating": 5,
+        "comment": "Great for home workouts",
+        "date": "2023-11-02T07:50:00Z",
+        "helpful_votes": 41
+      }
+    ],
+    "created_at": "2023-02-28T11:25:00Z",
+    "updated_at": "2023-12-09T15:10:00Z",
+    "discount_percentage": 35.0,
+    "warranty_years": 1,
+    "manufacturer": "FitBands",
+    "model_number": "FB-RB-SET4",
+    "created_by": "2",
+    "featured_by": "21",
+    "assigned_category_id": "cat6",
+    "supplier_id": "sup3"
+  },
+  {
+    "_id": "p44",
+    "name": "Digital Photo Frame",
+    "price": 79.99,
+    "category": "Electronics",
+    "in_stock": true,
+    "quantity": 55,
+    "tags": ["photo frame", "digital", "WiFi", "display"],
+    "specifications": {
+      "screen_size": "10.1 inch",
+      "resolution": "1280x800",
+      "storage": "16GB internal",
+      "connectivity": ["WiFi", "USB", "SD card"],
+      "cloud_services": ["Google Photos", "Dropbox", "Facebook"],
+      "remote_control": true,
+      "auto_rotation": true
+    },
+    "reviews": [
+      {
+        "user_id": "11",
+        "rating": 4,
+        "comment": "Easy to set up and use",
+        "date": "2023-11-01T16:40:00Z",
+        "helpful_votes": 15
+      }
+    ],
+    "created_at": "2023-03-30T13:55:00Z",
+    "updated_at": "2023-12-10T12:25:00Z",
+    "discount_percentage": 20.0,
+    "warranty_years": 2,
+    "manufacturer": "FrameTech",
+    "model_number": "FT-DF-101",
+    "created_by": "3",
+    "featured_by": "22",
+    "assigned_category_id": "cat1",
+    "supplier_id": "sup4"
+  },
+  {
+    "_id": "p45",
+    "name": "Garden Hose",
+    "price": 39.99,
+    "category": "Home & Garden",
+    "in_stock": true,
+    "quantity": 110,
+    "tags": ["garden hose", "watering", "outdoor", "expandable"],
+    "specifications": {
+      "length": "50 feet",
+      "material": "Reinforced fabric",
+      "expandable": true,
+      "nozzle_included": true,
+      "burst_pressure": "3750 PSI",
+      "kink_resistant": true,
+      "storage_bag": true
+    },
+    "reviews": [
+      {
+        "user_id": "12",
+        "rating": 4,
+        "comment": "Lightweight and easy to store",
+        "date": "2023-10-31T14:20:00Z",
+        "helpful_votes": 19
+      }
+    ],
+    "created_at": "2023-04-10T10:30:00Z",
+    "updated_at": "2023-12-11T09:15:00Z",
+    "discount_percentage": 15.0,
+    "warranty_years": 1,
+    "manufacturer": "GardenPro",
+    "model_number": "GP-EH-50",
+    "created_by": "4",
+    "featured_by": "1",
+    "assigned_category_id": "cat5",
+    "supplier_id": "sup5"
+  },
+  {
+    "_id": "p46",
+    "name": "Car Phone Mount",
+    "price": 16.99,
+    "category": "Automotive",
+    "in_stock": true,
+    "quantity": 185,
+    "tags": ["phone mount", "car", "dashboard", "hands-free"],
+    "specifications": {
+      "mount_type": "Dashboard/Windshield",
+      "compatibility": "4-7 inch phones",
+      "rotation": "360 degrees",
+      "arm_length": "Adjustable",
+      "suction_strength": "Strong gel pad",
+      "one_hand_operation": true,
+      "phone_case_friendly": true
+    },
+    "reviews": [
+      {
+        "user_id": "13",
+        "rating": 5,
+        "comment": "Holds phone securely while driving",
+        "date": "2023-10-30T11:15:00Z",
+        "helpful_votes": 32
+      }
+    ],
+    "created_at": "2023-05-15T15:40:00Z",
+    "updated_at": "2023-12-12T14:30:00Z",
+    "discount_percentage": 25.0,
+    "warranty_years": 1,
+    "manufacturer": "DriveMount",
+    "model_number": "DM-PM-360",
+    "created_by": "5",
+    "featured_by": "2",
+    "assigned_category_id": "cat9",
+    "supplier_id": "sup6"
+  },
+  {
+    "_id": "p47",
+    "name": "Bamboo Cutting Board",
+    "price": 24.99,
+    "category": "Home & Garden",
+    "in_stock": true,
+    "quantity": 125,
+    "tags": ["cutting board", "bamboo", "eco-friendly", "kitchen"],
+    "specifications": {
+      "material": "100% bamboo",
+      "dimensions": {
+        "length": 18,
+        "width": 12,
+        "thickness": 0.75
+      },
+      "reversible": true,
+      "juice_groove": true,
+      "antimicrobial": true,
+      "maintenance": "Oil monthly",
+      "eco_friendly": true
+    },
+    "reviews": [
+      {
+        "user_id": "14",
+        "rating": 5,
+        "comment": "Beautiful and functional",
+        "date": "2023-10-29T08:45:00Z",
+        "helpful_votes": 28
+      }
+    ],
+    "created_at": "2023-06-20T12:10:00Z",
+    "updated_at": "2023-12-13T11:50:00Z",
+    "discount_percentage": 10.0,
+    "warranty_years": 1,
+    "manufacturer": "EcoKitchen",
+    "model_number": "EK-CB-18x12",
+    "created_by": "6",
+    "featured_by": "3",
+    "assigned_category_id": "cat5",
+    "supplier_id": "sup7"
+  },
+  {
+    "_id": "p48",
+    "name": "LED Strip Lights",
+    "price": 29.99,
+    "category": "Home & Garden",
+    "in_stock": true,
+    "quantity": 160,
+    "tags": ["LED lights", "strip lights", "RGB", "smart home"],
+    "specifications": {
+      "length": "16.4 feet",
+      "led_count": 300,
+      "colors": "16 million RGB",
+      "control": ["App", "Remote", "Voice"],
+      "cuttable": true,
+      "adhesive": "3M backing",
+      "power_consumption": "24W",
+      "lifespan": "50000 hours"
+    },
+    "reviews": [
+      {
+        "user_id": "15",
+        "rating": 4,
+        "comment": "Great for ambient lighting",
+        "date": "2023-10-28T19:30:00Z",
+        "helpful_votes": 23
+      }
+    ],
+    "created_at": "2023-07-25T16:20:00Z",
+    "updated_at": "2023-12-13T16:40:00Z",
+    "discount_percentage": 30.0,
+    "warranty_years": 2,
+    "manufacturer": "LightStrip",
+    "model_number": "LS-RGB-16",
+    "created_by": "7",
+    "featured_by": "4",
+    "assigned_category_id": "cat5",
+    "supplier_id": "sup8"
+  },
+  {
+    "_id": "p49",
+    "name": "Protein Powder",
+    "price": 39.99,
+    "category": "Health & Beauty",
+    "in_stock": true,
+    "quantity": 90,
+    "tags": ["protein", "supplement", "fitness", "whey"],
+    "specifications": {
+      "protein_per_serving": "25g",
+      "servings_per_container": 30,
+      "flavor": "Vanilla",
+      "protein_type": "Whey isolate",
+      "sugar_content": "1g",
+      "calories_per_serving": 120,
+      "additives": ["BCAAs", "Digestive enzymes"]
+    },
+    "reviews": [
+      {
+        "user_id": "16",
+        "rating": 4,
+        "comment": "Mixes well and tastes good",
+        "date": "2023-10-27T14:25:00Z",
+        "helpful_votes": 20
+      }
+    ],
+    "created_at": "2023-08-30T13:45:00Z",
+    "updated_at": "2023-12-13T18:15:00Z",
+    "discount_percentage": 20.0,
+    "warranty_years": 1,
+    "manufacturer": "FitNutrition",
+    "model_number": "FN-PP-VAN30",
+    "created_by": "8",
+    "featured_by": "5",
+    "assigned_category_id": "cat8",
+    "supplier_id": "sup9"
+  },
+  {
+    "_id": "p50",
+    "name": "Vacuum Cleaner",
+    "price": 179.99,
+    "category": "Home & Garden",
+    "in_stock": true,
+    "quantity": 42,
+    "tags": ["vacuum", "cordless", "HEPA", "pet hair"],
+    "specifications": {
+      "type": "Cordless stick",
+      "battery_life": "40 minutes",
+      "suction_power": "20000 Pa",
+      "filtration": "HEPA",
+      "dustbin_capacity": "0.6L",
+      "weight": 2.5,
+      "attachments": ["Crevice tool", "Pet hair brush", "Dust brush"]
+    },
+    "reviews": [
+      {
+        "user_id": "17",
+        "rating": 5,
+        "comment": "Excellent suction and lightweight",
+        "date": "2023-10-26T10:10:00Z",
+        "helpful_votes": 37
+      }
+    ],
+    "created_at": "2023-09-20T11:30:00Z",
+    "updated_at": "2023-12-13T20:05:00Z",
+    "discount_percentage": 15.0,
+    "warranty_years": 3,
+    "manufacturer": "CleanMaster",
+    "model_number": "CM-VC-CORD40",
+    "created_by": "9",
+    "featured_by": "6",
+    "assigned_category_id": "cat5",
+    "supplier_id": "sup10"
+  }
+]

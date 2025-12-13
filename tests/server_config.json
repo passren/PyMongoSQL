@@ -1,0 +1,29 @@
+{
+    "mongodb": {
+        "host": "localhost",
+        "port": 27017,
+        "database": "test_db"
+    },
+    "admin_user": {
+        "username": "admin",
+        "password": "secret",
+        "auth_source": "admin"
+    },
+    "test_user": {
+        "username": "testuser",
+        "password": "testpass",
+        "auth_source": "test_db"
+    },
+    "container": {
+        "name": "pymongosql-test"
+    },
+    "test_data_files": {
+        "users": "data/users.json",
+        "products": "data/products.json",
+        "categories": "data/categories.json",
+        "orders": "data/orders.json",
+        "analytics": "data/analytics.json",
+        "departments": "data/departments.json",
+        "suppliers": "data/suppliers.json"
+    }
+}
