@@ -1,0 +1,30 @@
+# Include the README and LICENSE files
+include README.md
+include LICENSE
+
+# Include requirements files
+include requirements.txt
+include requirements-test.txt
+
+# Include configuration files
+include pyproject.toml
+include .flake8
+
+# Exclude unnecessary files
+global-exclude *.pyc
+global-exclude *.pyo
+global-exclude __pycache__
+global-exclude .git*
+global-exclude .pytest_cache
+global-exclude .coverage
+global-exclude htmlcov
+global-exclude build
+global-exclude dist
+global-exclude *.egg-info
+
+# Exclude test files and data
+global-exclude tests
+recursive-exclude tests *
+
+# Include ANTLR4 generated files
+recursive-include pymongosql/sql/partiql *.py
