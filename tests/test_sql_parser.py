@@ -1,7 +1,8 @@
 # -*- coding: utf-8 -*-
 import pytest
-from pymongosql.sql.parser import SQLParser
+
 from pymongosql.error import SqlSyntaxError
+from pymongosql.sql.parser import SQLParser
 
 
 class TestSQLParser:

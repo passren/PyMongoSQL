@@ -1,15 +1,15 @@
 # -*- coding: utf-8 -*-
 import logging
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, TypeVar, Tuple
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, TypeVar
 
 from pymongo.cursor import Cursor as MongoCursor
 from pymongo.errors import PyMongoError
 
 from .common import BaseCursor, CursorIterator
-from .sql.parser import SQLParser
-from .sql.builder import QueryPlan
 from .error import DatabaseError, OperationalError, ProgrammingError, SqlSyntaxError
 from .result_set import ResultSet
+from .sql.builder import QueryPlan
+from .sql.parser import SQLParser
 
 if TYPE_CHECKING:
     from .connection import Connection

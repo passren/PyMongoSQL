@@ -5,8 +5,8 @@ from typing import Any, Dict, List, Optional, Tuple
 from pymongo.cursor import Cursor as MongoCursor
 from pymongo.errors import PyMongoError
 
-from .error import ProgrammingError, DatabaseError
 from .common import CursorIterator
+from .error import DatabaseError, ProgrammingError
 from .sql.builder import QueryPlan
 
 _logger = logging.getLogger(__name__)

@@ -1,13 +1,13 @@
 # -*- coding: utf-8 -*-
-from typing import Any, Dict
 import logging
+from typing import Any, Dict
 
+from ..error import SqlSyntaxError
+from .builder import QueryPlan
+from .handler import BaseHandler, HandlerFactory, ParseResult
 from .partiql.PartiQLLexer import PartiQLLexer
 from .partiql.PartiQLParser import PartiQLParser
 from .partiql.PartiQLParserVisitor import PartiQLParserVisitor
-from .builder import QueryPlan
-from ..error import SqlSyntaxError
-from .handler import ParseResult, BaseHandler, HandlerFactory
 
 _logger = logging.getLogger(__name__)
 

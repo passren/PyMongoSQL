@@ -2,9 +2,9 @@
 """
 Query builder for constructing MongoDB queries in a fluent, readable way
 """
-from typing import Any, Dict, List, Optional, Union
-from dataclasses import dataclass, field
 import logging
+from dataclasses import dataclass, field
+from typing import Any, Dict, List, Optional, Union
 
 _logger = logging.getLogger(__name__)
 

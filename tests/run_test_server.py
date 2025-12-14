@@ -5,11 +5,12 @@ MongoDB Test Helper Script
 
 This script helps manage MongoDB instances for testing PyMongoSQL.
 """
-import subprocess
-import time
-import sys
 import json
 import os
+import subprocess
+import sys
+import time
+
 import pymongo
 from pymongo.errors import ServerSelectionTimeoutError
 

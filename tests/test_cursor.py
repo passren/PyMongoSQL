@@ -1,9 +1,10 @@
 # -*- coding: utf-8 -*-
 import pytest
+
 from pymongosql.connection import Connection
 from pymongosql.cursor import Cursor
-from pymongosql.result_set import ResultSet
 from pymongosql.error import ProgrammingError
+from pymongosql.result_set import ResultSet
 
 
 class TestCursor:

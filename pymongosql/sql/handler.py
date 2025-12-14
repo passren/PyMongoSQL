@@ -2,12 +2,12 @@
 """
 Expression handlers for converting SQL expressions to MongoDB query format
 """
-from typing import Any, Dict, List, Optional, Tuple
+import logging
+import re
+import time
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-import logging
-import time
-import re
+from typing import Any, Dict, List, Optional, Tuple
 
 from .partiql.PartiQLParser import PartiQLParser
 

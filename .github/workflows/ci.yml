@@ -55,6 +55,7 @@ jobs:
       run: |
         python -m pip install --upgrade pip
         pip install -r requirements-test.txt
+        pip install black isort
 
     - name: Wait for MongoDB to be ready
       run: |
@@ -68,6 +69,14 @@ jobs:
           sleep 2
         done
 
+    - name: Check code formatting with Black
+      run: |
+        black --check --diff pymongosql/
+        
+    - name: Check import sorting with isort
+      run: |
+        isort --check-only --diff pymongosql/
+        
     - name: Check code style with flake8
       run: |
         flake8 pymongosql/ --count --statistics

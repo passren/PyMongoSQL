@@ -2,12 +2,13 @@
 import logging
 from abc import ABCMeta
 from typing import Any, Optional
+
 from antlr4 import CommonTokenStream, InputStream
 from antlr4.error.ErrorListener import ErrorListener
 
+from ..error import SqlSyntaxError
 from .ast import MongoSQLLexer, MongoSQLParser, MongoSQLParserVisitor
 from .builder import QueryPlan
-from ..error import SqlSyntaxError
 
 _logger = logging.getLogger(__name__)
 

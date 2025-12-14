@@ -1,17 +1,17 @@
 # -*- coding: utf-8 -*-
 import logging
-from typing import Optional, Type, Union, Sequence, Any
+from typing import Any, Optional, Sequence, Type, Union
 
-from pymongo import MongoClient
-from pymongo.database import Database
-from pymongo.collection import Collection
-from pymongo.client_session import ClientSession
-from pymongo.errors import ConnectionFailure
 from bson.codec_options import TypeRegistry
+from pymongo import MongoClient
+from pymongo.client_session import ClientSession
+from pymongo.collection import Collection
+from pymongo.database import Database
+from pymongo.errors import ConnectionFailure
 
-from .error import NotSupportedError, DatabaseError, OperationalError
 from .common import BaseCursor
 from .cursor import Cursor
+from .error import DatabaseError, NotSupportedError, OperationalError
 
 _logger = logging.getLogger(__name__)
 
