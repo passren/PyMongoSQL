@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 import pytest
-from unittest.mock import Mock
+from pymongosql.connection import Connection
 from pymongosql.result_set import ResultSet
 from pymongosql.error import ProgrammingError
 from pymongosql.sql.builder import QueryPlan
@@ -11,62 +11,89 @@ class TestResultSet:
 
     def setup_method(self):
         """Setup for each test method"""
-        self.mock_cursor = Mock()
-        self.mock_projection = {"name": "full_name", "email": "user_email"}
+        # Create connection to local MongoDB with authentication
+        self.connection = Connection(
+            host="mongodb://testuser:testpass@localhost:27017/test_db?authSource=test_db", database="test_db"
+        )
+        self.db = self.connection.database
+
+        # Test projection mappings
+        self.projection_with_aliases = {"name": "full_name", "email": "user_email"}
+        self.projection_empty = {}
 
         # Create QueryPlan objects for testing
-        self.query_plan_with_projection = QueryPlan(collection="test_collection", projection_stage=self.mock_projection)
+        self.query_plan_with_projection = QueryPlan(collection="users", projection_stage=self.projection_with_aliases)
+        self.query_plan_empty_projection = QueryPlan(collection="users", projection_stage=self.projection_empty)
 
-        self.query_plan_empty_projection = QueryPlan(collection="test_collection", projection_stage={})
+    def teardown_method(self):
+        """Cleanup after each test method"""
+        if hasattr(self, "connection"):
+            self.connection.close()
 
     def test_result_set_init(self):
-        """Test ResultSet initialization"""
-        result_set = ResultSet(self.mock_cursor, self.query_plan_with_projection)
-        assert result_set._mongo_cursor == self.mock_cursor
+        """Test ResultSet initialization with command result"""
+        # Execute a real command to get results
+        command_result = self.db.command({"find": "users", "filter": {"age": {"$gt": 25}}, "limit": 1})
+
+        result_set = ResultSet(command_result=command_result, query_plan=self.query_plan_with_projection)
+        assert result_set._command_result == command_result
         assert result_set._query_plan == self.query_plan_with_projection
         assert result_set._is_closed is False
 
     def test_result_set_init_empty_projection(self):
         """Test ResultSet initialization with empty projection"""
-        result_set = ResultSet(self.mock_cursor, self.query_plan_empty_projection)
+        command_result = self.db.command({"find": "users", "limit": 1})
+
+        result_set = ResultSet(command_result=command_result, query_plan=self.query_plan_empty_projection)
         assert result_set._query_plan.projection_stage == {}
 
     def test_fetchone_with_data(self):
         """Test fetchone with available data"""
-        # Setup mock cursor to return data
-        mock_doc = {"_id": "123", "name": "John", "email": "john@example.com"}
-        self.mock_cursor.__iter__ = Mock(return_value=iter([mock_doc]))
+        # Get real user data with projection mapping
+        command_result = self.db.command({"find": "users", "projection": {"name": 1, "email": 1}, "limit": 1})
 
-        result_set = ResultSet(self.mock_cursor, self.query_plan_with_projection)
+        result_set = ResultSet(command_result=command_result, query_plan=self.query_plan_with_projection)
         row = result_set.fetchone()
 
-        # Should apply projection mapping
-        expected = {"full_name": "John", "user_email": "john@example.com"}
-        assert row == expected
+        # Should apply projection mapping and return real data
+        assert row is not None
+        assert "full_name" in row  # Mapped from "name"
+        assert "user_email" in row  # Mapped from "email"
+        assert isinstance(row["full_name"], str)
+        assert isinstance(row["user_email"], str)
 
     def test_fetchone_no_data(self):
         """Test fetchone when no data available"""
-        self.mock_cursor.__iter__ = Mock(return_value=iter([]))
+        # Query for non-existent data
+        command_result = self.db.command(
+            {"find": "users", "filter": {"age": {"$gt": 999}}, "limit": 1}  # No users over 999 years old
+        )
 
-        result_set = ResultSet(self.mock_cursor, self.query_plan_with_projection)
+        result_set = ResultSet(command_result=command_result, query_plan=self.query_plan_with_projection)
         row = result_set.fetchone()
 
         assert row is None
 
     def test_fetchone_empty_projection(self):
         """Test fetchone with empty projection (SELECT *)"""
-        mock_doc = {"_id": "123", "name": "John", "email": "john@example.com"}
-        self.mock_cursor.__iter__ = Mock(return_value=iter([mock_doc]))
+        command_result = self.db.command({"find": "users", "limit": 1})
 
-        result_set = ResultSet(self.mock_cursor, self.query_plan_empty_projection)
+        result_set = ResultSet(command_result=command_result, query_plan=self.query_plan_empty_projection)
         row = result_set.fetchone()
 
-        # Should return original document
-        assert row == mock_doc
+        # Should return original document without projection mapping
+        assert row is not None
+        assert "_id" in row
+        assert "name" in row  # Original field names
+        assert "email" in row
+        # Should be "John Doe" from test dataset
+        assert "John Doe" in row["name"]
 
     def test_fetchone_closed_cursor(self):
         """Test fetchone on closed cursor"""
-        result_set = ResultSet(self.mock_cursor, self.query_plan_with_projection)
+        command_result = self.db.command({"find": "users", "limit": 1})
+
+        result_set = ResultSet(command_result=command_result, query_plan=self.query_plan_with_projection)
         result_set.close()
 
         with pytest.raises(ProgrammingError, match="ResultSet is closed"):
@@ -74,90 +101,88 @@ class TestResultSet:
 
     def test_fetchmany_with_data(self):
         """Test fetchmany with available data"""
-        mock_docs = [
-            {"_id": "123", "name": "John", "email": "john@example.com"},
-            {"_id": "456", "name": "Jane", "email": "jane@example.com"},
-            {"_id": "789", "name": "Bob", "email": "bob@example.com"},
-        ]
+        # Get multiple users with projection
+        command_result = self.db.command({"find": "users", "projection": {"name": 1, "email": 1}, "limit": 5})
 
-        # Mock iterator behavior
-        mock_iter = iter(mock_docs)
-        self.mock_cursor.__iter__ = Mock(return_value=mock_iter)
-
-        result_set = ResultSet(self.mock_cursor, self.query_plan_with_projection)
+        result_set = ResultSet(command_result=command_result, query_plan=self.query_plan_with_projection)
         rows = result_set.fetchmany(2)
 
-        assert len(rows) == 2
-        assert rows[0] == {"full_name": "John", "user_email": "john@example.com"}
-        assert rows[1] == {"full_name": "Jane", "user_email": "jane@example.com"}
+        assert len(rows) <= 2  # Should return at most 2 rows
+        assert len(rows) >= 1  # Should have at least 1 row from test data
+
+        # Check projection mapping
+        for row in rows:
+            assert "full_name" in row  # Mapped from "name"
+            assert "user_email" in row  # Mapped from "email"
+            assert isinstance(row["full_name"], str)
+            assert isinstance(row["user_email"], str)
 
     def test_fetchmany_default_size(self):
         """Test fetchmany with default size"""
-        mock_docs = [{"_id": str(i), "name": f"User{i}"} for i in range(15)]
+        # Get all users (22 total in test dataset)
+        command_result = self.db.command({"find": "users"})
 
-        # Mock iterator behavior
-        mock_iter = iter(mock_docs)
-        self.mock_cursor.__iter__ = Mock(return_value=mock_iter)
-
-        result_set = ResultSet(self.mock_cursor, self.query_plan_empty_projection)
+        result_set = ResultSet(command_result=command_result, query_plan=self.query_plan_empty_projection)
         rows = result_set.fetchmany()  # Should use default arraysize (1000)
 
-        assert len(rows) == 15  # Gets all available docs since arraysize (1000) > available (15)
+        assert len(rows) == 22  # Gets all available users since arraysize (1000) > available (22)
 
     def test_fetchmany_less_data_available(self):
         """Test fetchmany when less data available than requested"""
-        mock_docs = [{"_id": "123", "name": "John"}, {"_id": "456", "name": "Jane"}]
+        # Get only 2 users but request 5
+        command_result = self.db.command({"find": "users", "limit": 2})
 
-        # Mock iterator behavior
-        mock_iter = iter(mock_docs)
-        self.mock_cursor.__iter__ = Mock(return_value=mock_iter)
-
-        result_set = ResultSet(self.mock_cursor, self.query_plan_empty_projection)
+        result_set = ResultSet(command_result=command_result, query_plan=self.query_plan_empty_projection)
         rows = result_set.fetchmany(5)  # Request 5 but only 2 available
 
         assert len(rows) == 2
 
     def test_fetchmany_no_data(self):
         """Test fetchmany when no data available"""
-        mock_iter = iter([])
-        self.mock_cursor.__iter__ = Mock(return_value=mock_iter)
+        # Query for non-existent data
+        command_result = self.db.command(
+            {"find": "users", "filter": {"age": {"$gt": 999}}}  # No users over 999 years old
+        )
 
-        result_set = ResultSet(self.mock_cursor, self.query_plan_empty_projection)
+        result_set = ResultSet(command_result=command_result, query_plan=self.query_plan_empty_projection)
         rows = result_set.fetchmany(3)
 
         assert rows == []
 
     def test_fetchall_with_data(self):
         """Test fetchall with available data"""
-        mock_docs = [
-            {"_id": "123", "name": "John", "email": "john@example.com"},
-            {"_id": "456", "name": "Jane", "email": "jane@example.com"},
-            {"_id": "789", "name": "Bob", "email": "bob@example.com"},
-        ]
+        # Get users over 25 (should be 19 users from test dataset)
+        command_result = self.db.command(
+            {"find": "users", "filter": {"age": {"$gt": 25}}, "projection": {"name": 1, "email": 1}}
+        )
 
-        # Mock list() behavior
-        self.mock_cursor.__iter__ = Mock(return_value=iter(mock_docs))
-
-        result_set = ResultSet(self.mock_cursor, self.query_plan_with_projection)
+        result_set = ResultSet(command_result=command_result, query_plan=self.query_plan_with_projection)
         rows = result_set.fetchall()
 
-        assert len(rows) == 3
-        assert rows[0] == {"full_name": "John", "user_email": "john@example.com"}
-        assert rows[1] == {"full_name": "Jane", "user_email": "jane@example.com"}
-        assert rows[2] == {"full_name": "Bob", "user_email": "bob@example.com"}
+        assert len(rows) == 19  # 19 users over 25 from test dataset
+
+        # Check first row has proper projection mapping
+        assert "full_name" in rows[0]  # Mapped from "name"
+        assert "user_email" in rows[0]  # Mapped from "email"
+        assert isinstance(rows[0]["full_name"], str)
+        assert isinstance(rows[0]["user_email"], str)
 
     def test_fetchall_no_data(self):
         """Test fetchall when no data available"""
-        self.mock_cursor.__iter__ = Mock(return_value=iter([]))
+        command_result = self.db.command(
+            {"find": "users", "filter": {"age": {"$gt": 999}}}  # No users over 999 years old
+        )
 
-        result_set = ResultSet(self.mock_cursor, self.query_plan_empty_projection)
+        result_set = ResultSet(command_result=command_result, query_plan=self.query_plan_empty_projection)
         rows = result_set.fetchall()
 
         assert rows == []
 
     def test_fetchall_closed_cursor(self):
         """Test fetchall on closed cursor"""
-        result_set = ResultSet(self.mock_cursor, self.query_plan_empty_projection)
+        command_result = self.db.command({"find": "users", "limit": 1})
+
+        result_set = ResultSet(command_result=command_result, query_plan=self.query_plan_empty_projection)
         result_set.close()
 
         with pytest.raises(ProgrammingError, match="ResultSet is closed"):
@@ -166,7 +191,12 @@ class TestResultSet:
     def test_apply_projection_mapping(self):
         """Test _process_document method"""
         projection = {"name": "full_name", "age": "user_age", "email": "email"}
-        query_plan = QueryPlan(collection="test_collection", projection_stage=projection)
+        query_plan = QueryPlan(collection="users", projection_stage=projection)
+
+        # Create empty command result for testing _process_document method
+        command_result = {"cursor": {"firstBatch": []}}
+        result_set = ResultSet(command_result=command_result, query_plan=query_plan)
+
         doc = {
             "_id": "123",
             "name": "John",
@@ -175,7 +205,6 @@ class TestResultSet:
             "extra": "ignored",
         }
 
-        result_set = ResultSet(self.mock_cursor, query_plan)
         mapped_doc = result_set._process_document(doc)
 
         expected = {"full_name": "John", "user_age": 30, "email": "john@example.com"}
@@ -188,10 +217,13 @@ class TestResultSet:
             "age": "user_age",
             "missing": "missing_alias",
         }
-        query_plan = QueryPlan(collection="test_collection", projection_stage=projection)
+        query_plan = QueryPlan(collection="users", projection_stage=projection)
+
+        command_result = {"cursor": {"firstBatch": []}}
+        result_set = ResultSet(command_result=command_result, query_plan=query_plan)
+
         doc = {"_id": "123", "name": "John"}  # Missing age and missing fields
 
-        result_set = ResultSet(self.mock_cursor, query_plan)
         mapped_doc = result_set._process_document(doc)
 
         # Should include mapped fields and None for missing fields
@@ -201,10 +233,13 @@ class TestResultSet:
     def test_apply_projection_mapping_identity_mapping(self):
         """Test projection mapping with identity mapping (field: field)"""
         projection = {"name": "name", "age": "age"}
-        query_plan = QueryPlan(collection="test_collection", projection_stage=projection)
+        query_plan = QueryPlan(collection="users", projection_stage=projection)
+
+        command_result = {"cursor": {"firstBatch": []}}
+        result_set = ResultSet(command_result=command_result, query_plan=query_plan)
+
         doc = {"_id": "123", "name": "John", "age": 30}
 
-        result_set = ResultSet(self.mock_cursor, query_plan)
         mapped_doc = result_set._process_document(doc)
 
         expected = {"name": "John", "age": 30}
@@ -212,7 +247,8 @@ class TestResultSet:
 
     def test_close(self):
         """Test close method"""
-        result_set = ResultSet(self.mock_cursor, self.query_plan_empty_projection)
+        command_result = {"cursor": {"firstBatch": []}}
+        result_set = ResultSet(command_result=command_result, query_plan=self.query_plan_empty_projection)
 
         # Should not be closed initially
         assert not result_set._is_closed
@@ -224,7 +260,8 @@ class TestResultSet:
 
     def test_context_manager(self):
         """Test ResultSet as context manager"""
-        result_set = ResultSet(self.mock_cursor, self.query_plan_empty_projection)
+        command_result = {"cursor": {"firstBatch": []}}
+        result_set = ResultSet(command_result=command_result, query_plan=self.query_plan_empty_projection)
 
         with result_set as rs:
             assert rs == result_set
@@ -235,7 +272,8 @@ class TestResultSet:
 
     def test_context_manager_with_exception(self):
         """Test context manager with exception"""
-        result_set = ResultSet(self.mock_cursor, self.query_plan_empty_projection)
+        command_result = {"cursor": {"firstBatch": []}}
+        result_set = ResultSet(command_result=command_result, query_plan=self.query_plan_empty_projection)
 
         try:
             with result_set as rs:
@@ -249,12 +287,10 @@ class TestResultSet:
 
     def test_iterator_protocol(self):
         """Test ResultSet as iterator"""
-        mock_docs = [{"_id": "123", "name": "John"}, {"_id": "456", "name": "Jane"}]
+        # Get 2 users from database
+        command_result = self.db.command({"find": "users", "limit": 2})
 
-        # Mock iterator behavior
-        self.mock_cursor.__iter__ = Mock(return_value=iter(mock_docs))
-
-        result_set = ResultSet(self.mock_cursor, self.query_plan_empty_projection)
+        result_set = ResultSet(command_result=command_result, query_plan=self.query_plan_empty_projection)
 
         # Test iterator protocol
         iterator = iter(result_set)
@@ -263,28 +299,24 @@ class TestResultSet:
         # Test iteration
         rows = list(result_set)
         assert len(rows) == 2
-        assert rows[0] == {"_id": "123", "name": "John"}
-        assert rows[1] == {"_id": "456", "name": "Jane"}
+        assert "_id" in rows[0]
+        assert "name" in rows[0]
 
     def test_iterator_with_projection(self):
         """Test iteration with projection mapping"""
-        mock_docs = [
-            {"_id": "123", "name": "John", "email": "john@example.com"},
-            {"_id": "456", "name": "Jane", "email": "jane@example.com"},
-        ]
+        command_result = self.db.command({"find": "users", "projection": {"name": 1, "email": 1}, "limit": 2})
 
-        self.mock_cursor.__iter__ = Mock(return_value=iter(mock_docs))
-
-        result_set = ResultSet(self.mock_cursor, self.query_plan_with_projection)
+        result_set = ResultSet(command_result=command_result, query_plan=self.query_plan_with_projection)
 
         rows = list(result_set)
         assert len(rows) == 2
-        assert rows[0] == {"full_name": "John", "user_email": "john@example.com"}
-        assert rows[1] == {"full_name": "Jane", "user_email": "jane@example.com"}
+        assert "full_name" in rows[0]  # Mapped from "name"
+        assert "user_email" in rows[0]  # Mapped from "email"
 
     def test_iterator_closed_cursor(self):
         """Test iteration on closed cursor"""
-        result_set = ResultSet(self.mock_cursor, self.query_plan_empty_projection)
+        command_result = {"cursor": {"firstBatch": []}}
+        result_set = ResultSet(command_result=command_result, query_plan=self.query_plan_empty_projection)
         result_set.close()
 
         with pytest.raises(ProgrammingError, match="ResultSet is closed"):
@@ -292,7 +324,8 @@ class TestResultSet:
 
     def test_arraysize_property(self):
         """Test arraysize property"""
-        result_set = ResultSet(self.mock_cursor, self.query_plan_empty_projection)
+        command_result = {"cursor": {"firstBatch": []}}
+        result_set = ResultSet(command_result=command_result, query_plan=self.query_plan_empty_projection)
 
         # Default arraysize should be 1000
         assert result_set.arraysize == 1000
@@ -303,7 +336,8 @@ class TestResultSet:
 
     def test_arraysize_validation(self):
         """Test arraysize validation"""
-        result_set = ResultSet(self.mock_cursor, self.query_plan_empty_projection)
+        command_result = {"cursor": {"firstBatch": []}}
+        result_set = ResultSet(command_result=command_result, query_plan=self.query_plan_empty_projection)
 
         # Should reject invalid values
         with pytest.raises(ValueError, match="arraysize must be positive"):

@@ -96,56 +96,54 @@ class Cursor(BaseCursor, CursorIterator):
             raise SqlSyntaxError(f"Failed to parse SQL: {e}")
 
     def _execute_query_plan(self, query_plan: QueryPlan) -> None:
-        """Execute a QueryPlan against MongoDB"""
+        """Execute a QueryPlan against MongoDB using db.command"""
         try:
-            # Get collection
+            # Get database
             if not query_plan.collection:
                 raise ProgrammingError("No collection specified in query")
 
-            collection = self.connection.get_collection(query_plan.collection)
+            db = self.connection.database
 
-            # Build MongoDB query
-            find_filter = query_plan.filter_stage or {}
+            # Build MongoDB find command
+            find_command = {"find": query_plan.collection, "filter": query_plan.filter_stage or {}}
 
             # Convert projection stage from alias mapping to MongoDB format
-            find_projection = None
             if query_plan.projection_stage:
                 # Convert {"field": "alias"} to {"field": 1} for MongoDB
-                find_projection = {field: 1 for field in query_plan.projection_stage.keys()}
-
-            _logger.debug(f"Executing MongoDB query: filter={find_filter}, projection={find_projection}")
-
-            # Execute find query
-            self._mongo_cursor = collection.find(find_filter, find_projection)
+                find_command["projection"] = {field: 1 for field in query_plan.projection_stage.keys()}
 
             # Apply sort if specified
             if query_plan.sort_stage:
-                sort_spec = [
-                    (field, direction) for sort_dict in query_plan.sort_stage for field, direction in sort_dict.items()
-                ]
-                self._mongo_cursor = self._mongo_cursor.sort(sort_spec)
+                sort_spec = {}
+                for sort_dict in query_plan.sort_stage:
+                    for field, direction in sort_dict.items():
+                        sort_spec[field] = direction
+                find_command["sort"] = sort_spec
 
             # Apply skip if specified
             if query_plan.skip_stage:
-                self._mongo_cursor = self._mongo_cursor.skip(query_plan.skip_stage)
+                find_command["skip"] = query_plan.skip_stage
 
             # Apply limit if specified
             if query_plan.limit_stage:
-                self._mongo_cursor = self._mongo_cursor.limit(query_plan.limit_stage)
+                find_command["limit"] = query_plan.limit_stage
 
-            # Create result set
-            self._result_set = self._result_set_class(
-                mongo_cursor=self._mongo_cursor, query_plan=query_plan, **self._kwargs
-            )
+            _logger.debug(f"Executing MongoDB command: {find_command}")
+
+            # Execute find command directly
+            result = db.command(find_command)
+
+            # Create result set from command result
+            self._result_set = self._result_set_class(command_result=result, query_plan=query_plan, **self._kwargs)
 
             _logger.info(f"Query executed successfully on collection '{query_plan.collection}'")
 
         except PyMongoError as e:
-            _logger.error(f"MongoDB query execution failed: {e}")
-            raise DatabaseError(f"Query execution failed: {e}")
+            _logger.error(f"MongoDB command execution failed: {e}")
+            raise DatabaseError(f"Command execution failed: {e}")
         except Exception as e:
-            _logger.error(f"Unexpected error during query execution: {e}")
-            raise OperationalError(f"Query execution error: {e}")
+            _logger.error(f"Unexpected error during command execution: {e}")
+            raise OperationalError(f"Command execution error: {e}")
 
     def execute(self: _T, operation: str, parameters: Optional[Dict[str, Any]] = None) -> _T:
         """Execute a SQL statement

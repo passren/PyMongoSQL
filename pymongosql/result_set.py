@@ -13,24 +13,44 @@ _logger = logging.getLogger(__name__)
 
 
 class ResultSet(CursorIterator):
-    """Result set wrapper for MongoDB cursor results"""
+    """Result set wrapper for MongoDB command results"""
 
     def __init__(
         self,
-        mongo_cursor: MongoCursor,
-        query_plan: QueryPlan,
+        command_result: Optional[Dict[str, Any]] = None,
+        mongo_cursor: Optional[MongoCursor] = None,
+        query_plan: QueryPlan = None,
         arraysize: int = None,
         **kwargs,
     ) -> None:
         super().__init__(arraysize=arraysize or self.DEFAULT_FETCH_SIZE, **kwargs)
-        self._mongo_cursor = mongo_cursor
+
+        # Handle both command results and legacy mongo cursor for backward compatibility
+        if command_result is not None:
+            self._command_result = command_result
+            self._mongo_cursor = None
+            # Extract cursor info from command result
+            self._result_cursor = command_result.get("cursor", {})
+            self._raw_results = self._result_cursor.get("firstBatch", [])
+            self._cached_results: List[Dict[str, Any]] = []  # Will be populated after query_plan is set
+        elif mongo_cursor is not None:
+            self._mongo_cursor = mongo_cursor
+            self._command_result = None
+            self._raw_results = []
+            self._cached_results: List[Dict[str, Any]] = []
+        else:
+            raise ProgrammingError("Either command_result or mongo_cursor must be provided")
+
         self._query_plan = query_plan
         self._is_closed = False
-        self._cached_results: List[Dict[str, Any]] = []
         self._cache_exhausted = False
         self._total_fetched = 0
         self._description: Optional[List[Tuple[str, str, None, None, None, None, None]]] = None
         self._errors: List[Dict[str, str]] = []
+
+        # Apply projection mapping for command results now that query_plan is set
+        if command_result is not None and self._raw_results:
+            self._cached_results = [self._process_document(doc) for doc in self._raw_results]
 
         # Build description from projection
         self._build_description()
@@ -59,28 +79,35 @@ class ResultSet(CursorIterator):
         if self._cache_exhausted:
             return
 
-        # Fetch more results if needed
-        while len(self._cached_results) < count and not self._cache_exhausted:
-            try:
-                # Iterate through cursor without calling limit() again
-                batch = []
-                for i, doc in enumerate(self._mongo_cursor):
-                    if i >= self.arraysize:
+        if self._command_result is not None:
+            # For command results, we already have all data in firstBatch
+            # No additional fetching needed
+            self._cache_exhausted = True
+            return
+
+        elif self._mongo_cursor is not None:
+            # Fetch more results if needed (legacy mongo cursor support)
+            while len(self._cached_results) < count and not self._cache_exhausted:
+                try:
+                    # Iterate through cursor without calling limit() again
+                    batch = []
+                    for i, doc in enumerate(self._mongo_cursor):
+                        if i >= self.arraysize:
+                            break
+                        batch.append(doc)
+
+                    if not batch:
+                        self._cache_exhausted = True
                         break
-                    batch.append(doc)
 
-                if not batch:
-                    self._cache_exhausted = True
-                    break
+                    # Process results through projection mapping
+                    processed_batch = [self._process_document(doc) for doc in batch]
+                    self._cached_results.extend(processed_batch)
+                    self._total_fetched += len(batch)
 
-                # Process results through projection mapping
-                processed_batch = [self._process_document(doc) for doc in batch]
-                self._cached_results.extend(processed_batch)
-                self._total_fetched += len(batch)
-
-            except PyMongoError as e:
-                self._errors.append({"error": str(e), "type": type(e).__name__})
-                raise DatabaseError(f"Error fetching results: {e}")
+                except PyMongoError as e:
+                    self._errors.append({"error": str(e), "type": type(e).__name__})
+                    raise DatabaseError(f"Error fetching results: {e}")
 
     def _process_document(self, doc: Dict[str, Any]) -> Dict[str, Any]:
         """Process a MongoDB document according to projection mapping"""
@@ -173,22 +200,32 @@ class ResultSet(CursorIterator):
         # Fetch all remaining results
         all_results = []
 
-        # Add cached results
-        all_results.extend(self._cached_results)
-        self._cached_results.clear()
-
-        # Fetch remaining from cursor
         try:
-            if not self._cache_exhausted:
-                # Iterate through all remaining documents in the cursor
-                remaining_docs = list(self._mongo_cursor)
-                if remaining_docs:
-                    # Process results through projection mapping
-                    processed_docs = [self._process_document(doc) for doc in remaining_docs]
-                    all_results.extend(processed_docs)
-                    self._total_fetched += len(remaining_docs)
+            if self._command_result is not None:
+                # Handle command result (db.command)
+                if not self._cache_exhausted:
+                    # Results are already processed in constructor, just extend
+                    all_results.extend(self._cached_results)
+                    self._total_fetched += len(self._cached_results)
+                    self._cache_exhausted = True
 
-                self._cache_exhausted = True
+            elif self._mongo_cursor is not None:
+                # Handle legacy mongo cursor (for backward compatibility)
+                # Add cached results
+                all_results.extend(self._cached_results)
+                self._cached_results.clear()
+
+                # Fetch remaining from cursor
+                if not self._cache_exhausted:
+                    # Iterate through all remaining documents in the cursor
+                    remaining_docs = list(self._mongo_cursor)
+                    if remaining_docs:
+                        # Process results through projection mapping
+                        processed_docs = [self._process_document(doc) for doc in remaining_docs]
+                        all_results.extend(processed_docs)
+                        self._total_fetched += len(remaining_docs)
+
+                    self._cache_exhausted = True
 
         except PyMongoError as e:
             self._errors.append({"error": str(e), "type": type(e).__name__})
@@ -209,11 +246,13 @@ class ResultSet(CursorIterator):
             try:
                 if self._mongo_cursor:
                     self._mongo_cursor.close()
+                # No special cleanup needed for command results
             except Exception as e:
                 _logger.warning(f"Error closing MongoDB cursor: {e}")
             finally:
                 self._is_closed = True
                 self._mongo_cursor = None
+                self._command_result = None
                 self._cached_results.clear()
 
     def __enter__(self):
