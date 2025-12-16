@@ -112,7 +112,8 @@ class Connection:
 
         Behavior:
         - If `database` parameter was provided explicitly, use that database name.
-        - Otherwise, try to use the MongoClient's default database (from the URI path). If no default is set, leave `self._database` as None.
+        - Otherwise, try to use the MongoClient's default database (from the URI path).
+          If no default is set, leave `self._database` as None.
         """
         if self._client is None:
             self._database = None
