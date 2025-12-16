@@ -1,19 +1,17 @@
 # -*- coding: utf-8 -*-
+import pytest
 from pymongosql.connection import Connection
 from pymongosql.cursor import Cursor
+from pymongosql.error import OperationalError
 
 
 class TestConnection:
     """Simplified test suite for Connection class - focuses on Connection-specific functionality"""
 
     def test_connection_init_no_defaults(self):
-        """Test that connection can be initialized with no parameters (PyMongo compatible)"""
-        conn = Connection()
-        assert "mongodb://" in conn.host and "27017" in conn.host
-        assert conn.port == 27017
-        assert conn.database_name is None
-        assert conn.is_connected
-        conn.close()
+        """Initializing with no database should raise an error (enforced)"""
+        with pytest.raises(OperationalError):
+            Connection()
 
     def test_connection_init_with_basic_params(self):
         """Test connection initialization with basic parameters"""
@@ -25,17 +23,21 @@ class TestConnection:
         conn.close()
 
     def test_connection_with_connect_false(self):
-        """Test connection with connect=False (PyMongo compatibility)"""
-        conn = Connection(host="localhost", port=27017, connect=False)
+        """Test connection with connect=False requires explicit database"""
+        # Without explicit database, constructing should raise
+        with pytest.raises(OperationalError):
+            Connection(host="localhost", port=27017, connect=False)
+
+        # With explicit database it should succeed
+        conn = Connection(host="localhost", port=27017, connect=False, database="test_db")
         assert conn.host == "mongodb://localhost:27017"
         assert conn.port == 27017
-        # Should have client but not necessarily connected yet
         assert conn._client is not None
         conn.close()
 
     def test_connection_pymongo_parameters(self):
-        """Test that PyMongo parameters are accepted"""
-        # Test that we can pass PyMongo-style parameters without errors
+        """Test that PyMongo parameters are accepted when a database is provided"""
+        # Provide explicit database to satisfy the enforced requirement
         conn = Connection(
             host="localhost",
             port=27017,
@@ -43,6 +45,7 @@ class TestConnection:
             serverSelectionTimeoutMS=10000,
             maxPoolSize=50,
             connect=False,  # Don't actually connect to avoid auth errors
+            database="test_db",
         )
         assert conn.host == "mongodb://localhost:27017"
         assert conn.port == 27017
@@ -128,3 +131,17 @@ class TestConnection:
         assert not conn.is_connected
         assert conn._client is None
         assert conn._database is None
+
+    def test_explicit_database_param_overrides_uri_default(self):
+        """Explicit database parameter should take precedence over URI default"""
+        conn = Connection(host="mongodb://localhost:27017/uri_db", database="explicit_db")
+        assert conn.database is not None
+        assert conn.database.name == "explicit_db"
+        conn.close()
+
+    def test_no_database_param_uses_client_default_database(self):
+        """When no explicit database parameter is passed, use client's default from URI if present"""
+        conn = Connection(host="mongodb://localhost:27017/default_db")
+        assert conn.database is not None
+        assert conn.database.name == "default_db"
+        conn.close()

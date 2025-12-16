@@ -7,7 +7,7 @@ from pymongo import MongoClient
 from pymongo.client_session import ClientSession
 from pymongo.collection import Collection
 from pymongo.database import Database
-from pymongo.errors import ConnectionFailure
+from pymongo.errors import ConnectionFailure, InvalidOperation
 
 from .common import BaseCursor
 from .cursor import Cursor
@@ -78,8 +78,8 @@ class Connection:
         else:
             # Just create the client without testing connection
             self._client = MongoClient(**self._pymongo_params)
-            if self._database_name:
-                self._database = self._client[self._database_name]
+            # Initialize the database according to explicit parameter or client's default
+            self._init_database()
 
     def _connect(self) -> None:
         """Establish connection to MongoDB"""
@@ -91,18 +91,52 @@ class Connection:
             # Test connection
             self._client.admin.command("ping")
 
-            # Set database if specified
-            if self._database_name:
-                self._database = self._client[self._database_name]
+            # Initialize the database according to explicit parameter or client's default
+            # This may raise OperationalError if no database could be determined; allow it to bubble up
+            self._init_database()
 
             _logger.info(f"Successfully connected to MongoDB at {self._host}:{self._port}")
 
         except ConnectionFailure as e:
             _logger.error(f"Failed to connect to MongoDB: {e}")
             raise OperationalError(f"Could not connect to MongoDB: {e}")
+        except OperationalError:
+            # Allow OperationalError (e.g., no database selected) to propagate unchanged
+            raise
         except Exception as e:
             _logger.error(f"Unexpected error during connection: {e}")
             raise DatabaseError(f"Database connection error: {e}")
+
+    def _init_database(self) -> None:
+        """Internal helper to initialize `self._database`.
+
+        Behavior:
+        - If `database` parameter was provided explicitly, use that database name.
+        - Otherwise, try to use the MongoClient's default database (from the URI path). If no default is set, leave `self._database` as None.
+        """
+        if self._client is None:
+            self._database = None
+            return
+
+        if self._database_name is not None:
+            # Explicit database parameter takes precedence
+            try:
+                self._database = self._client.get_database(self._database_name)
+            except Exception:
+                # Fallback to subscription style access
+                self._database = self._client[self._database_name]
+        else:
+            # No explicit database; try to get client's default
+            try:
+                self._database = self._client.get_default_database()
+            except InvalidOperation:
+                self._database = None
+
+        # Enforce that a database must be selected
+        if self._database is None:
+            raise OperationalError(
+                "No database selected. Provide 'database' parameter or include a database in the URI path."
+            )
 
     @property
     def client(self) -> MongoClient:
