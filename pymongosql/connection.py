@@ -47,7 +47,7 @@ class Connection:
 
         # Store all PyMongo parameters to pass through directly
         self._pymongo_params = kwargs.copy()
-        ##Dummy
+
         # Add explicit parameters to kwargs for MongoClient
         if host is not None:
             self._pymongo_params["host"] = host
