@@ -7,7 +7,7 @@ from pymongo import MongoClient
 from pymongo.client_session import ClientSession
 from pymongo.collection import Collection
 from pymongo.database import Database
-from pymongo.errors import ConnectionFailure, InvalidOperation
+from pymongo.errors import ConnectionFailure
 
 from .common import BaseCursor
 from .cursor import Cursor
@@ -97,12 +97,12 @@ class Connection:
 
             _logger.info(f"Successfully connected to MongoDB at {self._host}:{self._port}")
 
-        except ConnectionFailure as e:
-            _logger.error(f"Failed to connect to MongoDB: {e}")
-            raise OperationalError(f"Could not connect to MongoDB: {e}")
         except OperationalError:
             # Allow OperationalError (e.g., no database selected) to propagate unchanged
             raise
+        except ConnectionFailure as e:
+            _logger.error(f"Failed to connect to MongoDB: {e}")
+            raise OperationalError(f"Could not connect to MongoDB: {e}")
         except Exception as e:
             _logger.error(f"Unexpected error during connection: {e}")
             raise DatabaseError(f"Database connection error: {e}")
@@ -130,7 +130,8 @@ class Connection:
             # No explicit database; try to get client's default
             try:
                 self._database = self._client.get_default_database()
-            except InvalidOperation:
+            except Exception:
+                # PyMongo can raise various exceptions for missing database
                 self._database = None
 
         # Enforce that a database must be selected
