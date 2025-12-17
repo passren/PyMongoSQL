@@ -68,7 +68,7 @@ class TestResultSet:
     def test_fetchone_empty_projection(self, conn):
         """Test fetchone with empty projection (SELECT *)"""
         db = conn.database
-        command_result = db.command({"find": "users", "limit": 1})
+        command_result = db.command({"find": "users", "limit": 1, "sort": {"_id": 1}})
 
         query_plan = QueryPlan(collection="users", projection_stage=self.PROJECTION_EMPTY)
         result_set = ResultSet(command_result=command_result, query_plan=query_plan)
