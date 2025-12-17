@@ -8,7 +8,7 @@ from antlr4.error.ErrorListener import ErrorListener
 
 from ..error import SqlSyntaxError
 from .ast import MongoSQLLexer, MongoSQLParser, MongoSQLParserVisitor
-from .builder import QueryPlan
+from .builder import ExecutionPlan
 
 _logger = logging.getLogger(__name__)
 
@@ -126,27 +126,27 @@ class SQLParser(metaclass=ABCMeta):
 
         _logger.debug("AST validation successful")
 
-    def get_query_plan(self) -> QueryPlan:
-        """Parse SQL and return QueryPlan directly"""
+    def get_execution_plan(self) -> ExecutionPlan:
+        """Parse SQL and return ExecutionPlan directly"""
         if self._ast is None:
             raise SqlSyntaxError("No AST available - parsing may have failed")
 
         try:
-            # Create and use visitor to generate QueryPlan
+            # Create and use visitor to generate ExecutionPlan
             self._visitor = MongoSQLParserVisitor()
             self._visitor.visit(self._ast)
-            query_plan = self._visitor.parse_to_query_plan()
+            execution_plan = self._visitor.parse_to_execution_plan()
 
-            # Validate query plan
-            if not query_plan.validate():
-                raise SqlSyntaxError("Generated query plan is invalid")
+            # Validate execution plan
+            if not execution_plan.validate():
+                raise SqlSyntaxError("Generated execution plan is invalid")
 
-            _logger.debug(f"Generated QueryPlan for collection: {query_plan.collection}")
-            return query_plan
+            _logger.debug(f"Generated ExecutionPlan for collection: {execution_plan.collection}")
+            return execution_plan
 
         except Exception as e:
-            _logger.error(f"Failed to generate QueryPlan from AST: {e}")
-            raise SqlSyntaxError(f"QueryPlan generation failed: {e}") from e
+            _logger.error(f"Failed to generate ExecutionPlan from AST: {e}")
+            raise SqlSyntaxError(f"ExecutionPlan generation failed: {e}") from e
 
     def get_parse_info(self) -> dict:
         """Get detailed parsing information for debugging"""

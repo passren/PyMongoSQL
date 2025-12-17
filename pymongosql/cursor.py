@@ -8,7 +8,7 @@ from pymongo.errors import PyMongoError
 from .common import BaseCursor, CursorIterator
 from .error import DatabaseError, OperationalError, ProgrammingError, SqlSyntaxError
 from .result_set import ResultSet
-from .sql.builder import QueryPlan
+from .sql.builder import ExecutionPlan
 from .sql.parser import SQLParser
 
 if TYPE_CHECKING:
@@ -31,7 +31,7 @@ class Cursor(BaseCursor, CursorIterator):
         self._kwargs = kwargs
         self._result_set: Optional[ResultSet] = None
         self._result_set_class = ResultSet
-        self._current_query_plan: Optional[QueryPlan] = None
+        self._current_execution_plan: Optional[ExecutionPlan] = None
         self._mongo_cursor: Optional[MongoCursor] = None
         self._is_closed = False
 
@@ -78,16 +78,16 @@ class Cursor(BaseCursor, CursorIterator):
         if self._is_closed:
             raise ProgrammingError("Cursor is closed")
 
-    def _parse_sql(self, sql: str) -> QueryPlan:
-        """Parse SQL statement and return QueryPlan"""
+    def _parse_sql(self, sql: str) -> ExecutionPlan:
+        """Parse SQL statement and return ExecutionPlan"""
         try:
             parser = SQLParser(sql)
-            query_plan = parser.get_query_plan()
+            execution_plan = parser.get_execution_plan()
 
-            if not query_plan.validate():
+            if not execution_plan.validate():
                 raise SqlSyntaxError("Generated query plan is invalid")
 
-            return query_plan
+            return execution_plan
 
         except SqlSyntaxError:
             raise
@@ -95,38 +95,37 @@ class Cursor(BaseCursor, CursorIterator):
             _logger.error(f"SQL parsing failed: {e}")
             raise SqlSyntaxError(f"Failed to parse SQL: {e}")
 
-    def _execute_query_plan(self, query_plan: QueryPlan) -> None:
-        """Execute a QueryPlan against MongoDB using db.command"""
+    def _execute_execution_plan(self, execution_plan: ExecutionPlan) -> None:
+        """Execute an ExecutionPlan against MongoDB using db.command"""
         try:
             # Get database
-            if not query_plan.collection:
+            if not execution_plan.collection:
                 raise ProgrammingError("No collection specified in query")
 
             db = self.connection.database
 
             # Build MongoDB find command
-            find_command = {"find": query_plan.collection, "filter": query_plan.filter_stage or {}}
+            find_command = {"find": execution_plan.collection, "filter": execution_plan.filter_stage or {}}
 
-            # Convert projection stage from alias mapping to MongoDB format
-            if query_plan.projection_stage:
-                # Convert {"field": "alias"} to {"field": 1} for MongoDB
-                find_command["projection"] = {field: 1 for field in query_plan.projection_stage.keys()}
+            # Apply projection if specified (already in MongoDB format)
+            if execution_plan.projection_stage:
+                find_command["projection"] = execution_plan.projection_stage
 
             # Apply sort if specified
-            if query_plan.sort_stage:
+            if execution_plan.sort_stage:
                 sort_spec = {}
-                for sort_dict in query_plan.sort_stage:
+                for sort_dict in execution_plan.sort_stage:
                     for field, direction in sort_dict.items():
                         sort_spec[field] = direction
                 find_command["sort"] = sort_spec
 
             # Apply skip if specified
-            if query_plan.skip_stage:
-                find_command["skip"] = query_plan.skip_stage
+            if execution_plan.skip_stage:
+                find_command["skip"] = execution_plan.skip_stage
 
             # Apply limit if specified
-            if query_plan.limit_stage:
-                find_command["limit"] = query_plan.limit_stage
+            if execution_plan.limit_stage:
+                find_command["limit"] = execution_plan.limit_stage
 
             _logger.debug(f"Executing MongoDB command: {find_command}")
 
@@ -134,9 +133,11 @@ class Cursor(BaseCursor, CursorIterator):
             result = db.command(find_command)
 
             # Create result set from command result
-            self._result_set = self._result_set_class(command_result=result, query_plan=query_plan, **self._kwargs)
+            self._result_set = self._result_set_class(
+                command_result=result, execution_plan=execution_plan, **self._kwargs
+            )
 
-            _logger.info(f"Query executed successfully on collection '{query_plan.collection}'")
+            _logger.info(f"Query executed successfully on collection '{execution_plan.collection}'")
 
         except PyMongoError as e:
             _logger.error(f"MongoDB command execution failed: {e}")
@@ -161,11 +162,11 @@ class Cursor(BaseCursor, CursorIterator):
             _logger.warning("Parameter substitution not yet implemented, ignoring parameters")
 
         try:
-            # Parse SQL to QueryPlan
-            self._current_query_plan = self._parse_sql(operation)
+            # Parse SQL to ExecutionPlan
+            self._current_execution_plan = self._parse_sql(operation)
 
-            # Execute the query plan
-            self._execute_query_plan(self._current_query_plan)
+            # Execute the execution plan
+            self._execute_execution_plan(self._current_execution_plan)
 
             return self
 

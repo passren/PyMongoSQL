@@ -7,7 +7,7 @@ from pymongo.errors import PyMongoError
 
 from .common import CursorIterator
 from .error import DatabaseError, ProgrammingError
-from .sql.builder import QueryPlan
+from .sql.builder import ExecutionPlan
 
 _logger = logging.getLogger(__name__)
 
@@ -19,7 +19,7 @@ class ResultSet(CursorIterator):
         self,
         command_result: Optional[Dict[str, Any]] = None,
         mongo_cursor: Optional[MongoCursor] = None,
-        query_plan: QueryPlan = None,
+        execution_plan: ExecutionPlan = None,
         arraysize: int = None,
         **kwargs,
     ) -> None:
@@ -32,7 +32,7 @@ class ResultSet(CursorIterator):
             # Extract cursor info from command result
             self._result_cursor = command_result.get("cursor", {})
             self._raw_results = self._result_cursor.get("firstBatch", [])
-            self._cached_results: List[Dict[str, Any]] = []  # Will be populated after query_plan is set
+            self._cached_results: List[Dict[str, Any]] = []
         elif mongo_cursor is not None:
             self._mongo_cursor = mongo_cursor
             self._command_result = None
@@ -41,14 +41,14 @@ class ResultSet(CursorIterator):
         else:
             raise ProgrammingError("Either command_result or mongo_cursor must be provided")
 
-        self._query_plan = query_plan
+        self._execution_plan = execution_plan
         self._is_closed = False
         self._cache_exhausted = False
         self._total_fetched = 0
         self._description: Optional[List[Tuple[str, str, None, None, None, None, None]]] = None
         self._errors: List[Dict[str, str]] = []
 
-        # Apply projection mapping for command results now that query_plan is set
+        # Apply projection mapping for command results now that execution_plan is set
         if command_result is not None and self._raw_results:
             self._cached_results = [self._process_document(doc) for doc in self._raw_results]
 
@@ -56,18 +56,18 @@ class ResultSet(CursorIterator):
         self._build_description()
 
     def _build_description(self) -> None:
-        """Build column description from query plan projection"""
-        if not self._query_plan.projection_stage:
+        """Build column description from execution plan projection"""
+        if not self._execution_plan.projection_stage:
             # No projection specified, description will be built dynamically
             self._description = None
             return
 
-        # Build description from projection
+        # Build description from projection (now in MongoDB format {field: 1})
         description = []
-        for field_name, alias in self._query_plan.projection_stage.items():
+        for field_name, include_flag in self._execution_plan.projection_stage.items():
             # SQL cursor description format: (name, type_code, display_size, internal_size, precision, scale, null_ok)
-            column_name = alias if alias != field_name else field_name
-            description.append((column_name, "VARCHAR", None, None, None, None, None))
+            if include_flag == 1:  # Field is included in projection
+                description.append((field_name, "VARCHAR", None, None, None, None, None))
 
         self._description = description
 
@@ -111,20 +111,19 @@ class ResultSet(CursorIterator):
 
     def _process_document(self, doc: Dict[str, Any]) -> Dict[str, Any]:
         """Process a MongoDB document according to projection mapping"""
-        if not self._query_plan.projection_stage:
+        if not self._execution_plan.projection_stage:
             # No projection, return document as-is (including _id)
             return dict(doc)
 
-        # Apply projection mapping
+        # Apply projection mapping (now using MongoDB format {field: 1})
         processed = {}
-        for field_name, alias in self._query_plan.projection_stage.items():
-            if field_name in doc:
-                output_name = alias if alias != field_name else field_name
-                processed[output_name] = doc[field_name]
-            elif field_name != "_id":  # _id might be excluded by MongoDB
-                # Field not found, set to None
-                output_name = alias if alias != field_name else field_name
-                processed[output_name] = None
+        for field_name, include_flag in self._execution_plan.projection_stage.items():
+            if include_flag == 1:  # Field is included in projection
+                if field_name in doc:
+                    processed[field_name] = doc[field_name]
+                elif field_name != "_id":  # _id might be excluded by MongoDB
+                    # Field not found, set to None
+                    processed[field_name] = None
 
         return processed
 

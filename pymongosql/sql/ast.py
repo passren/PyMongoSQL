@@ -3,7 +3,7 @@ import logging
 from typing import Any, Dict
 
 from ..error import SqlSyntaxError
-from .builder import QueryPlan
+from .builder import ExecutionPlan
 from .handler import BaseHandler, HandlerFactory, ParseResult
 from .partiql.PartiQLLexer import PartiQLLexer
 from .partiql.PartiQLParser import PartiQLParser
@@ -46,9 +46,9 @@ class MongoSQLParserVisitor(PartiQLParserVisitor):
         """Get the current parse result"""
         return self._parse_result
 
-    def parse_to_query_plan(self) -> QueryPlan:
-        """Convert the parse result to a QueryPlan"""
-        return QueryPlan(
+    def parse_to_execution_plan(self) -> ExecutionPlan:
+        """Convert the parse result to an ExecutionPlan"""
+        return ExecutionPlan(
             collection=self._parse_result.collection,
             filter_stage=self._parse_result.filter_conditions,
             projection_stage=self._parse_result.projection,
@@ -113,4 +113,44 @@ class MongoSQLParserVisitor(PartiQLParserVisitor):
             return self.visitChildren(ctx)
         except Exception as e:
             _logger.warning(f"Error processing WHERE clause: {e}")
+            return self.visitChildren(ctx)
+
+    def visitOrderByClause(self, ctx: PartiQLParser.OrderByClauseContext) -> Any:
+        """Handle ORDER BY clause for sorting"""
+        _logger.debug("Processing ORDER BY clause")
+
+        try:
+            sort_specs = []
+            if hasattr(ctx, "orderSortSpec") and ctx.orderSortSpec():
+                for sort_spec in ctx.orderSortSpec():
+                    field_name = sort_spec.expr().getText() if sort_spec.expr() else "_id"
+                    # Check for ASC/DESC (default is ASC = 1)
+                    direction = 1  # ASC
+                    if hasattr(sort_spec, "DESC") and sort_spec.DESC():
+                        direction = -1  # DESC
+                    # Convert to the expected format: List[Dict[str, int]]
+                    sort_specs.append({field_name: direction})
+
+            self._parse_result.sort_fields = sort_specs
+            _logger.debug(f"Extracted sort specifications: {sort_specs}")
+            return self.visitChildren(ctx)
+        except Exception as e:
+            _logger.warning(f"Error processing ORDER BY clause: {e}")
+            return self.visitChildren(ctx)
+
+    def visitLimitClause(self, ctx: PartiQLParser.LimitClauseContext) -> Any:
+        """Handle LIMIT clause for result limiting"""
+        _logger.debug("Processing LIMIT clause")
+        try:
+            if hasattr(ctx, "exprSelect") and ctx.exprSelect():
+                limit_text = ctx.exprSelect().getText()
+                try:
+                    limit_value = int(limit_text)
+                    self._parse_result.limit_value = limit_value
+                    _logger.debug(f"Extracted limit value: {limit_value}")
+                except ValueError as e:
+                    _logger.warning(f"Invalid LIMIT value '{limit_text}': {e}")
+            return self.visitChildren(ctx)
+        except Exception as e:
+            _logger.warning(f"Error processing LIMIT clause: {e}")
             return self.visitChildren(ctx)
