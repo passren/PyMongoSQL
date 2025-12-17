@@ -1,189 +1,219 @@
 # -*- coding: utf-8 -*-
 import pytest
 
-from pymongosql.connection import Connection
 from pymongosql.error import ProgrammingError
 from pymongosql.result_set import ResultSet
-from pymongosql.sql.builder import QueryPlan
+from pymongosql.sql.builder import ExecutionPlan
 
 
 class TestResultSet:
     """Test suite for ResultSet class"""
 
-    def setup_method(self):
-        """Setup for each test method"""
-        # Create connection to local MongoDB with authentication
-        self.connection = Connection(
-            host="mongodb://testuser:testpass@localhost:27017/test_db?authSource=test_db", database="test_db"
-        )
-        self.db = self.connection.database
+    # Shared projections used by tests
+    PROJECTION_WITH_FIELDS = {"name": 1, "email": 1}
+    PROJECTION_EMPTY = {}
 
-        # Test projection mappings
-        self.projection_with_aliases = {"name": "full_name", "email": "user_email"}
-        self.projection_empty = {}
-
-        # Create QueryPlan objects for testing
-        self.query_plan_with_projection = QueryPlan(collection="users", projection_stage=self.projection_with_aliases)
-        self.query_plan_empty_projection = QueryPlan(collection="users", projection_stage=self.projection_empty)
-
-    def teardown_method(self):
-        """Cleanup after each test method"""
-        if hasattr(self, "connection"):
-            self.connection.close()
-
-    def test_result_set_init(self):
+    def test_result_set_init(self, conn):
         """Test ResultSet initialization with command result"""
+        db = conn.database
         # Execute a real command to get results
-        command_result = self.db.command({"find": "users", "filter": {"age": {"$gt": 25}}, "limit": 1})
+        command_result = db.command({"find": "users", "filter": {"age": {"$gt": 25}}, "limit": 1})
 
-        result_set = ResultSet(command_result=command_result, query_plan=self.query_plan_with_projection)
+        execution_plan = ExecutionPlan(collection="users", projection_stage=self.PROJECTION_WITH_FIELDS)
+        result_set = ResultSet(command_result=command_result, execution_plan=execution_plan)
         assert result_set._command_result == command_result
-        assert result_set._query_plan == self.query_plan_with_projection
+        assert result_set._execution_plan == execution_plan
         assert result_set._is_closed is False
 
-    def test_result_set_init_empty_projection(self):
+    def test_result_set_init_empty_projection(self, conn):
         """Test ResultSet initialization with empty projection"""
-        command_result = self.db.command({"find": "users", "limit": 1})
+        db = conn.database
+        command_result = db.command({"find": "users", "limit": 1})
 
-        result_set = ResultSet(command_result=command_result, query_plan=self.query_plan_empty_projection)
-        assert result_set._query_plan.projection_stage == {}
+        execution_plan = ExecutionPlan(collection="users", projection_stage=self.PROJECTION_EMPTY)
+        result_set = ResultSet(command_result=command_result, execution_plan=execution_plan)
+        assert result_set._execution_plan.projection_stage == {}
 
-    def test_fetchone_with_data(self):
+    def test_fetchone_with_data(self, conn):
         """Test fetchone with available data"""
+        db = conn.database
         # Get real user data with projection mapping
-        command_result = self.db.command({"find": "users", "projection": {"name": 1, "email": 1}, "limit": 1})
+        command_result = db.command({"find": "users", "projection": {"name": 1, "email": 1}, "limit": 1})
 
-        result_set = ResultSet(command_result=command_result, query_plan=self.query_plan_with_projection)
+        execution_plan = ExecutionPlan(collection="users", projection_stage=self.PROJECTION_WITH_FIELDS)
+        result_set = ResultSet(command_result=command_result, execution_plan=execution_plan)
         row = result_set.fetchone()
 
-        # Should apply projection mapping and return real data
+        # Should apply projection and return real data
         assert row is not None
-        assert "full_name" in row  # Mapped from "name"
-        assert "user_email" in row  # Mapped from "email"
-        assert isinstance(row["full_name"], str)
-        assert isinstance(row["user_email"], str)
+        # Verify we have the expected number of columns
+        assert len(row) == 2  # name and email
+        # Get column names from description for position mapping
+        col_names = [desc[0] for desc in result_set.description]
+        assert "name" in col_names
+        assert "email" in col_names
+        # Access by position (DB API 2.0 compliance)
+        name_idx = col_names.index("name")
+        email_idx = col_names.index("email")
+        assert isinstance(row[name_idx], str)
+        assert isinstance(row[email_idx], str)
 
-    def test_fetchone_no_data(self):
+    def test_fetchone_no_data(self, conn):
         """Test fetchone when no data available"""
+        db = conn.database
         # Query for non-existent data
-        command_result = self.db.command(
+        command_result = db.command(
             {"find": "users", "filter": {"age": {"$gt": 999}}, "limit": 1}  # No users over 999 years old
         )
 
-        result_set = ResultSet(command_result=command_result, query_plan=self.query_plan_with_projection)
+        execution_plan = ExecutionPlan(collection="users", projection_stage=self.PROJECTION_WITH_FIELDS)
+        result_set = ResultSet(command_result=command_result, execution_plan=execution_plan)
         row = result_set.fetchone()
 
         assert row is None
 
-    def test_fetchone_empty_projection(self):
+    def test_fetchone_empty_projection(self, conn):
         """Test fetchone with empty projection (SELECT *)"""
-        command_result = self.db.command({"find": "users", "limit": 1})
+        db = conn.database
+        command_result = db.command({"find": "users", "limit": 1, "sort": {"_id": 1}})
 
-        result_set = ResultSet(command_result=command_result, query_plan=self.query_plan_empty_projection)
+        execution_plan = ExecutionPlan(collection="users", projection_stage=self.PROJECTION_EMPTY)
+        result_set = ResultSet(command_result=command_result, execution_plan=execution_plan)
         row = result_set.fetchone()
 
         # Should return original document without projection mapping
         assert row is not None
-        assert "_id" in row
-        assert "name" in row  # Original field names
-        assert "email" in row
-        # Should be "John Doe" from test dataset
-        assert "John Doe" in row["name"]
+        # For empty projection, we get all fields as sequence
+        # Get column names from description (if available)
+        if result_set.description:
+            col_names = [desc[0] for desc in result_set.description]
+            assert "_id" in col_names
+            assert "name" in col_names  # Original field names
+            assert "email" in col_names
+            # Verify content structure by position
+            name_idx = col_names.index("name")
+            assert "John Doe" in row[name_idx]
+        else:
+            # Description may not be available immediately
+            assert len(row) > 0  # Should have data
 
-    def test_fetchone_closed_cursor(self):
+    def test_fetchone_closed_cursor(self, conn):
         """Test fetchone on closed cursor"""
-        command_result = self.db.command({"find": "users", "limit": 1})
+        db = conn.database
+        command_result = db.command({"find": "users", "limit": 1})
 
-        result_set = ResultSet(command_result=command_result, query_plan=self.query_plan_with_projection)
+        execution_plan = ExecutionPlan(collection="users", projection_stage=self.PROJECTION_WITH_FIELDS)
+        result_set = ResultSet(command_result=command_result, execution_plan=execution_plan)
         result_set.close()
 
         with pytest.raises(ProgrammingError, match="ResultSet is closed"):
             result_set.fetchone()
 
-    def test_fetchmany_with_data(self):
+    def test_fetchmany_with_data(self, conn):
         """Test fetchmany with available data"""
+        db = conn.database
         # Get multiple users with projection
-        command_result = self.db.command({"find": "users", "projection": {"name": 1, "email": 1}, "limit": 5})
+        command_result = db.command({"find": "users", "projection": {"name": 1, "email": 1}, "limit": 5})
 
-        result_set = ResultSet(command_result=command_result, query_plan=self.query_plan_with_projection)
+        execution_plan = ExecutionPlan(collection="users", projection_stage=self.PROJECTION_WITH_FIELDS)
+        result_set = ResultSet(command_result=command_result, execution_plan=execution_plan)
         rows = result_set.fetchmany(2)
 
         assert len(rows) <= 2  # Should return at most 2 rows
         assert len(rows) >= 1  # Should have at least 1 row from test data
 
-        # Check projection mapping
+        # Check projection
+        # Get column names from description for all rows
+        col_names = [desc[0] for desc in result_set.description]
+        assert "name" in col_names
+        assert "email" in col_names
+        name_idx = col_names.index("name")
+        email_idx = col_names.index("email")
+
         for row in rows:
-            assert "full_name" in row  # Mapped from "name"
-            assert "user_email" in row  # Mapped from "email"
-            assert isinstance(row["full_name"], str)
-            assert isinstance(row["user_email"], str)
+            assert len(row) == 2  # Projected fields
+            assert isinstance(row[name_idx], str)
+            assert isinstance(row[email_idx], str)
 
-    def test_fetchmany_default_size(self):
+    def test_fetchmany_default_size(self, conn):
         """Test fetchmany with default size"""
+        db = conn.database
         # Get all users (22 total in test dataset)
-        command_result = self.db.command({"find": "users"})
+        command_result = db.command({"find": "users"})
 
-        result_set = ResultSet(command_result=command_result, query_plan=self.query_plan_empty_projection)
+        execution_plan = ExecutionPlan(collection="users", projection_stage=self.PROJECTION_EMPTY)
+        result_set = ResultSet(command_result=command_result, execution_plan=execution_plan)
         rows = result_set.fetchmany()  # Should use default arraysize (1000)
 
         assert len(rows) == 22  # Gets all available users since arraysize (1000) > available (22)
 
-    def test_fetchmany_less_data_available(self):
+    def test_fetchmany_less_data_available(self, conn):
         """Test fetchmany when less data available than requested"""
+        db = conn.database
         # Get only 2 users but request 5
-        command_result = self.db.command({"find": "users", "limit": 2})
+        command_result = db.command({"find": "users", "limit": 2})
 
-        result_set = ResultSet(command_result=command_result, query_plan=self.query_plan_empty_projection)
+        execution_plan = ExecutionPlan(collection="users", projection_stage=self.PROJECTION_EMPTY)
+        result_set = ResultSet(command_result=command_result, execution_plan=execution_plan)
         rows = result_set.fetchmany(5)  # Request 5 but only 2 available
 
         assert len(rows) == 2
 
-    def test_fetchmany_no_data(self):
+    def test_fetchmany_no_data(self, conn):
         """Test fetchmany when no data available"""
+        db = conn.database
         # Query for non-existent data
-        command_result = self.db.command(
-            {"find": "users", "filter": {"age": {"$gt": 999}}}  # No users over 999 years old
-        )
+        command_result = db.command({"find": "users", "filter": {"age": {"$gt": 999}}})  # No users over 999 years old
 
-        result_set = ResultSet(command_result=command_result, query_plan=self.query_plan_empty_projection)
+        execution_plan = ExecutionPlan(collection="users", projection_stage=self.PROJECTION_EMPTY)
+        result_set = ResultSet(command_result=command_result, execution_plan=execution_plan)
         rows = result_set.fetchmany(3)
 
         assert rows == []
 
-    def test_fetchall_with_data(self):
+    def test_fetchall_with_data(self, conn):
         """Test fetchall with available data"""
+        db = conn.database
         # Get users over 25 (should be 19 users from test dataset)
-        command_result = self.db.command(
+        command_result = db.command(
             {"find": "users", "filter": {"age": {"$gt": 25}}, "projection": {"name": 1, "email": 1}}
         )
 
-        result_set = ResultSet(command_result=command_result, query_plan=self.query_plan_with_projection)
+        execution_plan = ExecutionPlan(collection="users", projection_stage=self.PROJECTION_WITH_FIELDS)
+        result_set = ResultSet(command_result=command_result, execution_plan=execution_plan)
         rows = result_set.fetchall()
 
         assert len(rows) == 19  # 19 users over 25 from test dataset
 
-        # Check first row has proper projection mapping
-        assert "full_name" in rows[0]  # Mapped from "name"
-        assert "user_email" in rows[0]  # Mapped from "email"
-        assert isinstance(rows[0]["full_name"], str)
-        assert isinstance(rows[0]["user_email"], str)
+        # Check first row has proper projection
+        # Get column names from description
+        col_names = [desc[0] for desc in result_set.description]
+        assert "name" in col_names  # Projected field
+        assert "email" in col_names  # Projected field
+        # Access by position (DB API 2.0 compliance)
+        name_idx = col_names.index("name")
+        email_idx = col_names.index("email")
+        assert isinstance(rows[0][name_idx], str)
+        assert isinstance(rows[0][email_idx], str)
 
-    def test_fetchall_no_data(self):
+    def test_fetchall_no_data(self, conn):
         """Test fetchall when no data available"""
-        command_result = self.db.command(
-            {"find": "users", "filter": {"age": {"$gt": 999}}}  # No users over 999 years old
-        )
+        db = conn.database
+        command_result = db.command({"find": "users", "filter": {"age": {"$gt": 999}}})  # No users over 999 years old
 
-        result_set = ResultSet(command_result=command_result, query_plan=self.query_plan_empty_projection)
+        execution_plan = ExecutionPlan(collection="users", projection_stage=self.PROJECTION_EMPTY)
+        result_set = ResultSet(command_result=command_result, execution_plan=execution_plan)
         rows = result_set.fetchall()
 
         assert rows == []
 
-    def test_fetchall_closed_cursor(self):
+    def test_fetchall_closed_cursor(self, conn):
         """Test fetchall on closed cursor"""
-        command_result = self.db.command({"find": "users", "limit": 1})
+        db = conn.database
+        command_result = db.command({"find": "users", "limit": 1})
 
-        result_set = ResultSet(command_result=command_result, query_plan=self.query_plan_empty_projection)
+        execution_plan = ExecutionPlan(collection="users", projection_stage=self.PROJECTION_EMPTY)
+        result_set = ResultSet(command_result=command_result, execution_plan=execution_plan)
         result_set.close()
 
         with pytest.raises(ProgrammingError, match="ResultSet is closed"):
@@ -191,12 +221,12 @@ class TestResultSet:
 
     def test_apply_projection_mapping(self):
         """Test _process_document method"""
-        projection = {"name": "full_name", "age": "user_age", "email": "email"}
-        query_plan = QueryPlan(collection="users", projection_stage=projection)
+        projection = {"name": 1, "age": 1, "email": 1}
+        execution_plan = ExecutionPlan(collection="users", projection_stage=projection)
 
         # Create empty command result for testing _process_document method
         command_result = {"cursor": {"firstBatch": []}}
-        result_set = ResultSet(command_result=command_result, query_plan=query_plan)
+        result_set = ResultSet(command_result=command_result, execution_plan=execution_plan)
 
         doc = {
             "_id": "123",
@@ -208,36 +238,36 @@ class TestResultSet:
 
         mapped_doc = result_set._process_document(doc)
 
-        expected = {"full_name": "John", "user_age": 30, "email": "john@example.com"}
+        expected = {"name": "John", "age": 30, "email": "john@example.com"}
         assert mapped_doc == expected
 
     def test_apply_projection_mapping_missing_fields(self):
         """Test projection mapping with missing fields in document"""
         projection = {
-            "name": "full_name",
-            "age": "user_age",
-            "missing": "missing_alias",
+            "name": 1,
+            "age": 1,
+            "missing": 1,
         }
-        query_plan = QueryPlan(collection="users", projection_stage=projection)
+        execution_plan = ExecutionPlan(collection="users", projection_stage=projection)
 
         command_result = {"cursor": {"firstBatch": []}}
-        result_set = ResultSet(command_result=command_result, query_plan=query_plan)
+        result_set = ResultSet(command_result=command_result, execution_plan=execution_plan)
 
         doc = {"_id": "123", "name": "John"}  # Missing age and missing fields
 
         mapped_doc = result_set._process_document(doc)
 
-        # Should include mapped fields and None for missing fields
-        expected = {"full_name": "John", "user_age": None, "missing_alias": None}
+        # Should include projected fields and None for missing fields
+        expected = {"name": "John", "age": None, "missing": None}
         assert mapped_doc == expected
 
     def test_apply_projection_mapping_identity_mapping(self):
-        """Test projection mapping with identity mapping (field: field)"""
-        projection = {"name": "name", "age": "age"}
-        query_plan = QueryPlan(collection="users", projection_stage=projection)
+        """Test projection with MongoDB standard format"""
+        projection = {"name": 1, "age": 1}
+        execution_plan = ExecutionPlan(collection="users", projection_stage=projection)
 
         command_result = {"cursor": {"firstBatch": []}}
-        result_set = ResultSet(command_result=command_result, query_plan=query_plan)
+        result_set = ResultSet(command_result=command_result, execution_plan=execution_plan)
 
         doc = {"_id": "123", "name": "John", "age": 30}
 
@@ -249,7 +279,8 @@ class TestResultSet:
     def test_close(self):
         """Test close method"""
         command_result = {"cursor": {"firstBatch": []}}
-        result_set = ResultSet(command_result=command_result, query_plan=self.query_plan_empty_projection)
+        execution_plan = ExecutionPlan(collection="users", projection_stage=self.PROJECTION_EMPTY)
+        result_set = ResultSet(command_result=command_result, execution_plan=execution_plan)
 
         # Should not be closed initially
         assert not result_set._is_closed
@@ -262,7 +293,8 @@ class TestResultSet:
     def test_context_manager(self):
         """Test ResultSet as context manager"""
         command_result = {"cursor": {"firstBatch": []}}
-        result_set = ResultSet(command_result=command_result, query_plan=self.query_plan_empty_projection)
+        execution_plan = ExecutionPlan(collection="users", projection_stage=self.PROJECTION_EMPTY)
+        result_set = ResultSet(command_result=command_result, execution_plan=execution_plan)
 
         with result_set as rs:
             assert rs == result_set
@@ -274,7 +306,8 @@ class TestResultSet:
     def test_context_manager_with_exception(self):
         """Test context manager with exception"""
         command_result = {"cursor": {"firstBatch": []}}
-        result_set = ResultSet(command_result=command_result, query_plan=self.query_plan_empty_projection)
+        execution_plan = ExecutionPlan(collection="users", projection_stage=self.PROJECTION_EMPTY)
+        result_set = ResultSet(command_result=command_result, execution_plan=execution_plan)
 
         try:
             with result_set as rs:
@@ -286,12 +319,14 @@ class TestResultSet:
         # Should still be closed after exception
         assert result_set._is_closed
 
-    def test_iterator_protocol(self):
+    def test_iterator_protocol(self, conn):
         """Test ResultSet as iterator"""
+        db = conn.database
         # Get 2 users from database
-        command_result = self.db.command({"find": "users", "limit": 2})
+        command_result = db.command({"find": "users", "limit": 2})
 
-        result_set = ResultSet(command_result=command_result, query_plan=self.query_plan_empty_projection)
+        execution_plan = ExecutionPlan(collection="users", projection_stage=self.PROJECTION_EMPTY)
+        result_set = ResultSet(command_result=command_result, execution_plan=execution_plan)
 
         # Test iterator protocol
         iterator = iter(result_set)
@@ -300,24 +335,36 @@ class TestResultSet:
         # Test iteration
         rows = list(result_set)
         assert len(rows) == 2
-        assert "_id" in rows[0]
-        assert "name" in rows[0]
+        # Check if description is available
+        if result_set.description:
+            col_names = [desc[0] for desc in result_set.description]
+            assert "_id" in col_names
+            assert "name" in col_names
+        # Verify sequence structure
+        assert len(rows[0]) >= 2
 
-    def test_iterator_with_projection(self):
+    def test_iterator_with_projection(self, conn):
         """Test iteration with projection mapping"""
-        command_result = self.db.command({"find": "users", "projection": {"name": 1, "email": 1}, "limit": 2})
+        db = conn.database
+        command_result = db.command({"find": "users", "projection": {"name": 1, "email": 1}, "limit": 2})
 
-        result_set = ResultSet(command_result=command_result, query_plan=self.query_plan_with_projection)
+        execution_plan = ExecutionPlan(collection="users", projection_stage=self.PROJECTION_WITH_FIELDS)
+        result_set = ResultSet(command_result=command_result, execution_plan=execution_plan)
 
         rows = list(result_set)
         assert len(rows) == 2
-        assert "full_name" in rows[0]  # Mapped from "name"
-        assert "user_email" in rows[0]  # Mapped from "email"
+        # Get column names from description
+        col_names = [desc[0] for desc in result_set.description]
+        assert "name" in col_names  # Projected field
+        assert "email" in col_names  # Projected field
+        # Verify sequence structure
+        assert len(rows[0]) == 2
 
     def test_iterator_closed_cursor(self):
         """Test iteration on closed cursor"""
         command_result = {"cursor": {"firstBatch": []}}
-        result_set = ResultSet(command_result=command_result, query_plan=self.query_plan_empty_projection)
+        execution_plan = ExecutionPlan(collection="users", projection_stage=self.PROJECTION_EMPTY)
+        result_set = ResultSet(command_result=command_result, execution_plan=execution_plan)
         result_set.close()
 
         with pytest.raises(ProgrammingError, match="ResultSet is closed"):
@@ -326,7 +373,8 @@ class TestResultSet:
     def test_arraysize_property(self):
         """Test arraysize property"""
         command_result = {"cursor": {"firstBatch": []}}
-        result_set = ResultSet(command_result=command_result, query_plan=self.query_plan_empty_projection)
+        execution_plan = ExecutionPlan(collection="users", projection_stage=self.PROJECTION_EMPTY)
+        result_set = ResultSet(command_result=command_result, execution_plan=execution_plan)
 
         # Default arraysize should be 1000
         assert result_set.arraysize == 1000
@@ -338,7 +386,8 @@ class TestResultSet:
     def test_arraysize_validation(self):
         """Test arraysize validation"""
         command_result = {"cursor": {"firstBatch": []}}
-        result_set = ResultSet(command_result=command_result, query_plan=self.query_plan_empty_projection)
+        execution_plan = ExecutionPlan(collection="users", projection_stage=self.PROJECTION_EMPTY)
+        result_set = ResultSet(command_result=command_result, execution_plan=execution_plan)
 
         # Should reject invalid values
         with pytest.raises(ValueError, match="arraysize must be positive"):

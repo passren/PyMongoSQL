@@ -10,8 +10,8 @@ _logger = logging.getLogger(__name__)
 
 
 @dataclass
-class QueryPlan:
-    """Unified representation for MongoDB queries - replaces MongoQuery functionality"""
+class ExecutionPlan:
+    """Unified representation for MongoDB operations - supports queries, DDL, and DML operations"""
 
     collection: Optional[str] = None
     filter_stage: Dict[str, Any] = field(default_factory=dict)
@@ -50,9 +50,9 @@ class QueryPlan:
 
         return True
 
-    def copy(self) -> "QueryPlan":
-        """Create a copy of this query plan"""
-        return QueryPlan(
+    def copy(self) -> "ExecutionPlan":
+        """Create a copy of this execution plan"""
+        return ExecutionPlan(
             collection=self.collection,
             filter_stage=self.filter_stage.copy(),
             projection_stage=self.projection_stage.copy(),
@@ -66,7 +66,7 @@ class MongoQueryBuilder:
     """Fluent builder for MongoDB queries with validation and readability"""
 
     def __init__(self):
-        self._query_plan = QueryPlan()
+        self._execution_plan = ExecutionPlan()
         self._validation_errors = []
 
     def collection(self, name: str) -> "MongoQueryBuilder":
@@ -75,7 +75,7 @@ class MongoQueryBuilder:
             self._add_error("Collection name cannot be empty")
             return self
 
-        self._query_plan.collection = name.strip()
+        self._execution_plan.collection = name.strip()
         _logger.debug(f"Set collection to: {name}")
         return self
 
@@ -85,7 +85,7 @@ class MongoQueryBuilder:
             self._add_error("Filter conditions must be a dictionary")
             return self
 
-        self._query_plan.filter_stage.update(conditions)
+        self._execution_plan.filter_stage.update(conditions)
         _logger.debug(f"Added filter conditions: {conditions}")
         return self
 
@@ -100,7 +100,7 @@ class MongoQueryBuilder:
             self._add_error("Projection must be a list of field names or a dictionary")
             return self
 
-        self._query_plan.projection_stage = projection
+        self._execution_plan.projection_stage = projection
         _logger.debug(f"Set projection: {projection}")
         return self
 
@@ -114,7 +114,7 @@ class MongoQueryBuilder:
             self._add_error("Sort direction must be 1 (ascending) or -1 (descending)")
             return self
 
-        self._query_plan.sort_stage.append({field: direction})
+        self._execution_plan.sort_stage.append({field: direction})
         _logger.debug(f"Added sort: {field} -> {direction}")
         return self
 
@@ -124,7 +124,7 @@ class MongoQueryBuilder:
             self._add_error("Limit must be a non-negative integer")
             return self
 
-        self._query_plan.limit_stage = count
+        self._execution_plan.limit_stage = count
         _logger.debug(f"Set limit to: {count}")
         return self
 
@@ -134,7 +134,7 @@ class MongoQueryBuilder:
             self._add_error("Skip must be a non-negative integer")
             return self
 
-        self._query_plan.skip_stage = count
+        self._execution_plan.skip_stage = count
         _logger.debug(f"Set skip to: {count}")
         return self
 
@@ -192,7 +192,7 @@ class MongoQueryBuilder:
         """Validate the current query plan"""
         self._validation_errors.clear()
 
-        if not self._query_plan.collection:
+        if not self._execution_plan.collection:
             self._add_error("Collection name is required")
 
         # Add more validation rules as needed
@@ -202,26 +202,26 @@ class MongoQueryBuilder:
         """Get validation errors"""
         return self._validation_errors.copy()
 
-    def build(self) -> QueryPlan:
-        """Build and return the query plan"""
+    def build(self) -> ExecutionPlan:
+        """Build and return the execution plan"""
         if not self.validate():
             error_summary = "; ".join(self._validation_errors)
             raise ValueError(f"Query validation failed: {error_summary}")
 
-        return self._query_plan
+        return self._execution_plan
 
     def reset(self) -> "MongoQueryBuilder":
         """Reset the builder to start a new query"""
-        self._query_plan = QueryPlan()
+        self._execution_plan = ExecutionPlan()
         self._validation_errors.clear()
         return self
 
     def __str__(self) -> str:
         """String representation for debugging"""
         return (
-            f"MongoQueryBuilder(collection={self._query_plan.collection}, "
-            f"filter={self._query_plan.filter_stage}, "
-            f"projection={self._query_plan.projection_stage})"
+            f"MongoQueryBuilder(collection={self._execution_plan.collection}, "
+            f"filter={self._execution_plan.filter_stage}, "
+            f"projection={self._execution_plan.projection_stage})"
         )
 
 

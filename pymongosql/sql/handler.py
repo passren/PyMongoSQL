@@ -3,7 +3,6 @@
 Expression handlers for converting SQL expressions to MongoDB query format
 """
 import logging
-import re
 import time
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
@@ -168,6 +167,9 @@ class OperatorExtractorMixin:
         """Parse string value to appropriate Python type"""
         value_text = value_text.strip()
 
+        # Remove parentheses from values
+        value_text = value_text.strip("()")
+
         # Remove quotes from string values
         if (value_text.startswith("'") and value_text.endswith("'")) or (
             value_text.startswith('"') and value_text.endswith('"')
@@ -274,6 +276,31 @@ class ComparisonExpressionHandler(BaseHandler, ContextUtilsMixin, LoggingMixin, 
         if operator == "=":
             return {field_name: value}
 
+        # Handle special operators
+        if operator == "IN":
+            return {field_name: {"$in": value if isinstance(value, list) else [value]}}
+        elif operator == "LIKE":
+            # Convert SQL LIKE pattern to regex
+            if isinstance(value, str):
+                # Replace % with .* and _ with . for regex
+                regex_pattern = value.replace("%", ".*").replace("_", ".")
+                # Add anchors based on pattern
+                if not regex_pattern.startswith(".*"):
+                    regex_pattern = "^" + regex_pattern
+                if not regex_pattern.endswith(".*"):
+                    regex_pattern = regex_pattern + "$"
+                return {field_name: {"$regex": regex_pattern}}
+            return {field_name: value}
+        elif operator == "BETWEEN":
+            if isinstance(value, tuple) and len(value) == 2:
+                start_val, end_val = value
+                return {"$and": [{field_name: {"$gte": start_val}}, {field_name: {"$lte": end_val}}]}
+            return {field_name: value}
+        elif operator == "IS NULL":
+            return {field_name: {"$eq": None}}
+        elif operator == "IS NOT NULL":
+            return {field_name: {"$ne": None}}
+
         mongo_op = OPERATOR_MAP.get(operator.upper())
         if mongo_op == "$regex" and isinstance(value, str):
             # Convert SQL LIKE pattern to regex
@@ -301,7 +328,9 @@ class ComparisonExpressionHandler(BaseHandler, ContextUtilsMixin, LoggingMixin, 
         """Check if the expression text contains comparison patterns"""
         try:
             text = self.get_context_text(ctx)
-            return any(op in text for op in COMPARISON_OPERATORS + ["LIKE", "IN"])
+            # Extended pattern matching for SQL constructs
+            patterns = COMPARISON_OPERATORS + ["LIKE", "IN", "BETWEEN", "ISNULL", "ISNOTNULL"]
+            return any(op in text for op in patterns)
         except Exception as e:
             _logger.debug(f"ComparisonHandler: Error checking comparison pattern: {e}")
             return False
@@ -325,19 +354,23 @@ class ComparisonExpressionHandler(BaseHandler, ContextUtilsMixin, LoggingMixin, 
         try:
             text = self.get_context_text(ctx)
 
-            # Try operator-based splitting first
+            # Handle SQL constructs with keywords
+            sql_keywords = ["IN(", "LIKE", "BETWEEN", "ISNULL", "ISNOTNULL"]
+            for keyword in sql_keywords:
+                if keyword in text:
+                    return text.split(keyword, 1)[0].strip()
+
+            # Try operator-based splitting
             operator = self._find_operator_in_text(text, COMPARISON_OPERATORS)
             if operator:
                 parts = self._split_by_operator(text, operator)
                 if parts:
-                    field_part = parts[0].strip("'\"")
-                    return field_part
+                    return parts[0].strip("'\"()")
 
-            # If we can't parse it, look for identifiers in children
+            # Fallback to children parsing
             if self.has_children(ctx):
                 for child in ctx.children:
                     child_text = self.get_context_text(child)
-                    # Skip operators and quoted values
                     if child_text not in COMPARISON_OPERATORS and not child_text.startswith(("'", '"')):
                         return child_text
 
@@ -351,7 +384,20 @@ class ComparisonExpressionHandler(BaseHandler, ContextUtilsMixin, LoggingMixin, 
         try:
             text = self.get_context_text(ctx)
 
-            # Look for operators in the text
+            # Check SQL constructs first (order matters for ISNOTNULL vs ISNULL)
+            sql_constructs = {
+                "ISNOTNULL": "IS NOT NULL",
+                "ISNULL": "IS NULL",
+                "IN(": "IN",
+                "LIKE": "LIKE",
+                "BETWEEN": "BETWEEN",
+            }
+
+            for construct, operator in sql_constructs.items():
+                if construct in text:
+                    return operator
+
+            # Look for comparison operators
             operator = self._find_operator_in_text(text, COMPARISON_OPERATORS)
             if operator:
                 return operator
@@ -363,7 +409,7 @@ class ComparisonExpressionHandler(BaseHandler, ContextUtilsMixin, LoggingMixin, 
                     if child_text in COMPARISON_OPERATORS:
                         return child_text
 
-            return "="  # Default to equality
+            return "="  # Default
         except Exception as e:
             _logger.debug(f"Failed to extract operator: {e}")
             return "="
@@ -373,17 +419,62 @@ class ComparisonExpressionHandler(BaseHandler, ContextUtilsMixin, LoggingMixin, 
         try:
             text = self.get_context_text(ctx)
 
-            # Find operator and split
+            # Handle SQL constructs with specific parsing needs
+            if "IN(" in text:
+                return self._extract_in_values(text)
+            elif "LIKE" in text:
+                return self._extract_like_pattern(text)
+            elif "BETWEEN" in text:
+                return self._extract_between_range(text)
+            elif "ISNULL" in text or "ISNOTNULL" in text:
+                return None
+
+            # Standard operator-based extraction
             operator = self._find_operator_in_text(text, COMPARISON_OPERATORS)
             if operator:
                 parts = self._split_by_operator(text, operator)
                 if len(parts) >= 2:
-                    return self._parse_value(parts[1])
+                    return self._parse_value(parts[1].strip("()"))
 
             return None
         except Exception as e:
             _logger.debug(f"Failed to extract value: {e}")
             return None
+
+    def _extract_in_values(self, text: str) -> List[Any]:
+        """Extract values from IN clause"""
+        # Handle both 'IN(' and 'IN (' patterns
+        in_pos = text.upper().find(" IN ")
+        if in_pos == -1:
+            in_pos = text.upper().find("IN(")
+            start = in_pos + 3 if in_pos != -1 else -1
+        else:
+            start = text.find("(", in_pos) + 1
+
+        end = text.rfind(")")
+        if end > start >= 0:
+            values_text = text[start:end]
+            values = []
+            for val in values_text.split(","):
+                cleaned_val = val.strip().strip("'\"")
+                if cleaned_val:  # Skip empty values
+                    values.append(self._parse_value(f"'{cleaned_val}'"))
+            return values
+        return []
+
+    def _extract_like_pattern(self, text: str) -> str:
+        """Extract pattern from LIKE clause"""
+        parts = text.split("LIKE", 1)
+        return parts[1].strip().strip("'\"") if len(parts) == 2 else ""
+
+    def _extract_between_range(self, text: str) -> Optional[Tuple[Any, Any]]:
+        """Extract range values from BETWEEN clause"""
+        parts = text.split("BETWEEN", 1)
+        if len(parts) == 2 and "AND" in parts[1]:
+            range_values = parts[1].split("AND", 1)
+            if len(range_values) == 2:
+                return (self._parse_value(range_values[0].strip()), self._parse_value(range_values[1].strip()))
+        return None
 
 
 class LogicalExpressionHandler(BaseHandler, ContextUtilsMixin, LoggingMixin, OperatorExtractorMixin):
@@ -393,31 +484,61 @@ class LogicalExpressionHandler(BaseHandler, ContextUtilsMixin, LoggingMixin, Ope
         """Check if context represents a logical expression"""
         return hasattr(ctx, "logicalOperator") or self._is_logical_context(ctx) or self._has_logical_operators(ctx)
 
+    def _find_operator_positions(self, text: str, operator: str) -> List[int]:
+        """Find all valid positions of an operator in text, respecting quotes and parentheses"""
+        positions = []
+        i = 0
+        while i < len(text):
+            if text[i : i + len(operator)].upper() == operator.upper():
+                # Check word boundary - don't split inside words
+                if (
+                    i > 0
+                    and text[i - 1].isalpha()
+                    and i + len(operator) < len(text)
+                    and text[i + len(operator)].isalpha()
+                ):
+                    i += len(operator)
+                    continue
+
+                # Check parentheses and quote depth
+                if self._is_at_valid_split_position(text, i):
+                    positions.append(i)
+                i += len(operator)
+            else:
+                i += 1
+        return positions
+
+    def _is_at_valid_split_position(self, text: str, position: int) -> bool:
+        """Check if position is valid for splitting (not inside quotes or parentheses)"""
+        paren_depth = 0
+        quote_depth = 0
+        for j in range(position):
+            if text[j] == "'" and (j == 0 or text[j - 1] != "\\"):
+                quote_depth = 1 - quote_depth
+            elif quote_depth == 0:
+                if text[j] == "(":
+                    paren_depth += 1
+                elif text[j] == ")":
+                    paren_depth -= 1
+        return paren_depth == 0 and quote_depth == 0
+
     def _has_logical_operators(self, ctx: Any) -> bool:
         """Check if the expression text contains logical operators"""
         try:
-            text = self.get_context_text(ctx)
-            text_upper = text.upper()
-
-            # Count comparison operators to see if this looks like a logical expression
+            text = self.get_context_text(ctx).upper()
             comparison_count = sum(1 for op in COMPARISON_OPERATORS if op in text)
-
-            # If there are multiple comparison operations and logical operators, it's likely logical
-            has_logical_ops = any(op in text_upper for op in LOGICAL_OPERATORS[:2])  # AND, OR only
-
+            has_logical_ops = any(op in text for op in ["AND", "OR"])
             return has_logical_ops and comparison_count > 1
-        except Exception as e:
-            _logger.debug(f"LogicalHandler: Error checking logical operators: {e}")
+        except Exception:
             return False
 
     def _is_logical_context(self, ctx: Any) -> bool:
         """Check if context is a logical expression based on structure"""
         try:
             context_name = self.get_context_type_name(ctx).lower()
-            logical_indicators = ["logical", "and", "or"]
-            return any(indicator in context_name for indicator in logical_indicators) or self._has_logical_operators(
-                ctx
-            )
+            return any(
+                indicator in context_name for indicator in ["logical", "and", "or"]
+            ) or self._has_logical_operators(ctx)
         except Exception:
             return False
 
@@ -428,6 +549,9 @@ class LogicalExpressionHandler(BaseHandler, ContextUtilsMixin, LoggingMixin, Ope
         self._log_operation_start("logical_parsing", ctx, operation_id)
 
         try:
+            # Set current context to avoid infinite recursion
+            self._current_context = ctx
+
             operator = self._extract_logical_operator(ctx)
             operands = self._extract_operands(ctx)
 
@@ -458,15 +582,32 @@ class LogicalExpressionHandler(BaseHandler, ContextUtilsMixin, LoggingMixin, Ope
         processed_operands = []
 
         for operand in operands:
-            handler = HandlerFactory.get_expression_handler(operand)
-            if handler:
-                result = handler.handle_expression(operand)
-                if not result.has_errors:
+            operand_text = self.get_context_text(operand).strip()
+
+            # Try comparison handler first for leaf nodes
+            comparison_handler = ComparisonExpressionHandler()
+            if comparison_handler.can_handle(operand):
+                result = comparison_handler.handle_expression(operand)
+                if not result.has_errors and result.filter_conditions:
                     processed_operands.append(result.filter_conditions)
-                else:
-                    _logger.warning(f"Operand processing failed: {result.error_message}")
-            else:
-                _logger.warning(f"No handler found for operand: {self.get_context_text(operand)}")
+                continue
+
+            # If this is still a logical expression, handle it recursively
+            # but check for different content to avoid infinite recursion
+            current_text = self.get_context_text(self._current_context) if hasattr(self, "_current_context") else ""
+            if self._has_logical_operators(operand) and operand_text != current_text:
+                # Save current context to prevent recursion
+                old_context = getattr(self, "_current_context", None)
+                self._current_context = operand
+                try:
+                    result = self.handle_expression(operand)
+                    if not result.has_errors and result.filter_conditions:
+                        processed_operands.append(result.filter_conditions)
+                finally:
+                    self._current_context = old_context
+                continue
+
+            _logger.warning(f"Unable to process operand: {operand_text}")
 
         return processed_operands
 
@@ -490,14 +631,13 @@ class LogicalExpressionHandler(BaseHandler, ContextUtilsMixin, LoggingMixin, Ope
             return {}
 
     def _extract_logical_operator(self, ctx: Any) -> str:
-        """Extract logical operator (AND, OR, NOT)"""
+        """Extract logical operator (AND, OR, NOT) with proper precedence"""
         try:
-            text = self.get_context_text(ctx).upper()
-
-            for op in LOGICAL_OPERATORS:
-                if op in text:
-                    return op
-
+            text = self.get_context_text(ctx)
+            # OR has lower precedence, so check it first
+            for operator in ["OR", "AND", "NOT"]:
+                if operator in text.upper() and self._has_operator_at_top_level(text, operator):
+                    return operator
             return "AND"  # Default
         except Exception as e:
             _logger.debug(f"Failed to extract logical operator: {e}")
@@ -507,46 +647,71 @@ class LogicalExpressionHandler(BaseHandler, ContextUtilsMixin, LoggingMixin, Ope
         """Extract operands for logical expression"""
         try:
             text = self.get_context_text(ctx)
-            text_upper = text.upper()
-
-            # Simple text-based splitting for AND/OR (no spaces in PartiQL output)
-            if "AND" in text_upper:
-                return self._split_operands_by_operator(text, "AND")
-            elif "OR" in text_upper:
-                return self._split_operands_by_operator(text, "OR")
+            # Use the same precedence logic as operator extraction
+            for operator in ["OR", "AND"]:
+                if operator in text.upper() and self._has_operator_at_top_level(text, operator):
+                    return self._split_operands_by_operator(text, operator)
 
             # Single operand
             return [self._create_operand_context(text)]
-
         except Exception as e:
             _logger.debug(f"Failed to extract operands: {e}")
             return []
 
     def _split_operands_by_operator(self, text: str, operator: str) -> List[Any]:
-        """Split text by logical operator, handling quotes"""
-        # Use regular expression to split on operator that's not inside quotes
-        pattern = f"{operator}(?=(?:[^']*'[^']*')*[^']*$)"
-        parts = re.split(pattern, text, flags=re.IGNORECASE)
+        """Split text by logical operator, handling quotes and parentheses"""
+        operator_positions = self._find_operator_positions(text, operator)
 
-        operand_contexts = []
-        for part in parts:
-            part = part.strip()
+        if not operator_positions:
+            return [self._create_operand_context(text.strip())]
+
+        operands = []
+        start = 0
+        for pos in operator_positions:
+            part = text[start:pos].strip()
             if part:
-                operand_contexts.append(self._create_operand_context(part))
+                operands.append(self._create_operand_context(part))
+            start = pos + len(operator)
 
-        return operand_contexts
+        # Add the last part
+        last_part = text[start:].strip()
+        if last_part:
+            operands.append(self._create_operand_context(last_part))
+
+        return operands
 
     def _create_operand_context(self, text: str):
         """Create a context-like object for operand text"""
 
         class SimpleContext:
             def __init__(self, text_content):
+                text_content = text_content.strip()
+                # Only strip outer parentheses if they're grouping parentheses, not functional ones
+                if text_content.startswith("(") and text_content.endswith(")"):
+                    inner_text = text_content[1:-1].strip()
+
+                    # Don't strip if it contains IN clauses with parentheses
+                    if " IN (" in inner_text.upper():
+                        # Keep the parentheses for IN clause
+                        pass
+                    # Don't strip if it contains function calls
+                    elif any(func in inner_text.upper() for func in ["COUNT(", "MAX(", "MIN(", "AVG(", "SUM("]):
+                        # Keep the parentheses for function calls
+                        pass
+                    else:
+                        # Remove grouping parentheses
+                        text_content = inner_text
+
                 self._text = text_content
 
             def getText(self):
                 return self._text
 
         return SimpleContext(text)
+
+    def _has_operator_at_top_level(self, text: str, operator: str) -> bool:
+        """Check if operator exists at top level (not inside parentheses)"""
+        return len(self._find_operator_positions(text, operator)) > 0
 
 
 class FunctionExpressionHandler(BaseHandler, ContextUtilsMixin, LoggingMixin):
@@ -721,8 +886,8 @@ class SelectHandler(BaseHandler):
         if hasattr(ctx, "projectionItems") and ctx.projectionItems():
             for item in ctx.projectionItems().projectionItem():
                 field_name, alias = self._extract_field_and_alias(item)
-                # If no alias, use field_name:field_name; if alias, use field_name:alias
-                projection[field_name] = alias if alias else field_name
+                # Use MongoDB standard projection format: {field: 1} to include field
+                projection[field_name] = 1
 
         parse_result.projection = projection
         return projection
