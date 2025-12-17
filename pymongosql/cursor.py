@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 import logging
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, TypeVar
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Sequence, Tuple, TypeVar
 
 from pymongo.cursor import Cursor as MongoCursor
 from pymongo.errors import PyMongoError
@@ -206,7 +206,7 @@ class Cursor(BaseCursor, CursorIterator):
         # For now, this is a no-op
         pass
 
-    def fetchone(self) -> Optional[Dict[str, Any]]:
+    def fetchone(self) -> Optional[Sequence[Any]]:
         """Fetch the next row from the result set"""
         self._check_closed()
 
@@ -215,7 +215,7 @@ class Cursor(BaseCursor, CursorIterator):
 
         return self._result_set.fetchone()
 
-    def fetchmany(self, size: Optional[int] = None) -> List[Dict[str, Any]]:
+    def fetchmany(self, size: Optional[int] = None) -> List[Sequence[Any]]:
         """Fetch multiple rows from the result set"""
         self._check_closed()
 
@@ -224,7 +224,7 @@ class Cursor(BaseCursor, CursorIterator):
 
         return self._result_set.fetchmany(size)
 
-    def fetchall(self) -> List[Dict[str, Any]]:
+    def fetchall(self) -> List[Sequence[Any]]:
         """Fetch all remaining rows from the result set"""
         self._check_closed()
 
