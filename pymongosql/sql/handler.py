@@ -489,7 +489,7 @@ class LogicalExpressionHandler(BaseHandler, ContextUtilsMixin, LoggingMixin, Ope
         positions = []
         i = 0
         while i < len(text):
-            if text[i:i + len(operator)].upper() == operator.upper():
+            if text[i : i + len(operator)].upper() == operator.upper():
                 # Check word boundary - don't split inside words
                 if (
                     i > 0

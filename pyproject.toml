@@ -70,6 +70,7 @@ skip_glob = ["**/partiql/**"]
 [tool.flake8]
 max-line-length = 127
 exclude = ["*/partiql/*.py"]
+ignore = ["E203", "W503"]  # E203 and W503 conflict with black formatting
 
 [tool.pytest.ini_options]
 minversion = "7.0"
