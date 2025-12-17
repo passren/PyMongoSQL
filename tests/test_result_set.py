@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 import pytest
 
-from pymongosql.connection import Connection
 from pymongosql.error import ProgrammingError
 from pymongosql.result_set import ResultSet
 from pymongosql.sql.builder import QueryPlan
@@ -10,50 +9,39 @@ from pymongosql.sql.builder import QueryPlan
 class TestResultSet:
     """Test suite for ResultSet class"""
 
-    def setup_method(self):
-        """Setup for each test method"""
-        # Create connection to local MongoDB with authentication
-        self.connection = Connection(
-            host="mongodb://testuser:testpass@localhost:27017/test_db?authSource=test_db", database="test_db"
-        )
-        self.db = self.connection.database
+    # Shared projections used by tests
+    PROJECTION_WITH_ALIASES = {"name": "full_name", "email": "user_email"}
+    PROJECTION_EMPTY = {}
 
-        # Test projection mappings
-        self.projection_with_aliases = {"name": "full_name", "email": "user_email"}
-        self.projection_empty = {}
-
-        # Create QueryPlan objects for testing
-        self.query_plan_with_projection = QueryPlan(collection="users", projection_stage=self.projection_with_aliases)
-        self.query_plan_empty_projection = QueryPlan(collection="users", projection_stage=self.projection_empty)
-
-    def teardown_method(self):
-        """Cleanup after each test method"""
-        if hasattr(self, "connection"):
-            self.connection.close()
-
-    def test_result_set_init(self):
+    def test_result_set_init(self, conn):
         """Test ResultSet initialization with command result"""
+        db = conn.database
         # Execute a real command to get results
-        command_result = self.db.command({"find": "users", "filter": {"age": {"$gt": 25}}, "limit": 1})
+        command_result = db.command({"find": "users", "filter": {"age": {"$gt": 25}}, "limit": 1})
 
-        result_set = ResultSet(command_result=command_result, query_plan=self.query_plan_with_projection)
+        query_plan = QueryPlan(collection="users", projection_stage=self.PROJECTION_WITH_ALIASES)
+        result_set = ResultSet(command_result=command_result, query_plan=query_plan)
         assert result_set._command_result == command_result
-        assert result_set._query_plan == self.query_plan_with_projection
+        assert result_set._query_plan == query_plan
         assert result_set._is_closed is False
 
-    def test_result_set_init_empty_projection(self):
+    def test_result_set_init_empty_projection(self, conn):
         """Test ResultSet initialization with empty projection"""
-        command_result = self.db.command({"find": "users", "limit": 1})
+        db = conn.database
+        command_result = db.command({"find": "users", "limit": 1})
 
-        result_set = ResultSet(command_result=command_result, query_plan=self.query_plan_empty_projection)
+        query_plan = QueryPlan(collection="users", projection_stage=self.PROJECTION_EMPTY)
+        result_set = ResultSet(command_result=command_result, query_plan=query_plan)
         assert result_set._query_plan.projection_stage == {}
 
-    def test_fetchone_with_data(self):
+    def test_fetchone_with_data(self, conn):
         """Test fetchone with available data"""
+        db = conn.database
         # Get real user data with projection mapping
-        command_result = self.db.command({"find": "users", "projection": {"name": 1, "email": 1}, "limit": 1})
+        command_result = db.command({"find": "users", "projection": {"name": 1, "email": 1}, "limit": 1})
 
-        result_set = ResultSet(command_result=command_result, query_plan=self.query_plan_with_projection)
+        query_plan = QueryPlan(collection="users", projection_stage=self.PROJECTION_WITH_ALIASES)
+        result_set = ResultSet(command_result=command_result, query_plan=query_plan)
         row = result_set.fetchone()
 
         # Should apply projection mapping and return real data
@@ -63,23 +51,27 @@ class TestResultSet:
         assert isinstance(row["full_name"], str)
         assert isinstance(row["user_email"], str)
 
-    def test_fetchone_no_data(self):
+    def test_fetchone_no_data(self, conn):
         """Test fetchone when no data available"""
+        db = conn.database
         # Query for non-existent data
-        command_result = self.db.command(
+        command_result = db.command(
             {"find": "users", "filter": {"age": {"$gt": 999}}, "limit": 1}  # No users over 999 years old
         )
 
-        result_set = ResultSet(command_result=command_result, query_plan=self.query_plan_with_projection)
+        query_plan = QueryPlan(collection="users", projection_stage=self.PROJECTION_WITH_ALIASES)
+        result_set = ResultSet(command_result=command_result, query_plan=query_plan)
         row = result_set.fetchone()
 
         assert row is None
 
-    def test_fetchone_empty_projection(self):
+    def test_fetchone_empty_projection(self, conn):
         """Test fetchone with empty projection (SELECT *)"""
-        command_result = self.db.command({"find": "users", "limit": 1})
+        db = conn.database
+        command_result = db.command({"find": "users", "limit": 1})
 
-        result_set = ResultSet(command_result=command_result, query_plan=self.query_plan_empty_projection)
+        query_plan = QueryPlan(collection="users", projection_stage=self.PROJECTION_EMPTY)
+        result_set = ResultSet(command_result=command_result, query_plan=query_plan)
         row = result_set.fetchone()
 
         # Should return original document without projection mapping
@@ -90,22 +82,26 @@ class TestResultSet:
         # Should be "John Doe" from test dataset
         assert "John Doe" in row["name"]
 
-    def test_fetchone_closed_cursor(self):
+    def test_fetchone_closed_cursor(self, conn):
         """Test fetchone on closed cursor"""
-        command_result = self.db.command({"find": "users", "limit": 1})
+        db = conn.database
+        command_result = db.command({"find": "users", "limit": 1})
 
-        result_set = ResultSet(command_result=command_result, query_plan=self.query_plan_with_projection)
+        query_plan = QueryPlan(collection="users", projection_stage=self.PROJECTION_WITH_ALIASES)
+        result_set = ResultSet(command_result=command_result, query_plan=query_plan)
         result_set.close()
 
         with pytest.raises(ProgrammingError, match="ResultSet is closed"):
             result_set.fetchone()
 
-    def test_fetchmany_with_data(self):
+    def test_fetchmany_with_data(self, conn):
         """Test fetchmany with available data"""
+        db = conn.database
         # Get multiple users with projection
-        command_result = self.db.command({"find": "users", "projection": {"name": 1, "email": 1}, "limit": 5})
+        command_result = db.command({"find": "users", "projection": {"name": 1, "email": 1}, "limit": 5})
 
-        result_set = ResultSet(command_result=command_result, query_plan=self.query_plan_with_projection)
+        query_plan = QueryPlan(collection="users", projection_stage=self.PROJECTION_WITH_ALIASES)
+        result_set = ResultSet(command_result=command_result, query_plan=query_plan)
         rows = result_set.fetchmany(2)
 
         assert len(rows) <= 2  # Should return at most 2 rows
@@ -118,46 +114,52 @@ class TestResultSet:
             assert isinstance(row["full_name"], str)
             assert isinstance(row["user_email"], str)
 
-    def test_fetchmany_default_size(self):
+    def test_fetchmany_default_size(self, conn):
         """Test fetchmany with default size"""
+        db = conn.database
         # Get all users (22 total in test dataset)
-        command_result = self.db.command({"find": "users"})
+        command_result = db.command({"find": "users"})
 
-        result_set = ResultSet(command_result=command_result, query_plan=self.query_plan_empty_projection)
+        query_plan = QueryPlan(collection="users", projection_stage=self.PROJECTION_EMPTY)
+        result_set = ResultSet(command_result=command_result, query_plan=query_plan)
         rows = result_set.fetchmany()  # Should use default arraysize (1000)
 
         assert len(rows) == 22  # Gets all available users since arraysize (1000) > available (22)
 
-    def test_fetchmany_less_data_available(self):
+    def test_fetchmany_less_data_available(self, conn):
         """Test fetchmany when less data available than requested"""
+        db = conn.database
         # Get only 2 users but request 5
-        command_result = self.db.command({"find": "users", "limit": 2})
+        command_result = db.command({"find": "users", "limit": 2})
 
-        result_set = ResultSet(command_result=command_result, query_plan=self.query_plan_empty_projection)
+        query_plan = QueryPlan(collection="users", projection_stage=self.PROJECTION_EMPTY)
+        result_set = ResultSet(command_result=command_result, query_plan=query_plan)
         rows = result_set.fetchmany(5)  # Request 5 but only 2 available
 
         assert len(rows) == 2
 
-    def test_fetchmany_no_data(self):
+    def test_fetchmany_no_data(self, conn):
         """Test fetchmany when no data available"""
+        db = conn.database
         # Query for non-existent data
-        command_result = self.db.command(
-            {"find": "users", "filter": {"age": {"$gt": 999}}}  # No users over 999 years old
-        )
+        command_result = db.command({"find": "users", "filter": {"age": {"$gt": 999}}})  # No users over 999 years old
 
-        result_set = ResultSet(command_result=command_result, query_plan=self.query_plan_empty_projection)
+        query_plan = QueryPlan(collection="users", projection_stage=self.PROJECTION_EMPTY)
+        result_set = ResultSet(command_result=command_result, query_plan=query_plan)
         rows = result_set.fetchmany(3)
 
         assert rows == []
 
-    def test_fetchall_with_data(self):
+    def test_fetchall_with_data(self, conn):
         """Test fetchall with available data"""
+        db = conn.database
         # Get users over 25 (should be 19 users from test dataset)
-        command_result = self.db.command(
+        command_result = db.command(
             {"find": "users", "filter": {"age": {"$gt": 25}}, "projection": {"name": 1, "email": 1}}
         )
 
-        result_set = ResultSet(command_result=command_result, query_plan=self.query_plan_with_projection)
+        query_plan = QueryPlan(collection="users", projection_stage=self.PROJECTION_WITH_ALIASES)
+        result_set = ResultSet(command_result=command_result, query_plan=query_plan)
         rows = result_set.fetchall()
 
         assert len(rows) == 19  # 19 users over 25 from test dataset
@@ -168,22 +170,24 @@ class TestResultSet:
         assert isinstance(rows[0]["full_name"], str)
         assert isinstance(rows[0]["user_email"], str)
 
-    def test_fetchall_no_data(self):
+    def test_fetchall_no_data(self, conn):
         """Test fetchall when no data available"""
-        command_result = self.db.command(
-            {"find": "users", "filter": {"age": {"$gt": 999}}}  # No users over 999 years old
-        )
+        db = conn.database
+        command_result = db.command({"find": "users", "filter": {"age": {"$gt": 999}}})  # No users over 999 years old
 
-        result_set = ResultSet(command_result=command_result, query_plan=self.query_plan_empty_projection)
+        query_plan = QueryPlan(collection="users", projection_stage=self.PROJECTION_EMPTY)
+        result_set = ResultSet(command_result=command_result, query_plan=query_plan)
         rows = result_set.fetchall()
 
         assert rows == []
 
-    def test_fetchall_closed_cursor(self):
+    def test_fetchall_closed_cursor(self, conn):
         """Test fetchall on closed cursor"""
-        command_result = self.db.command({"find": "users", "limit": 1})
+        db = conn.database
+        command_result = db.command({"find": "users", "limit": 1})
 
-        result_set = ResultSet(command_result=command_result, query_plan=self.query_plan_empty_projection)
+        query_plan = QueryPlan(collection="users", projection_stage=self.PROJECTION_EMPTY)
+        result_set = ResultSet(command_result=command_result, query_plan=query_plan)
         result_set.close()
 
         with pytest.raises(ProgrammingError, match="ResultSet is closed"):
@@ -249,7 +253,8 @@ class TestResultSet:
     def test_close(self):
         """Test close method"""
         command_result = {"cursor": {"firstBatch": []}}
-        result_set = ResultSet(command_result=command_result, query_plan=self.query_plan_empty_projection)
+        query_plan = QueryPlan(collection="users", projection_stage=self.PROJECTION_EMPTY)
+        result_set = ResultSet(command_result=command_result, query_plan=query_plan)
 
         # Should not be closed initially
         assert not result_set._is_closed
@@ -262,7 +267,8 @@ class TestResultSet:
     def test_context_manager(self):
         """Test ResultSet as context manager"""
         command_result = {"cursor": {"firstBatch": []}}
-        result_set = ResultSet(command_result=command_result, query_plan=self.query_plan_empty_projection)
+        query_plan = QueryPlan(collection="users", projection_stage=self.PROJECTION_EMPTY)
+        result_set = ResultSet(command_result=command_result, query_plan=query_plan)
 
         with result_set as rs:
             assert rs == result_set
@@ -274,7 +280,8 @@ class TestResultSet:
     def test_context_manager_with_exception(self):
         """Test context manager with exception"""
         command_result = {"cursor": {"firstBatch": []}}
-        result_set = ResultSet(command_result=command_result, query_plan=self.query_plan_empty_projection)
+        query_plan = QueryPlan(collection="users", projection_stage=self.PROJECTION_EMPTY)
+        result_set = ResultSet(command_result=command_result, query_plan=query_plan)
 
         try:
             with result_set as rs:
@@ -286,12 +293,14 @@ class TestResultSet:
         # Should still be closed after exception
         assert result_set._is_closed
 
-    def test_iterator_protocol(self):
+    def test_iterator_protocol(self, conn):
         """Test ResultSet as iterator"""
+        db = conn.database
         # Get 2 users from database
-        command_result = self.db.command({"find": "users", "limit": 2})
+        command_result = db.command({"find": "users", "limit": 2})
 
-        result_set = ResultSet(command_result=command_result, query_plan=self.query_plan_empty_projection)
+        query_plan = QueryPlan(collection="users", projection_stage=self.PROJECTION_EMPTY)
+        result_set = ResultSet(command_result=command_result, query_plan=query_plan)
 
         # Test iterator protocol
         iterator = iter(result_set)
@@ -303,11 +312,13 @@ class TestResultSet:
         assert "_id" in rows[0]
         assert "name" in rows[0]
 
-    def test_iterator_with_projection(self):
+    def test_iterator_with_projection(self, conn):
         """Test iteration with projection mapping"""
-        command_result = self.db.command({"find": "users", "projection": {"name": 1, "email": 1}, "limit": 2})
+        db = conn.database
+        command_result = db.command({"find": "users", "projection": {"name": 1, "email": 1}, "limit": 2})
 
-        result_set = ResultSet(command_result=command_result, query_plan=self.query_plan_with_projection)
+        query_plan = QueryPlan(collection="users", projection_stage=self.PROJECTION_WITH_ALIASES)
+        result_set = ResultSet(command_result=command_result, query_plan=query_plan)
 
         rows = list(result_set)
         assert len(rows) == 2
@@ -317,7 +328,8 @@ class TestResultSet:
     def test_iterator_closed_cursor(self):
         """Test iteration on closed cursor"""
         command_result = {"cursor": {"firstBatch": []}}
-        result_set = ResultSet(command_result=command_result, query_plan=self.query_plan_empty_projection)
+        query_plan = QueryPlan(collection="users", projection_stage=self.PROJECTION_EMPTY)
+        result_set = ResultSet(command_result=command_result, query_plan=query_plan)
         result_set.close()
 
         with pytest.raises(ProgrammingError, match="ResultSet is closed"):
@@ -326,7 +338,8 @@ class TestResultSet:
     def test_arraysize_property(self):
         """Test arraysize property"""
         command_result = {"cursor": {"firstBatch": []}}
-        result_set = ResultSet(command_result=command_result, query_plan=self.query_plan_empty_projection)
+        query_plan = QueryPlan(collection="users", projection_stage=self.PROJECTION_EMPTY)
+        result_set = ResultSet(command_result=command_result, query_plan=query_plan)
 
         # Default arraysize should be 1000
         assert result_set.arraysize == 1000
@@ -338,7 +351,8 @@ class TestResultSet:
     def test_arraysize_validation(self):
         """Test arraysize validation"""
         command_result = {"cursor": {"firstBatch": []}}
-        result_set = ResultSet(command_result=command_result, query_plan=self.query_plan_empty_projection)
+        query_plan = QueryPlan(collection="users", projection_stage=self.PROJECTION_EMPTY)
+        result_set = ResultSet(command_result=command_result, query_plan=query_plan)
 
         # Should reject invalid values
         with pytest.raises(ValueError, match="arraysize must be positive"):
