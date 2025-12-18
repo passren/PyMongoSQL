@@ -14,6 +14,8 @@ jobs:
       matrix:
         python-version: ['3.9', '3.10', '3.11', '3.12', '3.13', '3.14']
         mongodb-version: ['7.0', '8.0']
+        # Test against representative SQLAlchemy series (1.x and 2.x)
+        sqlalchemy-version: ['1.4.*', '2.*']
     
     services:
       mongodb:
@@ -41,9 +43,9 @@ jobs:
       uses: actions/cache@v3
       with:
         path: ~/.cache/pip
-        key: ${{ runner.os }}-py${{ matrix.python-version }}-mongo${{ matrix.mongodb-version }}-pip-${{ hashFiles('**/requirements-test.txt', 'pyproject.toml') }}
+        key: ${{ runner.os }}-py${{ matrix.python-version }}-mongo${{ matrix.mongodb-version }}-sqlalchemy-${{ matrix.sqlalchemy-version }}-pip-${{ hashFiles('**/requirements-test.txt', 'pyproject.toml') }}
         restore-keys: |
-          ${{ runner.os }}-py${{ matrix.python-version }}-mongo${{ matrix.mongodb-version }}-pip-
+          ${{ runner.os }}-py${{ matrix.python-version }}-mongo${{ matrix.mongodb-version }}-sqlalchemy-${{ matrix.sqlalchemy-version }}-pip-
 
     - name: Install MongoDB shell
       run: |
@@ -55,6 +57,9 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
+        # Install the target SQLAlchemy version for this matrix entry first to ensure
+        # tests run against both 1.x and 2.x series.
+        pip install "SQLAlchemy==${{ matrix.sqlalchemy-version }}"
         pip install -r requirements-test.txt
         pip install black isort
 
