@@ -8,7 +8,6 @@ include requirements-test.txt
 
 # Include configuration files
 include pyproject.toml
-include .flake8
 
 # Exclude unnecessary files
 global-exclude *.pyc

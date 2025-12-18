@@ -1,6 +1,5 @@
-# Main dependencies
-antlr4-python3-runtime>=4.13.0
-pymongo>=4.15.0
+-r requirements.txt
+-r requirements-optional.txt
 
 # Test dependencies
 pytest>=7.0.0

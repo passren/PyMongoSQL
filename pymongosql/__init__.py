@@ -6,7 +6,7 @@ from .error import *  # noqa
 if TYPE_CHECKING:
     from .connection import Connection
 
-__version__: str = "0.1.2"
+__version__: str = "0.2.0"
 
 # Globals https://www.python.org/dev/peps/pep-0249/#globals
 apilevel: str = "2.0"
@@ -40,3 +40,15 @@ def connect(*args, **kwargs) -> "Connection":
     from .connection import Connection
 
     return Connection(*args, **kwargs)
+
+
+# SQLAlchemy integration (optional)
+# For SQLAlchemy functionality, import from pymongosql.sqlalchemy_mongodb:
+#   from pymongosql.sqlalchemy_mongodb import create_engine_url, create_engine_from_mongodb_uri
+try:
+    from .sqlalchemy_mongodb import __sqlalchemy_version__, __supports_sqlalchemy_2x__, __supports_sqlalchemy__
+except ImportError:
+    # SQLAlchemy integration not available
+    __sqlalchemy_version__ = None
+    __supports_sqlalchemy__ = False
+    __supports_sqlalchemy_2x__ = False
