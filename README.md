@@ -1,6 +1,6 @@
 # PyMongoSQL
 
-[![PyPI version](https://badge.fury.io/py/pymongosql.svg)](https://badge.fury.io/py/pymongosql)
+[![PyPI](https://img.shields.io/pypi/v/pymongosql)](https://github.com/passren/PyMongoSQL)
 [![Test](https://github.com/passren/PyMongoSQL/actions/workflows/ci.yml/badge.svg)](https://github.com/passren/PyMongoSQL/actions/workflows/ci.yml)
 [![Code Style](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 [![codecov](https://codecov.io/gh/passren/PyMongoSQL/branch/main/graph/badge.svg?token=2CTRL80NP2)](https://codecov.io/gh/passren/PyMongoSQL)
