@@ -128,10 +128,20 @@ def register_dialect():
     try:
         from sqlalchemy.dialects import registry
 
-        # Register for standard MongoDB URLs only
+        # Register for standard MongoDB URLs
         registry.register("mongodb", "pymongosql.sqlalchemy_mongodb.sqlalchemy_dialect", "PyMongoSQLDialect")
-        # Note: mongodb+srv is handled by converting to mongodb in create_connect_args
-        # SQLAlchemy doesn't support the + character in scheme names directly
+
+        # Try to register both SRV forms so SQLAlchemy can resolve SRV-style URLs
+        # (either 'mongodb+srv' or the dotted 'mongodb.srv' plugin name).
+        # Some SQLAlchemy versions accept '+' in scheme names; others import
+        # the dotted plugin name. Attempt both registrations in one block.
+        try:
+            registry.register("mongodb+srv", "pymongosql.sqlalchemy_mongodb.sqlalchemy_dialect", "PyMongoSQLDialect")
+            registry.register("mongodb.srv", "pymongosql.sqlalchemy_mongodb.sqlalchemy_dialect", "PyMongoSQLDialect")
+        except Exception:
+            # If registration fails we fall back to handling SRV URIs in
+            # create_engine_from_mongodb_uri by converting 'mongodb+srv' to 'mongodb'.
+            pass
 
         return True
     except ImportError:

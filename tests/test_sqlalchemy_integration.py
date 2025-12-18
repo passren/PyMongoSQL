@@ -9,7 +9,11 @@ This test suite validates the SQLAlchemy dialect integration by:
 4. Validating object creation from query results
 """
 
+import os
+
 import pytest
+
+from tests.conftest import TEST_DB, TEST_URI
 
 # SQLAlchemy version compatibility
 try:
@@ -107,8 +111,32 @@ class Order(Base):
 # Pytest fixtures
 @pytest.fixture
 def sqlalchemy_engine():
-    """Provide a SQLAlchemy engine connected to MongoDB."""
-    engine = create_engine("mongodb://testuser:testpass@localhost:27017/test_db")
+    """Provide a SQLAlchemy engine connected to MongoDB. The URI is taken from environment variables
+    (PYMONGOSQL_TEST_URI or MONGODB_URI) or falls back to a sensible local default.
+    """
+    uri = os.environ.get("PYMONGOSQL_TEST_URI") or os.environ.get("MONGODB_URI") or TEST_URI
+    db = os.environ.get("PYMONGOSQL_TEST_DB") or TEST_DB
+
+    def _ensure_uri_has_db(uri_value: str, database: str) -> str:
+        if not database:
+            return uri_value
+        idx = uri_value.find("://")
+        if idx == -1:
+            return uri_value
+        rest = uri_value[idx + 3 :]
+        if "/" in rest:
+            after = rest.split("/", 1)[1]
+            if after == "" or after.startswith("?"):
+                return uri_value.rstrip("/") + "/" + database
+            return uri_value
+        return uri_value.rstrip("/") + "/" + database
+
+    if uri:
+        uri_to_use = _ensure_uri_has_db(uri, db)
+    else:
+        uri_to_use = "mongodb://testuser:testpass@localhost:27017/test_db"
+
+    engine = create_engine(uri_to_use)
     yield engine
 
 
