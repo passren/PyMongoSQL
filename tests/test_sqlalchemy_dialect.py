@@ -60,7 +60,7 @@ class TestPyMongoSQLDialect(unittest.TestCase):
 
     def test_dialect_name(self):
         """Test dialect name and driver."""
-        self.assertEqual(self.dialect.name, "pymongosql")
+        self.assertEqual(self.dialect.name, "mongodb")
         self.assertEqual(self.dialect.driver, "pymongosql")
 
     def test_dbapi(self):
@@ -312,7 +312,7 @@ class TestSQLAlchemyIntegration(unittest.TestCase):
         # This should not raise an exception
         engine = create_engine("mongodb://localhost:27017/testdb")
         self.assertIsNotNone(engine)
-        self.assertEqual(engine.dialect.name, "pymongosql")
+        self.assertEqual(engine.dialect.name, "mongodb")
 
         # Test version compatibility attributes
         if hasattr(engine.dialect, "_sqlalchemy_version"):

@@ -53,6 +53,10 @@ Repository = "https://github.com/passren/PyMongoSQL.git"
 Documentation = "https://github.com/passren/PyMongoSQL/wiki"
 "Bug Reports" = "https://github.com/passren/PyMongoSQL/issues"
 
+[project.entry-points."sqlalchemy.dialects"]
+mongodb = "pymongosql.sqlalchemy_mongodb.sqlalchemy_dialect:PyMongoSQLDialect"
+"mongodb+srv" = "pymongosql.sqlalchemy_mongodb.sqlalchemy_dialect:PyMongoSQLDialect"
+
 [tool.black]
 line-length = 120
 target-version = ['py39']

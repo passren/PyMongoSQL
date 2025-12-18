@@ -152,7 +152,7 @@ class TestSQLAlchemyIntegration:
     def test_engine_creation(self, sqlalchemy_engine):
         """Test that SQLAlchemy engine works with real MongoDB."""
         assert sqlalchemy_engine is not None
-        assert sqlalchemy_engine.dialect.name == "pymongosql"
+        assert sqlalchemy_engine.dialect.name == "mongodb"
 
         # Test that we can get a connection
         with sqlalchemy_engine.connect() as connection:

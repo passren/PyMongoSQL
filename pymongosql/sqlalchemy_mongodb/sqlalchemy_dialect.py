@@ -164,7 +164,7 @@ class PyMongoSQLDialect(default.DefaultDialect):
     Compatible with SQLAlchemy 1.4+ and 2.x versions.
     """
 
-    name = "pymongosql"
+    name = "mongodb"
     driver = "pymongosql"
 
     # Version compatibility
