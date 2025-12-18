@@ -410,7 +410,12 @@ class PyMongoSQLDialect(default.DefaultDialect):
         """
         # PyMongoSQL should handle this
         if hasattr(dbapi_connection, "rollback"):
-            dbapi_connection.rollback()
+            try:
+                dbapi_connection.rollback()
+            except Exception:
+                # MongoDB doesn't always support rollback - ignore errors
+                # This is normal behavior for MongoDB connections without active transactions
+                pass
 
     def do_commit(self, dbapi_connection):
         """Commit transaction.
@@ -419,36 +424,13 @@ class PyMongoSQLDialect(default.DefaultDialect):
         """
         # PyMongoSQL should handle this
         if hasattr(dbapi_connection, "commit"):
-            dbapi_connection.commit()
+            try:
+                dbapi_connection.commit()
+            except Exception:
+                # MongoDB auto-commits most operations - ignore errors
+                # This is normal behavior for MongoDB connections
+                pass
 
-
-# Register the dialect with SQLAlchemy
-# This allows using MongoDB connection strings directly
-def register_dialect():
-    """Register the PyMongoSQL dialect with SQLAlchemy.
-
-    This function handles registration for both SQLAlchemy 1.x and 2.x.
-    Registers support for standard MongoDB connection strings only.
-    """
-    try:
-        from sqlalchemy.dialects import registry
-
-        # Register for standard MongoDB URLs only
-        registry.register("mongodb", "pymongosql.sqlalchemy_dialect", "PyMongoSQLDialect")
-        # Note: mongodb+srv is handled by converting to mongodb in create_connect_args
-        # SQLAlchemy doesn't support the + character in scheme names directly
-
-        return True
-    except ImportError:
-        # Fallback for versions without registry
-        return False
-    except Exception:
-        # Handle other registration errors gracefully
-        return False
-
-
-# Attempt registration on module import
-_registration_successful = register_dialect()
 
 # Version information
 __sqlalchemy_version__ = SQLALCHEMY_VERSION

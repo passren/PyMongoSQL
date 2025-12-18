@@ -40,7 +40,8 @@ if HAS_SQLALCHEMY:
         from sqlalchemy.ext.declarative import declarative_base
 
 import pymongosql
-from pymongosql.sqlalchemy_dialect import (
+from pymongosql.sqlalchemy_mongodb import create_engine_url
+from pymongosql.sqlalchemy_mongodb.sqlalchemy_dialect import (
     PyMongoSQLDDLCompiler,
     PyMongoSQLDialect,
     PyMongoSQLIdentifierPreparer,
@@ -289,16 +290,16 @@ class TestSQLAlchemyIntegration(unittest.TestCase):
 
     def test_create_engine_url_helper(self):
         """Test the URL helper function."""
-        url = pymongosql.create_engine_url("localhost", 27017, "testdb")
+        url = create_engine_url("localhost", 27017, "testdb")
         self.assertEqual(url, "mongodb://localhost:27017/testdb")
 
         # Test with additional parameters
-        url_with_params = pymongosql.create_engine_url("localhost", 27017, "testdb", ssl=True, replicaSet="rs0")
+        url_with_params = create_engine_url("localhost", 27017, "testdb", ssl=True, replicaSet="rs0")
         self.assertIn("mongodb://localhost:27017/testdb", url_with_params)
         self.assertIn("ssl=True", url_with_params)
         self.assertIn("replicaSet=rs0", url_with_params)
 
-    @patch("pymongosql.sqlalchemy_dialect.pymongosql.connect")
+    @patch("pymongosql.sqlalchemy_mongodb.sqlalchemy_dialect.pymongosql.connect")
     def test_engine_creation(self, mock_connect):
         """Test SQLAlchemy engine creation."""
         if not HAS_SQLALCHEMY:
@@ -360,7 +361,7 @@ class TestDialectRegistration(unittest.TestCase):
         try:
             from sqlalchemy.dialects import registry
 
-            from pymongosql.sqlalchemy_dialect import _registration_successful
+            from pymongosql.sqlalchemy_mongodb import _registration_successful
 
             # The dialect should be registered
             self.assertTrue(hasattr(registry, "load"))
