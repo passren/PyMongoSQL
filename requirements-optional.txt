@@ -1,0 +1,2 @@
+# SQLAlchemy support (optional) - supports 1.4+ and 2.x
+sqlalchemy>=1.4.0,<3.0.0
