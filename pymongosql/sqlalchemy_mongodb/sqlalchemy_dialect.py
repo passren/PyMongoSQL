@@ -7,7 +7,17 @@ seamlessly with SQLAlchemy's ORM and core query functionality.
 
 Supports both SQLAlchemy 1.x and 2.x versions.
 """
+import logging
 from typing import Any, Dict, List, Optional, Tuple, Type
+
+from sqlalchemy import pool, types
+from sqlalchemy.engine import default, url
+from sqlalchemy.sql import compiler
+from sqlalchemy.sql.sqltypes import NULLTYPE
+
+import pymongosql
+
+_logger = logging.getLogger(__name__)
 
 try:
     import sqlalchemy
@@ -18,11 +28,6 @@ except ImportError:
     SQLALCHEMY_VERSION = (1, 4)  # Default fallback
     SQLALCHEMY_2X = False
 
-from sqlalchemy import pool, types
-from sqlalchemy.engine import default, url
-from sqlalchemy.sql import compiler
-from sqlalchemy.sql.sqltypes import NULLTYPE
-
 # Version-specific imports
 if SQLALCHEMY_2X:
     try:
@@ -32,8 +37,6 @@ if SQLALCHEMY_2X:
         from sqlalchemy.engine.default import DefaultDialect as Dialect
 else:
     from sqlalchemy.engine.interfaces import Dialect
-
-import pymongosql
 
 
 class PyMongoSQLIdentifierPreparer(compiler.IdentifierPreparer):
@@ -274,34 +277,52 @@ class PyMongoSQLDialect(default.DefaultDialect):
 
     def get_schema_names(self, connection, **kwargs):
         """Get list of databases (schemas in SQL terms)."""
-        # In MongoDB, databases are like schemas
-        cursor = connection.execute("SHOW DATABASES")
-        return [row[0] for row in cursor.fetchall()]
+        # Use MongoDB admin command directly instead of SQL SHOW DATABASES
+        try:
+            # Access the underlying MongoDB client through the connection
+            db_connection = connection.connection
+            if hasattr(db_connection, "_client"):
+                admin_db = db_connection._client.admin
+                result = admin_db.command("listDatabases")
+                return [db["name"] for db in result.get("databases", [])]
+        except Exception as e:
+            _logger.warning(f"Failed to get database names: {e}")
+        return ["default"]  # Fallback to default database
 
     def has_table(self, connection, table_name: str, schema: Optional[str] = None, **kwargs) -> bool:
         """Check if a collection (table) exists."""
         try:
-            if schema:
-                sql = f"SHOW COLLECTIONS FROM {schema}"
-            else:
-                sql = "SHOW COLLECTIONS"
-            cursor = connection.execute(sql)
-            collections = [row[0] for row in cursor.fetchall()]
-            return table_name in collections
-        except Exception:
-            return False
+            # Use MongoDB listCollections command directly
+            db_connection = connection.connection
+            if hasattr(db_connection, "_client"):
+                if schema:
+                    db = db_connection._client[schema]
+                else:
+                    db = db_connection.database
+
+                # Use listCollections command
+                collections = db.list_collection_names()
+                return table_name in collections
+        except Exception as e:
+            _logger.warning(f"Failed to check table existence: {e}")
+        return False
 
     def get_table_names(self, connection, schema: Optional[str] = None, **kwargs) -> List[str]:
         """Get list of collections (tables)."""
         try:
-            if schema:
-                sql = f"SHOW COLLECTIONS FROM {schema}"
-            else:
-                sql = "SHOW COLLECTIONS"
-            cursor = connection.execute(sql)
-            return [row[0] for row in cursor.fetchall()]
-        except Exception:
-            return []
+            # Use MongoDB listCollections command directly
+            db_connection = connection.connection
+            if hasattr(db_connection, "_client"):
+                if schema:
+                    db = db_connection._client[schema]
+                else:
+                    db = db_connection.database
+
+                # Use listCollections command
+                return db.list_collection_names()
+        except Exception as e:
+            _logger.warning(f"Failed to get table names: {e}")
+        return []
 
     def get_columns(self, connection, table_name: str, schema: Optional[str] = None, **kwargs) -> List[Dict[str, Any]]:
         """Get column information for a collection.
@@ -310,23 +331,49 @@ class PyMongoSQLDialect(default.DefaultDialect):
         """
         columns = []
         try:
-            # Use DESCRIBE-like functionality if available
-            if schema:
-                sql = f"DESCRIBE {schema}.{table_name}"
-            else:
-                sql = f"DESCRIBE {table_name}"
+            # Use direct MongoDB operations to sample documents and infer schema
+            db_connection = connection.connection
+            if hasattr(db_connection, "_client"):
+                if schema:
+                    db = db_connection._client[schema]
+                else:
+                    db = db_connection.database
 
-            cursor = connection.execute(sql)
-            for row in cursor.fetchall():
-                # Assume row format: (name, type, nullable, default)
-                col_info = {
-                    "name": row[0],
-                    "type": self._get_column_type(row[1] if len(row) > 1 else "object"),
-                    "nullable": row[2] if len(row) > 2 else True,
-                    "default": row[3] if len(row) > 3 else None,
-                }
-                columns.append(col_info)
-        except Exception:
+                collection = db[table_name]
+
+                # Sample a few documents to infer schema
+                sample_docs = list(collection.find().limit(10))
+                if sample_docs:
+                    # Collect all unique field names and types
+                    field_types = {}
+                    for doc in sample_docs:
+                        for field_name, value in doc.items():
+                            if field_name not in field_types:
+                                field_types[field_name] = self._infer_bson_type(value)
+
+                    # Convert to SQLAlchemy column format
+                    for field_name, bson_type in field_types.items():
+                        columns.append(
+                            {
+                                "name": field_name,
+                                "type": self._get_column_type(bson_type),
+                                "nullable": field_name != "_id",  # _id is always required
+                                "default": None,
+                            }
+                        )
+                else:
+                    # Empty collection, provide minimal _id column
+                    columns = [
+                        {
+                            "name": "_id",
+                            "type": types.String(),
+                            "nullable": False,
+                            "default": None,
+                        }
+                    ]
+
+        except Exception as e:
+            _logger.warning(f"Failed to get column info for {table_name}: {e}")
             # Fallback: provide minimal _id column
             columns = [
                 {
@@ -338,6 +385,33 @@ class PyMongoSQLDialect(default.DefaultDialect):
             ]
 
         return columns
+
+    def _infer_bson_type(self, value: Any) -> str:
+        """Infer BSON type from a Python value."""
+        from datetime import datetime
+
+        from bson import ObjectId
+
+        if isinstance(value, ObjectId):
+            return "objectId"
+        elif isinstance(value, str):
+            return "string"
+        elif isinstance(value, bool):
+            return "bool"
+        elif isinstance(value, int):
+            return "int"
+        elif isinstance(value, float):
+            return "double"
+        elif isinstance(value, datetime):
+            return "date"
+        elif isinstance(value, list):
+            return "array"
+        elif isinstance(value, dict):
+            return "object"
+        elif value is None:
+            return "null"
+        else:
+            return "string"  # Default fallback
 
     def _get_column_type(self, mongo_type: str) -> Type[types.TypeEngine]:
         """Map MongoDB/BSON types to SQLAlchemy types."""
@@ -377,22 +451,32 @@ class PyMongoSQLDialect(default.DefaultDialect):
         """Get index information for a collection."""
         indexes = []
         try:
-            if schema:
-                sql = f"SHOW INDEXES FROM {schema}.{table_name}"
-            else:
-                sql = f"SHOW INDEXES FROM {table_name}"
+            # Use direct MongoDB operations to get indexes
+            db_connection = connection.connection
+            if hasattr(db_connection, "_client"):
+                if schema:
+                    db = db_connection._client[schema]
+                else:
+                    db = db_connection.database
 
-            cursor = connection.execute(sql)
-            for row in cursor.fetchall():
-                # Assume row format: (name, column_names, unique)
-                index_info = {
-                    "name": row[0],
-                    "column_names": [row[1]] if isinstance(row[1], str) else row[1],
-                    "unique": row[2] if len(row) > 2 else False,
-                }
-                indexes.append(index_info)
-        except Exception:
-            # Always include the default _id index
+                collection = db[table_name]
+
+                # Get index information
+                index_info = collection.index_information()
+                for index_name, index_spec in index_info.items():
+                    # Extract column names from key specification
+                    column_names = [field[0] for field in index_spec.get("key", [])]
+
+                    indexes.append(
+                        {
+                            "name": index_name,
+                            "column_names": column_names,
+                            "unique": index_spec.get("unique", False),
+                        }
+                    )
+        except Exception as e:
+            _logger.warning(f"Failed to get index info for {table_name}: {e}")
+            # Always include the default _id index as fallback
             indexes = [
                 {
                     "name": "_id_",
@@ -430,6 +514,25 @@ class PyMongoSQLDialect(default.DefaultDialect):
                 # MongoDB auto-commits most operations - ignore errors
                 # This is normal behavior for MongoDB connections
                 pass
+
+    def do_ping(self, dbapi_connection):
+        """Ping the database to test connection status.
+
+        Used by SQLAlchemy and tools like Superset for connection testing.
+        This avoids the need to execute "SELECT 1" queries that would fail
+        due to PartiQL grammar requirements.
+        """
+        if hasattr(dbapi_connection, "test_connection") and callable(dbapi_connection.test_connection):
+            return dbapi_connection.test_connection()
+        else:
+            # Fallback: try to execute a simple ping command directly
+            try:
+                if hasattr(dbapi_connection, "_client"):
+                    dbapi_connection._client.admin.command("ping")
+                    return True
+            except Exception:
+                pass
+            return False
 
 
 # Version information
