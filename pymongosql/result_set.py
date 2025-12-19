@@ -2,6 +2,7 @@
 import logging
 from typing import Any, Dict, List, Optional, Sequence, Tuple
 
+import jmespath
 from pymongo.cursor import Cursor as MongoCursor
 from pymongo.errors import PyMongoError
 
@@ -125,13 +126,31 @@ class ResultSet(CursorIterator):
         processed = {}
         for field_name, include_flag in self._execution_plan.projection_stage.items():
             if include_flag == 1:  # Field is included in projection
-                if field_name in doc:
-                    processed[field_name] = doc[field_name]
-                elif field_name != "_id":  # _id might be excluded by MongoDB
-                    # Field not found, set to None
-                    processed[field_name] = None
+                # Use jmespath to handle nested field access (dot notation and array indexing)
+                value = self._get_nested_value(doc, field_name)
+                processed[field_name] = value
 
         return processed
+
+    def _get_nested_value(self, doc: Dict[str, Any], field_path: str) -> Any:
+        """Extract nested field value from document using JMESPath
+
+        Supports:
+            - Simple fields: "name" -> doc["name"]
+            - Nested fields: "profile.bio" -> doc["profile"]["bio"]
+            - Array indexing: "address.coordinates[1]" -> doc["address"]["coordinates"][1]
+            - Wildcards: "items[*].name" -> [item["name"] for item in items]
+        """
+        try:
+            # Optimization: for simple field names without dots/brackets, use direct access
+            if "." not in field_path and "[" not in field_path:
+                return doc.get(field_path)
+
+            # Use jmespath for complex paths
+            return jmespath.search(field_path, doc)
+        except Exception as e:
+            _logger.debug(f"Error extracting field '{field_path}': {e}")
+            return None
 
     def _dict_to_sequence(self, doc: Dict[str, Any]) -> Tuple[Any, ...]:
         """Convert document dictionary to sequence according to column order"""

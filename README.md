@@ -137,11 +137,23 @@ while users:
 ### SELECT Statements
 - Field selection: `SELECT name, age FROM users`
 - Wildcards: `SELECT * FROM products`
+- **Nested fields**: `SELECT profile.name, profile.age FROM users`
+- **Array access**: `SELECT items[0], items[1].name FROM orders`
 
 ### WHERE Clauses
 - Equality: `WHERE name = 'John'`
 - Comparisons: `WHERE age > 25`, `WHERE price <= 100.0`
 - Logical operators: `WHERE age > 18 AND status = 'active'`
+- **Nested field filtering**: `WHERE profile.status = 'active'`
+- **Array filtering**: `WHERE items[0].price > 100`
+
+### Nested Field Support
+- **Single-level**: `profile.name`, `settings.theme`
+- **Multi-level**: `account.profile.name`, `config.database.host`
+- **Array access**: `items[0].name`, `orders[1].total`
+- **Complex queries**: `WHERE customer.profile.age > 18 AND orders[0].status = 'paid'`
+
+> **Note**: Avoid SQL reserved words (`user`, `data`, `value`, `count`, etc.) as unquoted field names. Use alternatives or bracket notation for arrays.
 
 ### Sorting and Limiting
 - ORDER BY: `ORDER BY name ASC, age DESC`

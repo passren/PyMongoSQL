@@ -138,6 +138,28 @@ class TestCursor:
             for row in rows:
                 assert len(row) >= 2  # Should have at least name and email
 
+    def test_execute_nested_fields_query(self, conn):
+        """Test executing query with nested field access"""
+        sql = "SELECT profile.bio, address.city, address.coordinates FROM users WHERE salary >= 100000"
+
+        cursor = conn.cursor()
+        result = cursor.execute(sql)
+        assert result == cursor
+        assert isinstance(cursor.result_set, ResultSet)
+
+        # Get results - test nested field functionality
+        rows = cursor.result_set.fetchall()
+        assert isinstance(rows, list)
+        assert len(rows) == 4
+
+        # Verify that nested fields are properly projected
+        if cursor.result_set.description:
+            col_names = [desc[0] for desc in cursor.result_set.description]
+            # Should include nested field names in projection
+            assert "profile.bio" in col_names
+            assert "address.city" in col_names
+            assert "address.coordinates" in col_names
+
     def test_execute_parser_error(self, conn):
         """Test executing query with parser errors"""
         sql = "INVALID SQL SYNTAX"

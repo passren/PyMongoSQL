@@ -5,7 +5,7 @@ from pymongosql.error import SqlSyntaxError
 from pymongosql.sql.parser import SQLParser
 
 
-class TestSQLParser:
+class TestSQLParserGeneral:
     """Comprehensive test suite for SQL parser from simple to complex queries"""
 
     def test_simple_select_all(self):

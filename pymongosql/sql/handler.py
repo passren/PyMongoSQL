@@ -893,7 +893,7 @@ class SelectHandler(BaseHandler):
         return projection
 
     def _extract_field_and_alias(self, item) -> Tuple[str, Optional[str]]:
-        """Extract field name and alias from projection item context"""
+        """Extract field name and alias from projection item context with nested field support"""
         if not hasattr(item, "children") or not item.children:
             return str(item), None
 
