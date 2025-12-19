@@ -8,6 +8,7 @@
 [![Python Version](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
 [![MongoDB](https://img.shields.io/badge/MongoDB-7.0+-green.svg)](https://www.mongodb.com/)
 [![SQLAlchemy](https://img.shields.io/badge/SQLAlchemy-1.4+_2.0+-darkgreen.svg)](https://www.sqlalchemy.org/)
+[![Superset](https://img.shields.io/badge/Apache_Superset-1.0+-blue.svg)](https://superset.apache.org/docs/6.0.0/configuration/databases)
 
 PyMongoSQL is a Python [DB API 2.0 (PEP 249)](https://www.python.org/dev/peps/pep-0249/) client for [MongoDB](https://www.mongodb.com/). It provides a familiar SQL interface to MongoDB, allowing developers to use SQL to interact with MongoDB collections.
 
@@ -147,26 +148,18 @@ while users:
 - LIMIT: `LIMIT 10`
 - Combined: `ORDER BY created_at DESC LIMIT 5`
 
-## Connection Options
+## Limitations & Roadmap
 
-```python
-from pymongosql.connection import Connection
+**Note**: Currently PyMongoSQL focuses on Data Query Language (DQL) operations. The following SQL features are **not yet supported** but are planned for future releases:
 
-# Basic connection
-conn = Connection(host="localhost", port=27017, database="mydb")
+- **DML Operations** (Data Manipulation Language)
+  - `INSERT`, `UPDATE`, `DELETE`
+- **DDL Operations** (Data Definition Language)  
+  - `CREATE TABLE/COLLECTION`, `DROP TABLE/COLLECTION`
+  - `CREATE INDEX`, `DROP INDEX`
+  - `LIST TABLES/COLLECTIONS`
 
-# With authentication
-conn = Connection(
-    host="mongodb://user:pass@host:port/db?authSource=admin",
-    database="mydb"
-)
-
-# Connection properties
-print(conn.host)           # MongoDB connection URL
-print(conn.port)           # Port number
-print(conn.database_name)  # Database name
-print(conn.is_connected)   # Connection status
-```
+These features are on our development roadmap and contributions are welcome!
 
 ## Contributing
 
