@@ -41,6 +41,9 @@ PyMongoSQL implements the DB API 2.0 interfaces to provide SQL-like access to Mo
 - **ANTLR4** (SQL Parser Runtime)
   - antlr4-python3-runtime >= 4.13.0
 
+- **JMESPath** (JSON/Dict Path Query)
+  - jmespath >= 1.0.0
+
 ### Optional Dependencies
 
 - **SQLAlchemy** (for ORM/Core support)
