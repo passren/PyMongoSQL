@@ -324,6 +324,24 @@ class PyMongoSQLDialect(default.DefaultDialect):
             _logger.warning(f"Failed to get table names: {e}")
         return []
 
+    def get_view_names(self, connection, schema: Optional[str] = None, **kwargs) -> List[str]:
+        """Get list of views.
+
+        MongoDB doesn't have traditional SQL views like relational databases.
+        Return empty list to satisfy SQLAlchemy and tools like Superset.
+
+        Args:
+            connection: Database connection
+            schema: Optional schema/database name
+            **kwargs: Additional arguments
+
+        Returns:
+            Empty list as MongoDB doesn't support SQL views
+        """
+        # MongoDB doesn't have traditional SQL views
+        # Return empty list to avoid NotImplementedError
+        return []
+
     def get_columns(self, connection, table_name: str, schema: Optional[str] = None, **kwargs) -> List[Dict[str, Any]]:
         """Get column information for a collection.
 
