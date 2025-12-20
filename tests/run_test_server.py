@@ -126,7 +126,7 @@ def start_mongodb_docker(version="8.0"):
             capture_output=True,
             text=True,
             check=True,
-            timeout=30,
+            timeout=120,
         )
 
         print(f"Container started: {result.stdout.strip()}")
@@ -151,7 +151,7 @@ def stop_mongodb_docker():
         return False
 
 
-def wait_for_mongodb(host=MONGODB_HOST, port=MONGODB_PORT, timeout=30):
+def wait_for_mongodb(host=MONGODB_HOST, port=MONGODB_PORT, timeout=90):
     """Wait for MongoDB to be ready"""
     print(f"Waiting for MongoDB at {host}:{port}... (timeout: {timeout}s)")
 
