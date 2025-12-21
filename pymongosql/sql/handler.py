@@ -47,6 +47,10 @@ class ParseResult:
     limit_value: Optional[int] = None
     offset_value: Optional[int] = None
 
+    # Subquery info (for wrapped subqueries, e.g., Superset outering)
+    subquery_plan: Optional[Any] = None
+    subquery_alias: Optional[str] = None
+
     # Factory methods for different use cases
     @classmethod
     def for_visitor(cls) -> "ParseResult":
@@ -952,9 +956,23 @@ class FromHandler(BaseHandler):
         """Check if this is a from context"""
         return hasattr(ctx, "tableReference")
 
+    # Subquery alias parsing and filter-key rewriting has been delegated to SubqueryResolver.
+    # See `pymongosql/sql/subquery.py` for the implementation.
+    pass
+
     def handle_visitor(self, ctx: PartiQLParser.FromClauseContext, parse_result: "ParseResult") -> Any:
         if hasattr(ctx, "tableReference") and ctx.tableReference():
-            collection_name = ctx.tableReference().getText()
+            table_text = ctx.tableReference().getText()
+
+            # Detect wrapped subquery pattern: (SELECT ...) alias
+            from .subquery import SubqueryResolver
+
+            if SubqueryResolver.is_wrapped_subquery_text(table_text):
+                resolver = SubqueryResolver()
+                return resolver.resolve_and_apply(table_text, parse_result)
+
+            # Default: simple table reference
+            collection_name = table_text
             parse_result.collection = collection_name
             return collection_name
         return None
