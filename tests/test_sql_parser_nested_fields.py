@@ -55,7 +55,7 @@ class TestSQLParserNestedFields:
 
         execution_plan = parser.get_execution_plan()
         assert execution_plan.collection == "orders"
-        assert execution_plan.projection_stage == {"items[0]": 1, "items[1].name": 1}
+        assert execution_plan.projection_stage == {"items.0": 1, "items.1.name": 1}
 
     def test_array_bracket_notation_where(self):
         """Test array access using bracket notation in WHERE"""
@@ -66,7 +66,7 @@ class TestSQLParserNestedFields:
 
         execution_plan = parser.get_execution_plan()
         assert execution_plan.collection == "orders"
-        assert execution_plan.filter_stage == {"items[0].price": {"$gt": 100}}
+        assert execution_plan.filter_stage == {"items.0.price": {"$gt": 100}}
 
     def test_quoted_reserved_words(self):
         """Test using quoted reserved words as field names - currently limited support"""
@@ -99,14 +99,14 @@ class TestSQLParserNestedFields:
         execution_plan = parser.get_execution_plan()
         assert execution_plan.collection == "transactions"
 
-        expected_projection = {"customer.profile.name": 1, "orders[0].total": 1, "settings.preferences.theme": 1}
+        expected_projection = {"customer.profile.name": 1, "orders.0.total": 1, "settings.preferences.theme": 1}
         assert execution_plan.projection_stage == expected_projection
 
         # The filter should be a combination of conditions
         expected_filter = {
             "$and": [
                 {"customer.profile.age": {"$gt": 18}},
-                {"orders[0].status": "completed"},
+                {"orders.0.status": "completed"},
                 {"settings.notifications": True},
             ]
         }

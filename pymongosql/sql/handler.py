@@ -3,6 +3,7 @@
 Expression handlers for converting SQL expressions to MongoDB query format
 """
 import logging
+import re
 import time
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
@@ -97,6 +98,27 @@ class ContextUtilsMixin:
     def has_children(ctx: Any) -> bool:
         """Check if context has children"""
         return hasattr(ctx, "children") and bool(ctx.children)
+
+    @staticmethod
+    def normalize_field_path(path: str) -> str:
+        """Normalize jmspath/bracket notation to MongoDB dot notation.
+
+        Examples:
+            items[0] -> items.0
+            items[1].name -> items.1.name
+            arr['key'] or arr["key"] -> arr.key
+        """
+        if not isinstance(path, str):
+            return path
+
+        s = path.strip()
+        # Convert quoted bracket identifiers ["name"] or ['name'] -> .name
+        s = re.sub(r"\[\s*['\"]([^'\"]+)['\"]\s*\]", r".\1", s)
+        # Convert numeric bracket indexes [0] -> .0
+        s = re.sub(r"\[\s*(\d+)\s*\]", r".\1", s)
+        # Collapse multiple dots and strip leading/trailing dots
+        s = re.sub(r"\.{2,}", ".", s).strip(".")
+        return s
 
 
 class LoggingMixin:
@@ -358,21 +380,23 @@ class ComparisonExpressionHandler(BaseHandler, ContextUtilsMixin, LoggingMixin, 
             sql_keywords = ["IN(", "LIKE", "BETWEEN", "ISNULL", "ISNOTNULL"]
             for keyword in sql_keywords:
                 if keyword in text:
-                    return text.split(keyword, 1)[0].strip()
+                    candidate = text.split(keyword, 1)[0].strip()
+                    return self.normalize_field_path(candidate)
 
             # Try operator-based splitting
             operator = self._find_operator_in_text(text, COMPARISON_OPERATORS)
             if operator:
                 parts = self._split_by_operator(text, operator)
                 if parts:
-                    return parts[0].strip("'\"()")
+                    candidate = parts[0].strip("'\"()")
+                    return self.normalize_field_path(candidate)
 
             # Fallback to children parsing
             if self.has_children(ctx):
                 for child in ctx.children:
                     child_text = self.get_context_text(child)
                     if child_text not in COMPARISON_OPERATORS and not child_text.startswith(("'", '"')):
-                        return child_text
+                        return self.normalize_field_path(child_text)
 
             return "unknown_field"
         except Exception as e:
@@ -873,7 +897,7 @@ class EnhancedWhereHandler(ContextUtilsMixin):
 # Visitor Handler Classes for AST Processing
 
 
-class SelectHandler(BaseHandler):
+class SelectHandler(BaseHandler, ContextUtilsMixin):
     """Handles SELECT statement parsing"""
 
     def can_handle(self, ctx: Any) -> bool:
@@ -903,6 +927,9 @@ class SelectHandler(BaseHandler):
         # OR children[1] might be just symbolPrimitive (without AS)
 
         field_name = item.children[0].getText()
+        # Normalize bracket notation (jmspath) to Mongo dot notation
+        field_name = self.normalize_field_path(field_name)
+
         alias = None
 
         if len(item.children) >= 2:

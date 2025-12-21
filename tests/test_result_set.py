@@ -276,6 +276,21 @@ class TestResultSet:
         expected = {"name": "John", "age": 30}
         assert mapped_doc == expected
 
+    def test_array_projection_mapping(self):
+        """Test projection mapping with array bracket/number conversion"""
+        projection = {"items.0": 1, "items.1.name": 1}
+        execution_plan = ExecutionPlan(collection="orders", projection_stage=projection)
+
+        command_result = {"cursor": {"firstBatch": []}}
+        result_set = ResultSet(command_result=command_result, execution_plan=execution_plan)
+
+        doc = {"items": [{"price": 50, "name": "a"}, {"price": 200, "name": "b"}]}
+
+        mapped_doc = result_set._process_document(doc)
+
+        expected = {"items[0]": {"price": 50, "name": "a"}, "items[1].name": "b"}
+        assert mapped_doc == expected
+
     def test_close(self):
         """Test close method"""
         command_result = {"cursor": {"firstBatch": []}}

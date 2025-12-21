@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import logging
+import re
 from typing import Any, Dict, List, Optional, Sequence, Tuple
 
 import jmespath
@@ -126,11 +127,34 @@ class ResultSet(CursorIterator):
         processed = {}
         for field_name, include_flag in self._execution_plan.projection_stage.items():
             if include_flag == 1:  # Field is included in projection
-                # Use jmespath to handle nested field access (dot notation and array indexing)
+                # Extract value using jmespath-compatible field path (convert numeric dot indexes to bracket form)
                 value = self._get_nested_value(doc, field_name)
-                processed[field_name] = value
+                # Convert the projection key back to bracket notation for client-facing results
+                display_key = self._mongo_to_bracket_key(field_name)
+                processed[display_key] = value
 
         return processed
+
+    def _mongo_to_bracket_key(self, field_path: str) -> str:
+        """Convert Mongo dot-index notation to bracket notation for display keys.
+
+        Examples:
+            items.0 -> items[0]
+            items.1.name -> items[1].name
+        """
+        if not isinstance(field_path, str):
+            return field_path
+        # Replace .<number> with [<number>]
+        return re.sub(r"\.(\d+)", r"[\1]", field_path)
+
+    def _mongo_to_jmespath(self, field_path: str) -> str:
+        """Convert Mongo-style field path to JMESPath-compatible path.
+
+        This mainly transforms numeric dot segments into bracket indices.
+        """
+        if not isinstance(field_path, str):
+            return field_path
+        return self._mongo_to_bracket_key(field_path)
 
     def _get_nested_value(self, doc: Dict[str, Any], field_path: str) -> Any:
         """Extract nested field value from document using JMESPath
@@ -146,8 +170,10 @@ class ResultSet(CursorIterator):
             if "." not in field_path and "[" not in field_path:
                 return doc.get(field_path)
 
+            # Convert normalized Mongo-style numeric segments to JMESPath bracket notation
+            jmes_field = self._mongo_to_jmespath(field_path)
             # Use jmespath for complex paths
-            return jmespath.search(field_path, doc)
+            return jmespath.search(jmes_field, doc)
         except Exception as e:
             _logger.debug(f"Error extracting field '{field_path}': {e}")
             return None
