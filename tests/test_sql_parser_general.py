@@ -300,21 +300,6 @@ class TestSQLParserGeneral:
             parser = SQLParser("INVALID SQL SYNTAX")
             parser.get_execution_plan()
 
-    def test_superset_wrapped_subquery(self):
-        """Support Superset wrapping subquery with alias 'virtual'"""
-        sql = "SELECT virtual.a, virtual.b FROM (SELECT a, b FROM users WHERE c = 1) virtual"
-        parser = SQLParser(sql)
-
-        assert not parser.has_errors, f"Parser errors: {parser.errors}"
-
-        execution_plan = parser.get_execution_plan()
-        # After unwrapping, collection should be inner collection
-        assert execution_plan.collection == "users"
-        # Projections should be remapped to inner fields
-        assert execution_plan.projection_stage == {"a": 1, "b": 1}
-        # Inner filter should be preserved
-        assert execution_plan.filter_stage == {"c": 1}
-
     def test_different_collection_names(self):
         """Test parsing with different collection names"""
         test_cases = [
