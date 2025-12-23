@@ -104,18 +104,36 @@ class MongoQueryBuilder:
         _logger.debug(f"Set projection: {projection}")
         return self
 
-    def sort(self, field: str, direction: int = 1) -> "MongoQueryBuilder":
-        """Add sort criteria"""
-        if not field or not isinstance(field, str):
-            self._add_error("Sort field must be a non-empty string")
+    def sort(self, specs: List[Dict[str, int]]) -> "MongoQueryBuilder":
+        """Add sort criteria.
+
+        Only accepts a list of single-key dicts in the form:
+            [{"field": 1}, {"other": -1}]
+
+        This matches the output produced by the SQL parser (`sort_fields`).
+        """
+        if not isinstance(specs, list):
+            self._add_error("Sort specifications must be a list of single-key dicts")
             return self
 
-        if direction not in [-1, 1]:
-            self._add_error("Sort direction must be 1 (ascending) or -1 (descending)")
-            return self
+        for spec in specs:
+            if not isinstance(spec, dict) or len(spec) != 1:
+                self._add_error("Each sort specification must be a single-key dict, e.g. {'name': 1}")
+                continue
 
-        self._execution_plan.sort_stage.append({field: direction})
-        _logger.debug(f"Added sort: {field} -> {direction}")
+            field, direction = next(iter(spec.items()))
+
+            if not isinstance(field, str) or not field:
+                self._add_error("Sort field must be a non-empty string")
+                continue
+
+            if direction not in [-1, 1]:
+                self._add_error(f"Sort direction for field '{field}' must be 1 or -1")
+                continue
+
+            self._execution_plan.sort_stage.append({field: direction})
+            _logger.debug(f"Added sort: {field} -> {direction}")
+
         return self
 
     def limit(self, count: int) -> "MongoQueryBuilder":

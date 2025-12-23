@@ -3,7 +3,7 @@ import logging
 from typing import Any, Dict
 
 from ..error import SqlSyntaxError
-from .builder import ExecutionPlan
+from .builder import BuilderFactory, ExecutionPlan
 from .handler import BaseHandler, HandlerFactory, ParseResult
 from .partiql.PartiQLLexer import PartiQLLexer
 from .partiql.PartiQLParser import PartiQLParser
@@ -47,15 +47,14 @@ class MongoSQLParserVisitor(PartiQLParserVisitor):
         return self._parse_result
 
     def parse_to_execution_plan(self) -> ExecutionPlan:
-        """Convert the parse result to an ExecutionPlan"""
-        return ExecutionPlan(
-            collection=self._parse_result.collection,
-            filter_stage=self._parse_result.filter_conditions,
-            projection_stage=self._parse_result.projection,
-            sort_stage=self._parse_result.sort_fields,
-            limit_stage=self._parse_result.limit_value,
-            skip_stage=self._parse_result.offset_value,
-        )
+        """Convert the parse result to an ExecutionPlan using BuilderFactory"""
+        builder = BuilderFactory.create_query_builder().collection(self._parse_result.collection)
+
+        builder.filter(self._parse_result.filter_conditions).project(self._parse_result.projection).sort(
+            self._parse_result.sort_fields
+        ).limit(self._parse_result.limit_value).skip(self._parse_result.offset_value)
+
+        return builder.build()
 
     def visitRoot(self, ctx: PartiQLParser.RootContext) -> Any:
         """Visit root node and process child nodes"""

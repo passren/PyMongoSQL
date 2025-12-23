@@ -3,7 +3,7 @@ import pytest
 
 from pymongosql.error import ProgrammingError
 from pymongosql.result_set import ResultSet
-from pymongosql.sql.builder import ExecutionPlan
+from pymongosql.sql.builder import BuilderFactory
 
 
 class TestResultSet:
@@ -19,7 +19,9 @@ class TestResultSet:
         # Execute a real command to get results
         command_result = db.command({"find": "users", "filter": {"age": {"$gt": 25}}, "limit": 1})
 
-        execution_plan = ExecutionPlan(collection="users", projection_stage=self.PROJECTION_WITH_FIELDS)
+        execution_plan = (
+            BuilderFactory.create_query_builder().collection("users").project(self.PROJECTION_WITH_FIELDS).build()
+        )
         result_set = ResultSet(command_result=command_result, execution_plan=execution_plan)
         assert result_set._command_result == command_result
         assert result_set._execution_plan == execution_plan
@@ -30,7 +32,9 @@ class TestResultSet:
         db = conn.database
         command_result = db.command({"find": "users", "limit": 1})
 
-        execution_plan = ExecutionPlan(collection="users", projection_stage=self.PROJECTION_EMPTY)
+        execution_plan = (
+            BuilderFactory.create_query_builder().collection("users").project(self.PROJECTION_EMPTY).build()
+        )
         result_set = ResultSet(command_result=command_result, execution_plan=execution_plan)
         assert result_set._execution_plan.projection_stage == {}
 
@@ -40,7 +44,9 @@ class TestResultSet:
         # Get real user data with projection mapping
         command_result = db.command({"find": "users", "projection": {"name": 1, "email": 1}, "limit": 1})
 
-        execution_plan = ExecutionPlan(collection="users", projection_stage=self.PROJECTION_WITH_FIELDS)
+        execution_plan = (
+            BuilderFactory.create_query_builder().collection("users").project(self.PROJECTION_WITH_FIELDS).build()
+        )
         result_set = ResultSet(command_result=command_result, execution_plan=execution_plan)
         row = result_set.fetchone()
 
@@ -66,7 +72,9 @@ class TestResultSet:
             {"find": "users", "filter": {"age": {"$gt": 999}}, "limit": 1}  # No users over 999 years old
         )
 
-        execution_plan = ExecutionPlan(collection="users", projection_stage=self.PROJECTION_WITH_FIELDS)
+        execution_plan = (
+            BuilderFactory.create_query_builder().collection("users").project(self.PROJECTION_WITH_FIELDS).build()
+        )
         result_set = ResultSet(command_result=command_result, execution_plan=execution_plan)
         row = result_set.fetchone()
 
@@ -77,7 +85,9 @@ class TestResultSet:
         db = conn.database
         command_result = db.command({"find": "users", "limit": 1, "sort": {"_id": 1}})
 
-        execution_plan = ExecutionPlan(collection="users", projection_stage=self.PROJECTION_EMPTY)
+        execution_plan = (
+            BuilderFactory.create_query_builder().collection("users").project(self.PROJECTION_EMPTY).build()
+        )
         result_set = ResultSet(command_result=command_result, execution_plan=execution_plan)
         row = result_set.fetchone()
 
@@ -102,7 +112,9 @@ class TestResultSet:
         db = conn.database
         command_result = db.command({"find": "users", "limit": 1})
 
-        execution_plan = ExecutionPlan(collection="users", projection_stage=self.PROJECTION_WITH_FIELDS)
+        execution_plan = (
+            BuilderFactory.create_query_builder().collection("users").project(self.PROJECTION_WITH_FIELDS).build()
+        )
         result_set = ResultSet(command_result=command_result, execution_plan=execution_plan)
         result_set.close()
 
@@ -115,7 +127,9 @@ class TestResultSet:
         # Get multiple users with projection
         command_result = db.command({"find": "users", "projection": {"name": 1, "email": 1}, "limit": 5})
 
-        execution_plan = ExecutionPlan(collection="users", projection_stage=self.PROJECTION_WITH_FIELDS)
+        execution_plan = (
+            BuilderFactory.create_query_builder().collection("users").project(self.PROJECTION_WITH_FIELDS).build()
+        )
         result_set = ResultSet(command_result=command_result, execution_plan=execution_plan)
         rows = result_set.fetchmany(2)
 
@@ -141,7 +155,9 @@ class TestResultSet:
         # Get all users (22 total in test dataset)
         command_result = db.command({"find": "users"})
 
-        execution_plan = ExecutionPlan(collection="users", projection_stage=self.PROJECTION_EMPTY)
+        execution_plan = (
+            BuilderFactory.create_query_builder().collection("users").project(self.PROJECTION_EMPTY).build()
+        )
         result_set = ResultSet(command_result=command_result, execution_plan=execution_plan)
         rows = result_set.fetchmany()  # Should use default arraysize (1000)
 
@@ -153,7 +169,9 @@ class TestResultSet:
         # Get only 2 users but request 5
         command_result = db.command({"find": "users", "limit": 2})
 
-        execution_plan = ExecutionPlan(collection="users", projection_stage=self.PROJECTION_EMPTY)
+        execution_plan = (
+            BuilderFactory.create_query_builder().collection("users").project(self.PROJECTION_EMPTY).build()
+        )
         result_set = ResultSet(command_result=command_result, execution_plan=execution_plan)
         rows = result_set.fetchmany(5)  # Request 5 but only 2 available
 
@@ -165,7 +183,9 @@ class TestResultSet:
         # Query for non-existent data
         command_result = db.command({"find": "users", "filter": {"age": {"$gt": 999}}})  # No users over 999 years old
 
-        execution_plan = ExecutionPlan(collection="users", projection_stage=self.PROJECTION_EMPTY)
+        execution_plan = (
+            BuilderFactory.create_query_builder().collection("users").project(self.PROJECTION_EMPTY).build()
+        )
         result_set = ResultSet(command_result=command_result, execution_plan=execution_plan)
         rows = result_set.fetchmany(3)
 
@@ -179,7 +199,9 @@ class TestResultSet:
             {"find": "users", "filter": {"age": {"$gt": 25}}, "projection": {"name": 1, "email": 1}}
         )
 
-        execution_plan = ExecutionPlan(collection="users", projection_stage=self.PROJECTION_WITH_FIELDS)
+        execution_plan = (
+            BuilderFactory.create_query_builder().collection("users").project(self.PROJECTION_WITH_FIELDS).build()
+        )
         result_set = ResultSet(command_result=command_result, execution_plan=execution_plan)
         rows = result_set.fetchall()
 
@@ -201,7 +223,9 @@ class TestResultSet:
         db = conn.database
         command_result = db.command({"find": "users", "filter": {"age": {"$gt": 999}}})  # No users over 999 years old
 
-        execution_plan = ExecutionPlan(collection="users", projection_stage=self.PROJECTION_EMPTY)
+        execution_plan = (
+            BuilderFactory.create_query_builder().collection("users").project(self.PROJECTION_EMPTY).build()
+        )
         result_set = ResultSet(command_result=command_result, execution_plan=execution_plan)
         rows = result_set.fetchall()
 
@@ -212,7 +236,9 @@ class TestResultSet:
         db = conn.database
         command_result = db.command({"find": "users", "limit": 1})
 
-        execution_plan = ExecutionPlan(collection="users", projection_stage=self.PROJECTION_EMPTY)
+        execution_plan = (
+            BuilderFactory.create_query_builder().collection("users").project(self.PROJECTION_EMPTY).build()
+        )
         result_set = ResultSet(command_result=command_result, execution_plan=execution_plan)
         result_set.close()
 
@@ -222,7 +248,7 @@ class TestResultSet:
     def test_apply_projection_mapping(self):
         """Test _process_document method"""
         projection = {"name": 1, "age": 1, "email": 1}
-        execution_plan = ExecutionPlan(collection="users", projection_stage=projection)
+        execution_plan = BuilderFactory.create_query_builder().collection("users").project(projection).build()
 
         # Create empty command result for testing _process_document method
         command_result = {"cursor": {"firstBatch": []}}
@@ -248,7 +274,7 @@ class TestResultSet:
             "age": 1,
             "missing": 1,
         }
-        execution_plan = ExecutionPlan(collection="users", projection_stage=projection)
+        execution_plan = BuilderFactory.create_query_builder().collection("users").project(projection).build()
 
         command_result = {"cursor": {"firstBatch": []}}
         result_set = ResultSet(command_result=command_result, execution_plan=execution_plan)
@@ -264,7 +290,7 @@ class TestResultSet:
     def test_apply_projection_mapping_identity_mapping(self):
         """Test projection with MongoDB standard format"""
         projection = {"name": 1, "age": 1}
-        execution_plan = ExecutionPlan(collection="users", projection_stage=projection)
+        execution_plan = BuilderFactory.create_query_builder().collection("users").project(projection).build()
 
         command_result = {"cursor": {"firstBatch": []}}
         result_set = ResultSet(command_result=command_result, execution_plan=execution_plan)
@@ -279,7 +305,7 @@ class TestResultSet:
     def test_array_projection_mapping(self):
         """Test projection mapping with array bracket/number conversion"""
         projection = {"items.0": 1, "items.1.name": 1}
-        execution_plan = ExecutionPlan(collection="orders", projection_stage=projection)
+        execution_plan = BuilderFactory.create_query_builder().collection("orders").project(projection).build()
 
         command_result = {"cursor": {"firstBatch": []}}
         result_set = ResultSet(command_result=command_result, execution_plan=execution_plan)
@@ -294,7 +320,9 @@ class TestResultSet:
     def test_close(self):
         """Test close method"""
         command_result = {"cursor": {"firstBatch": []}}
-        execution_plan = ExecutionPlan(collection="users", projection_stage=self.PROJECTION_EMPTY)
+        execution_plan = (
+            BuilderFactory.create_query_builder().collection("users").project(self.PROJECTION_EMPTY).build()
+        )
         result_set = ResultSet(command_result=command_result, execution_plan=execution_plan)
 
         # Should not be closed initially
@@ -308,7 +336,9 @@ class TestResultSet:
     def test_context_manager(self):
         """Test ResultSet as context manager"""
         command_result = {"cursor": {"firstBatch": []}}
-        execution_plan = ExecutionPlan(collection="users", projection_stage=self.PROJECTION_EMPTY)
+        execution_plan = (
+            BuilderFactory.create_query_builder().collection("users").project(self.PROJECTION_EMPTY).build()
+        )
         result_set = ResultSet(command_result=command_result, execution_plan=execution_plan)
 
         with result_set as rs:
@@ -321,7 +351,9 @@ class TestResultSet:
     def test_context_manager_with_exception(self):
         """Test context manager with exception"""
         command_result = {"cursor": {"firstBatch": []}}
-        execution_plan = ExecutionPlan(collection="users", projection_stage=self.PROJECTION_EMPTY)
+        execution_plan = (
+            BuilderFactory.create_query_builder().collection("users").project(self.PROJECTION_EMPTY).build()
+        )
         result_set = ResultSet(command_result=command_result, execution_plan=execution_plan)
 
         try:
@@ -340,7 +372,9 @@ class TestResultSet:
         # Get 2 users from database
         command_result = db.command({"find": "users", "limit": 2})
 
-        execution_plan = ExecutionPlan(collection="users", projection_stage=self.PROJECTION_EMPTY)
+        execution_plan = (
+            BuilderFactory.create_query_builder().collection("users").project(self.PROJECTION_EMPTY).build()
+        )
         result_set = ResultSet(command_result=command_result, execution_plan=execution_plan)
 
         # Test iterator protocol
@@ -363,7 +397,9 @@ class TestResultSet:
         db = conn.database
         command_result = db.command({"find": "users", "projection": {"name": 1, "email": 1}, "limit": 2})
 
-        execution_plan = ExecutionPlan(collection="users", projection_stage=self.PROJECTION_WITH_FIELDS)
+        execution_plan = (
+            BuilderFactory.create_query_builder().collection("users").project(self.PROJECTION_WITH_FIELDS).build()
+        )
         result_set = ResultSet(command_result=command_result, execution_plan=execution_plan)
 
         rows = list(result_set)
@@ -378,7 +414,9 @@ class TestResultSet:
     def test_iterator_closed_cursor(self):
         """Test iteration on closed cursor"""
         command_result = {"cursor": {"firstBatch": []}}
-        execution_plan = ExecutionPlan(collection="users", projection_stage=self.PROJECTION_EMPTY)
+        execution_plan = (
+            BuilderFactory.create_query_builder().collection("users").project(self.PROJECTION_EMPTY).build()
+        )
         result_set = ResultSet(command_result=command_result, execution_plan=execution_plan)
         result_set.close()
 
@@ -388,7 +426,9 @@ class TestResultSet:
     def test_arraysize_property(self):
         """Test arraysize property"""
         command_result = {"cursor": {"firstBatch": []}}
-        execution_plan = ExecutionPlan(collection="users", projection_stage=self.PROJECTION_EMPTY)
+        execution_plan = (
+            BuilderFactory.create_query_builder().collection("users").project(self.PROJECTION_EMPTY).build()
+        )
         result_set = ResultSet(command_result=command_result, execution_plan=execution_plan)
 
         # Default arraysize should be 1000
@@ -401,7 +441,9 @@ class TestResultSet:
     def test_arraysize_validation(self):
         """Test arraysize validation"""
         command_result = {"cursor": {"firstBatch": []}}
-        execution_plan = ExecutionPlan(collection="users", projection_stage=self.PROJECTION_EMPTY)
+        execution_plan = (
+            BuilderFactory.create_query_builder().collection("users").project(self.PROJECTION_EMPTY).build()
+        )
         result_set = ResultSet(command_result=command_result, execution_plan=execution_plan)
 
         # Should reject invalid values

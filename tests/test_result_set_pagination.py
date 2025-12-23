@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 from pymongosql.result_set import ResultSet
-from pymongosql.sql.builder import ExecutionPlan
+from pymongosql.sql.builder import BuilderFactory
 
 
 class TestResultSetPagination:
@@ -16,7 +16,9 @@ class TestResultSetPagination:
         # Query with small limit - all results fit in firstBatch
         command_result = db.command({"find": "users", "limit": 5})
 
-        execution_plan = ExecutionPlan(collection="users", projection_stage=self.PROJECTION_EMPTY)
+        execution_plan = (
+            BuilderFactory.create_query_builder().collection("users").project(self.PROJECTION_EMPTY).build()
+        )
         result_set = ResultSet(command_result=command_result, execution_plan=execution_plan, database=db)
 
         # Check cursor_id - should be 0 when all results fit in firstBatch
@@ -36,7 +38,9 @@ class TestResultSetPagination:
         # Use a small batch size (batchSize) to force pagination
         command_result = db.command({"find": "users", "batchSize": 5})  # Only 5 results per batch
 
-        execution_plan = ExecutionPlan(collection="users", projection_stage=self.PROJECTION_EMPTY)
+        execution_plan = (
+            BuilderFactory.create_query_builder().collection("users").project(self.PROJECTION_EMPTY).build()
+        )
         result_set = ResultSet(command_result=command_result, execution_plan=execution_plan, database=db)
 
         # Initial results should have cursor_id > 0 since we have 22 total users and batchSize is 5
@@ -56,7 +60,9 @@ class TestResultSetPagination:
         # Request results with small batch size
         command_result = db.command({"find": "users", "batchSize": 3})  # Small batch to test pagination
 
-        execution_plan = ExecutionPlan(collection="users", projection_stage=self.PROJECTION_EMPTY)
+        execution_plan = (
+            BuilderFactory.create_query_builder().collection("users").project(self.PROJECTION_EMPTY).build()
+        )
         result_set = ResultSet(command_result=command_result, execution_plan=execution_plan, database=db)
 
         # Initially, cache might have 3 results
@@ -76,7 +82,9 @@ class TestResultSetPagination:
         # Create result set with small batch size
         command_result = db.command({"find": "users", "batchSize": 2})  # Very small batch
 
-        execution_plan = ExecutionPlan(collection="users", projection_stage=self.PROJECTION_WITH_FIELDS)
+        execution_plan = (
+            BuilderFactory.create_query_builder().collection("users").project(self.PROJECTION_WITH_FIELDS).build()
+        )
         result_set = ResultSet(command_result=command_result, execution_plan=execution_plan, database=db)
 
         _ = result_set._cursor_id
@@ -97,7 +105,9 @@ class TestResultSetPagination:
         db = conn.database
         command_result = db.command({"find": "users", "limit": 3})
 
-        execution_plan = ExecutionPlan(collection="users", projection_stage=self.PROJECTION_EMPTY)
+        execution_plan = (
+            BuilderFactory.create_query_builder().collection("users").project(self.PROJECTION_EMPTY).build()
+        )
         result_set = ResultSet(command_result=command_result, execution_plan=execution_plan, database=db)
 
         assert result_set._cache_exhausted is False
@@ -118,7 +128,9 @@ class TestResultSetPagination:
         db = conn.database
         command_result = db.command({"find": "users", "batchSize": 4})
 
-        execution_plan = ExecutionPlan(collection="users", projection_stage=self.PROJECTION_EMPTY)
+        execution_plan = (
+            BuilderFactory.create_query_builder().collection("users").project(self.PROJECTION_EMPTY).build()
+        )
         result_set = ResultSet(command_result=command_result, execution_plan=execution_plan, database=db)
 
         initial_rowcount = result_set.rowcount
@@ -144,7 +156,9 @@ class TestResultSetPagination:
         db = conn.database
         command_result = db.command({"find": "users", "projection": {"name": 1, "email": 1}, "batchSize": 3})
 
-        execution_plan = ExecutionPlan(collection="users", projection_stage=self.PROJECTION_WITH_FIELDS)
+        execution_plan = (
+            BuilderFactory.create_query_builder().collection("users").project(self.PROJECTION_WITH_FIELDS).build()
+        )
         result_set = ResultSet(command_result=command_result, execution_plan=execution_plan, database=db)
 
         # Fetch across multiple batches
@@ -165,7 +179,9 @@ class TestResultSetPagination:
         db = conn.database
         command_result = db.command({"find": "users", "batchSize": 3})
 
-        execution_plan = ExecutionPlan(collection="users", projection_stage=self.PROJECTION_EMPTY)
+        execution_plan = (
+            BuilderFactory.create_query_builder().collection("users").project(self.PROJECTION_EMPTY).build()
+        )
         result_set = ResultSet(command_result=command_result, execution_plan=execution_plan, database=db)
 
         # Fetch 10 rows - should span multiple batches
