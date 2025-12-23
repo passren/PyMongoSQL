@@ -6,7 +6,7 @@ from pymongo.errors import PyMongoError
 
 from .common import BaseCursor, CursorIterator
 from .error import DatabaseError, OperationalError, ProgrammingError, SqlSyntaxError
-from .result_set import ResultSet
+from .result_set import DictResultSet, ResultSet
 from .sql.builder import ExecutionPlan
 from .sql.parser import SQLParser
 
@@ -132,7 +132,7 @@ class Cursor(BaseCursor, CursorIterator):
 
             # Create result set from command result
             self._result_set = self._result_set_class(
-                command_result=result, execution_plan=execution_plan, **self._kwargs
+                command_result=result, execution_plan=execution_plan, database=db, **self._kwargs
             )
 
             _logger.info(f"Query executed successfully on collection '{execution_plan.collection}'")
@@ -263,3 +263,12 @@ class Cursor(BaseCursor, CursorIterator):
                 self.close()
             except Exception:
                 pass  # Ignore errors during cleanup
+
+
+class DictCursor(Cursor):
+    """Cursor that returns results as dictionaries instead of tuples/sequences"""
+
+    def __init__(self, connection: "Connection", **kwargs) -> None:
+        super().__init__(connection=connection, **kwargs)
+        # Override result set class to use DictResultSet
+        self._result_set_class = DictResultSet
