@@ -92,7 +92,7 @@ class ResultSet(CursorIterator):
         while len(self._cached_results) < count and self._cursor_id != 0:
             try:
                 # Use getMore to fetch next batch
-                if self._database and self._execution_plan.collection:
+                if self._database is not None and self._execution_plan.collection:
                     getmore_cmd = {
                         "getMore": self._cursor_id,
                         "collection": self._execution_plan.collection,
@@ -256,12 +256,16 @@ class ResultSet(CursorIterator):
         all_results = []
 
         try:
-            # Handle command result (db.command)
-            if not self._cache_exhausted:
-                # Results are already processed in constructor, just extend
-                all_results.extend(self._cached_results)
-                self._total_fetched += len(self._cached_results)
-                self._cache_exhausted = True
+            # Ensure all results are available in cache by requesting a very large number
+            # This will trigger getMore calls until all data is exhausted
+            if not self._cache_exhausted and self._cursor_id != 0:
+                self._ensure_results_available(float("inf"))
+
+            # Now get everything from cache
+            all_results.extend(self._cached_results)
+            self._total_fetched += len(self._cached_results)
+            self._cached_results.clear()
+            self._cache_exhausted = True
 
         except PyMongoError as e:
             self._errors.append({"error": str(e), "type": type(e).__name__})
