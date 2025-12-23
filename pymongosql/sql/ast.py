@@ -154,3 +154,20 @@ class MongoSQLParserVisitor(PartiQLParserVisitor):
         except Exception as e:
             _logger.warning(f"Error processing LIMIT clause: {e}")
             return self.visitChildren(ctx)
+
+    def visitOffsetByClause(self, ctx: PartiQLParser.OffsetByClauseContext) -> Any:
+        """Handle OFFSET clause for result skipping"""
+        _logger.debug("Processing OFFSET clause")
+        try:
+            if hasattr(ctx, "exprSelect") and ctx.exprSelect():
+                offset_text = ctx.exprSelect().getText()
+                try:
+                    offset_value = int(offset_text)
+                    self._parse_result.offset_value = offset_value
+                    _logger.debug(f"Extracted offset value: {offset_value}")
+                except ValueError as e:
+                    _logger.warning(f"Invalid OFFSET value '{offset_text}': {e}")
+            return self.visitChildren(ctx)
+        except Exception as e:
+            _logger.warning(f"Error processing OFFSET clause: {e}")
+            return self.visitChildren(ctx)

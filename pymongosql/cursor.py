@@ -2,7 +2,6 @@
 import logging
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Sequence, Tuple, TypeVar
 
-from pymongo.cursor import Cursor as MongoCursor
 from pymongo.errors import PyMongoError
 
 from .common import BaseCursor, CursorIterator
@@ -32,7 +31,6 @@ class Cursor(BaseCursor, CursorIterator):
         self._result_set: Optional[ResultSet] = None
         self._result_set_class = ResultSet
         self._current_execution_plan: Optional[ExecutionPlan] = None
-        self._mongo_cursor: Optional[MongoCursor] = None
         self._is_closed = False
 
     @property
@@ -40,8 +38,8 @@ class Cursor(BaseCursor, CursorIterator):
         return self._result_set
 
     @result_set.setter
-    def result_set(self, val: ResultSet) -> None:
-        self._result_set = val
+    def result_set(self, rs: ResultSet) -> None:
+        self._result_set = rs
 
     @property
     def has_result_set(self) -> bool:
@@ -52,8 +50,8 @@ class Cursor(BaseCursor, CursorIterator):
         return self._result_set_class
 
     @result_set_class.setter
-    def result_set_class(self, val: type) -> None:
-        self._result_set_class = val
+    def result_set_class(self, rs_cls: type) -> None:
+        self._result_set_class = rs_cls
 
     @property
     def rowcount(self) -> int:
@@ -107,7 +105,7 @@ class Cursor(BaseCursor, CursorIterator):
             # Build MongoDB find command
             find_command = {"find": execution_plan.collection, "filter": execution_plan.filter_stage or {}}
 
-            # Apply projection if specified (already in MongoDB format)
+            # Apply projection if specified
             if execution_plan.projection_stage:
                 find_command["projection"] = execution_plan.projection_stage
 
@@ -236,15 +234,6 @@ class Cursor(BaseCursor, CursorIterator):
     def close(self) -> None:
         """Close the cursor and free resources"""
         try:
-            if self._mongo_cursor:
-                # Close MongoDB cursor
-                try:
-                    self._mongo_cursor.close()
-                except Exception as e:
-                    _logger.warning(f"Error closing MongoDB cursor: {e}")
-                finally:
-                    self._mongo_cursor = None
-
             if self._result_set:
                 # Close result set
                 try:
