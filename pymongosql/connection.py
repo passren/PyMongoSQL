@@ -45,14 +45,18 @@ class Connection:
         """
         # Check if connection string specifies mode
         connection_string = host if isinstance(host, str) else None
-        self._mode, host = ConnectionHelper.parse_connection_string(connection_string)
+        mode, host = ConnectionHelper.parse_connection_string(connection_string)
+
+        self._mode = kwargs.pop("mode", None)
+        if not self._mode and mode:
+            self._mode = mode
 
         # Extract commonly used parameters for backward compatibility
         self._host = host or "localhost"
         self._port = port or 27017
 
         # Handle database parameter separately (not a MongoClient parameter)
-        self._database_name = kwargs.pop("database", None)  # Remove from kwargs
+        self._database_name = kwargs.pop("database", None)
 
         # Store all PyMongo parameters to pass through directly
         self._pymongo_params = kwargs.copy()

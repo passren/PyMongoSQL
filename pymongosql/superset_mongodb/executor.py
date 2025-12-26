@@ -105,10 +105,15 @@ class SupersetExecution(StandardExecution):
         try:
             # Create temporary table with MongoDB results
             querydb_query, table_name = SubqueryDetector.extract_outer_query(context.query)
+            if querydb_query is None or table_name is None:
+                # Fallback to original query if extraction fails
+                querydb_query = context.query
+                table_name = "virtual_table"
+
             query_db.insert_records(table_name, mongo_dicts)
 
             # Execute outer query against intermediate DB
-            _logger.debug(f"Stage 2: Executing {db_name} query: {querydb_query}")
+            _logger.debug(f"Stage 2: Executing QueryDBSQLite query: {querydb_query}")
 
             querydb_rows = query_db.execute_query(querydb_query)
             _logger.debug(f"Stage 2 complete: Got {len(querydb_rows)} rows from {db_name}")
@@ -116,23 +121,41 @@ class SupersetExecution(StandardExecution):
             # Create a ResultSet-like object from intermediate DB results
             result_set = self._create_result_set_from_db(querydb_rows, querydb_query)
 
-            self._execution_plan = ExecutionPlan(collection="query_db_result", projection_stage={})
+            # Build projection_stage from query database result columns
+            projection_stage = {}
+            if querydb_rows and isinstance(querydb_rows[0], dict):
+                # Extract column names from first result row
+                for col_name in querydb_rows[0].keys():
+                    projection_stage[col_name] = 1  # 1 means included in projection
+            else:
+                # If no rows, get column names from the SQLite query directly
+                try:
+                    cursor = query_db.execute_query_cursor(querydb_query)
+                    if cursor.description:
+                        # Extract column names from cursor description
+                        for col_desc in cursor.description:
+                            col_name = col_desc[0]
+                            projection_stage[col_name] = 1
+                except Exception as e:
+                    _logger.warning(f"Could not extract column names from empty result: {e}")
+
+            self._execution_plan = ExecutionPlan(collection="query_db_result", projection_stage=projection_stage)
 
             return result_set
 
         finally:
             query_db.close()
 
-    def _create_result_set_from_db(self, rows: List[Dict[str, Any]], query: str) -> ResultSet:
+    def _create_result_set_from_db(self, rows: List[Dict[str, Any]], query: str) -> Dict[str, Any]:
         """
-        Create a ResultSet from query database results.
+        Create a command result from query database results.
 
         Args:
             rows: List of dictionaries from query database
             query: Original SQL query
 
         Returns:
-            ResultSet with query database results
+            Dictionary with command result format
         """
         # Create a mock command result structure compatible with ResultSet
         command_result = {

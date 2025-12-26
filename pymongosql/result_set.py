@@ -65,10 +65,16 @@ class ResultSet(CursorIterator):
         self._total_fetched += len(batch)
 
     def _build_description(self) -> None:
-        """Build column description from execution plan projection"""
+        """Build column description from execution plan projection or established column names"""
         if not self._execution_plan.projection_stage:
-            # No projection specified, description will be built dynamically
-            self._description = None
+            # No projection specified, build description from column names if available
+            if self._column_names:
+                self._description = [
+                    (col_name, "VARCHAR", None, None, None, None, None) for col_name in self._column_names
+                ]
+            else:
+                # Will be built dynamically when columns are established
+                self._description = None
             return
 
         # Build description from projection (now in MongoDB format {field: 1})
@@ -198,10 +204,13 @@ class ResultSet(CursorIterator):
         self,
     ) -> Optional[List[Tuple[str, str, None, None, None, None, None]]]:
         """Return column description"""
-        if self._description is None and not self._cache_exhausted:
-            # Try to fetch one result to build description dynamically
+        if self._description is None:
+            # Try to build description from established column names
             try:
-                self._ensure_results_available(1)
+                if not self._cache_exhausted:
+                    # Fetch one result to establish column names if needed
+                    self._ensure_results_available(1)
+
                 if self._column_names:
                     # Build description from established column names
                     self._description = [
