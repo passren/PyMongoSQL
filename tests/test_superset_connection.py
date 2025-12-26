@@ -154,24 +154,39 @@ class TestSubqueryExecutionIntegration:
         assert "age" in col_names
 
     def test_subquery_simple_wrapping(self, superset_conn):
-        """Test simple subquery wrapping on users"""
+        """Test simple subquery wrapping on users (Superset-style SQL)"""
         assert superset_conn.mode == "superset"
 
         cursor = superset_conn.cursor()
 
-        # Simple subquery: wrap a MongoDB query result
-        subquery_sql = "SELECT * FROM (SELECT _id, name, age FROM users) AS u LIMIT 5"
+        # Superset-style query with column aliases
+        subquery_sql = """
+        SELECT _id AS _id, name AS name, age AS age
+        FROM (SELECT _id, name, age FROM users) AS virtual_table
+        LIMIT 5
+        """
 
         cursor.execute(subquery_sql)
         rows = cursor.fetchall()
         assert len(rows) == 5
 
+        # Verify column names
+        description = cursor.description
+        col_names = [desc[0] for desc in description] if description else []
+        assert "_id" in col_names
+        assert "name" in col_names
+        assert "age" in col_names
+
     def test_subquery_with_where_condition(self, superset_conn):
-        """Test subquery with WHERE on wrapper"""
+        """Test subquery with WHERE on wrapper (Superset-style SQL)"""
         cursor = superset_conn.cursor()
 
-        # Subquery: select from users, then filter in wrapper
-        subquery_sql = "SELECT * FROM (SELECT _id, name, age FROM users) AS u WHERE age > 30"
+        # Superset-style query with column aliases and WHERE clause
+        subquery_sql = """
+        SELECT _id AS _id, name AS name, age AS age
+        FROM (SELECT _id, name, age FROM users) AS virtual_table
+        WHERE age > 30
+        """
 
         cursor.execute(subquery_sql)
         rows = cursor.fetchall()
@@ -179,13 +194,16 @@ class TestSubqueryExecutionIntegration:
         assert len(rows) == 11
 
     def test_subquery_products_by_price_range(self, superset_conn):
-        """Test subquery filtering products by price range"""
+        """Test subquery filtering products by price range (Superset-style SQL)"""
         cursor = superset_conn.cursor()
 
-        # Subquery: get products, filter by price range in wrapper
+        # Superset-style query with column aliases and GROUP BY
         subquery_sql = """
-        SELECT * FROM (SELECT _id, name, price, category FROM products WHERE price > 100)
-        AS p WHERE price < 2000 LIMIT 10
+        SELECT _id AS _id, name AS name, price AS price, category AS category
+        FROM (SELECT _id, name, price, category FROM products WHERE price > 100) AS virtual_table
+        WHERE price < 2000
+        GROUP BY _id, name, price, category
+        LIMIT 10
         """
 
         cursor.execute(subquery_sql)
@@ -193,13 +211,15 @@ class TestSubqueryExecutionIntegration:
         assert len(rows) == 10
 
     def test_subquery_orders_aggregation(self, superset_conn):
-        """Test subquery on orders with multiple conditions"""
+        """Test subquery on orders with multiple conditions (Superset-style SQL)"""
         cursor = superset_conn.cursor()
 
-        # Subquery: get orders, then filter for high-value completed orders
+        # Superset-style query with column aliases and GROUP BY aggregation
         subquery_sql = """
-        SELECT * FROM (SELECT _id, user_id, total_amount, status FROM orders)
-        AS o WHERE status = 'completed' LIMIT 18
+        SELECT order_date AS order_date, status AS status, total_amount AS total_amount, currency AS currency
+        FROM (SELECT order_date, status, total_amount, currency FROM orders) AS virtual_table
+        GROUP BY order_date, status, total_amount, currency
+        LIMIT 18
         """
 
         cursor.execute(subquery_sql)
@@ -224,3 +244,292 @@ class TestSubqueryExecutionIntegration:
         cursor.execute("SELECT _id, name, price FROM products LIMIT 3")
         products = cursor.fetchall()
         assert len(products) == 3
+
+    def test_description_matches_data_length(self, superset_conn):
+        """Test that cursor.description column count matches actual data tuple length"""
+        cursor = superset_conn.cursor()
+
+        # Superset-style query with column aliases
+        subquery_sql = """
+        SELECT _id AS _id, name AS name, age AS age
+        FROM (SELECT _id, name, age FROM users) AS virtual_table
+        LIMIT 5
+        """
+        cursor.execute(subquery_sql)
+        rows = cursor.fetchall()
+        description = cursor.description
+
+        # Verify description exists
+        assert description is not None
+        assert len(description) > 0
+
+        # Verify each row tuple has same length as description
+        for row in rows:
+            assert len(row) == len(
+                description
+            ), f"Row tuple length {len(row)} doesn't match description length {len(description)}"
+
+    def test_description_column_names_match_data(self, superset_conn):
+        """Test that description column names match the actual data fields"""
+        cursor = superset_conn.cursor()
+
+        # Superset-style query with column aliases and GROUP BY
+        subquery_sql = """
+        SELECT _id AS _id, name AS name, age AS age
+        FROM (SELECT _id, name, age FROM users) AS virtual_table
+        GROUP BY _id, name, age
+        LIMIT 3
+        """
+        cursor.execute(subquery_sql)
+        _ = cursor.fetchall()
+        description = cursor.description
+
+        # Extract column names from description
+        col_names = [desc[0] for desc in description]
+
+        # Verify expected columns are present
+        assert "_id" in col_names
+        assert "name" in col_names
+        assert "age" in col_names
+
+        # Verify description has correct structure (7-tuple per DB API 2.0)
+        for desc in description:
+            assert len(desc) == 7  # name, type_code, display_size, internal_size, precision, scale, null_ok
+
+    def test_data_values_integrity_through_stages(self, superset_conn):
+        """Test that data values are preserved correctly through MongoDB->SQLite->ResultSet stages"""
+        cursor = superset_conn.cursor()
+
+        # First, get a known user name from the database
+        cursor.execute("SELECT _id AS _id, name AS name FROM (SELECT _id, name FROM users) AS virtual_table LIMIT 1")
+        sample_rows = cursor.fetchall()
+        assert len(sample_rows) >= 1
+        known_name = sample_rows[0][1]
+
+        # Now query for that specific user with Superset-style SQL
+        cursor.execute(
+            f"SELECT _id AS _id, name AS name FROM (SELECT _id, name FROM users) AS virtual_table "
+            f"WHERE name = '{known_name}' GROUP BY _id, name LIMIT 1"
+        )
+        rows = cursor.fetchall()
+
+        # Verify data was retrieved
+        assert len(rows) >= 1
+
+        # Verify data structure
+        row = rows[0]
+        assert len(row) == 2  # _id and name
+        assert row[1] == known_name  # Name should match the known value
+
+    def test_numeric_data_preserved_through_stages(self, superset_conn):
+        """Test that numeric data is correctly preserved through the two-stage execution"""
+        cursor = superset_conn.cursor()
+
+        # Superset-style query with column aliases and numeric filtering
+        subquery_sql = """
+        SELECT _id AS _id, name AS name, age AS age
+        FROM (SELECT _id, name, age FROM users) AS virtual_table
+        WHERE age > 25
+        GROUP BY _id, name, age
+        LIMIT 5
+        """
+        cursor.execute(subquery_sql)
+        rows = cursor.fetchall()
+        description = cursor.description
+
+        assert len(rows) > 0
+        assert description is not None
+        col_names = [desc[0] for desc in description]
+
+        # Find age column index
+        age_idx = col_names.index("age")
+
+        # Verify numeric values are preserved and filtered correctly
+        for row in rows:
+            age_value = row[age_idx]
+            assert isinstance(age_value, (int, float)), f"Age should be numeric, got {type(age_value)}"
+            assert age_value > 25, f"Age {age_value} should be > 25"
+
+    def test_description_consistency_across_fetches(self, superset_conn):
+        """Test that cursor.description remains consistent across multiple fetches"""
+        cursor = superset_conn.cursor()
+
+        # Superset-style query with column aliases and GROUP BY
+        subquery_sql = """
+        SELECT _id AS _id, name AS name, price AS price
+        FROM (SELECT _id, name, price FROM products) AS virtual_table
+        GROUP BY _id, name, price
+        LIMIT 10
+        """
+        cursor.execute(subquery_sql)
+
+        # Get description before fetch
+        description_before = cursor.description
+        assert description_before is not None
+
+        # Fetch all and get description again
+        _ = cursor.fetchall()
+        description_after = cursor.description
+
+        # Descriptions should be identical
+        assert description_before == description_after
+        assert len(description_before) == 3  # _id, name, price
+
+    def test_all_columns_in_description_match_data(self, superset_conn):
+        """Test that all columns in description are present in actual data"""
+        cursor = superset_conn.cursor()
+
+        # Superset-style query with column aliases and GROUP BY aggregation
+        subquery_sql = """
+        SELECT _id AS _id, order_date AS order_date, status AS status, total_amount AS total_amount
+        FROM (SELECT _id, order_date, status, total_amount FROM orders) AS virtual_table
+        GROUP BY _id, order_date, status, total_amount
+        LIMIT 5
+        """
+        cursor.execute(subquery_sql)
+        rows = cursor.fetchall()
+        description = cursor.description
+
+        assert len(rows) > 0
+        assert description is not None
+
+        # Verify description has 4 columns
+        assert len(description) == 4
+
+        # Extract column names from description
+        desc_col_names = [desc[0] for desc in description]
+
+        # Verify expected columns
+        expected_cols = ["_id", "order_date", "status", "total_amount"]
+        for expected_col in expected_cols:
+            assert expected_col in desc_col_names, f"Expected column {expected_col} not in description"
+
+        # Verify every row has 4 values (matching description)
+        for row in rows:
+            assert len(row) == 4, f"Row has {len(row)} values but description has {len(description)} columns"
+
+    def test_empty_result_with_valid_description(self, superset_conn):
+        """Test that description is available for result sets, even if empty after filtering"""
+        cursor = superset_conn.cursor()
+
+        # Superset-style query that filters to empty results using a numeric condition
+        # Use a very large age value that unlikely to exist
+        subquery_sql = """
+        SELECT _id AS _id, name AS name, age AS age
+        FROM (SELECT _id, name, age FROM users) AS virtual_table
+        WHERE age > 999
+        GROUP BY _id, name, age
+        """
+        cursor.execute(subquery_sql)
+        _ = cursor.fetchall()
+        description = cursor.description
+
+        # Description should be available based on projection_stage
+        # (even if actual data is empty, the schema is known)
+        assert description is not None
+        assert len(description) == 3
+        col_names = [desc[0] for desc in description]
+        assert "_id" in col_names
+        assert "name" in col_names
+        assert "age" in col_names
+
+
+class TestSubqueryDetector:
+    """Test subquery detection and outer query extraction"""
+
+    def test_detect_wrapped_subquery(self):
+        """Test detection of wrapped subquery pattern"""
+        from pymongosql.superset_mongodb.detector import SubqueryDetector
+
+        query = "SELECT col1, col2 FROM (SELECT col1, col2 FROM table1) AS t1 WHERE col1 > 5"
+        info = SubqueryDetector.detect(query)
+
+        assert info.has_subquery is True
+        assert info.is_wrapped is True
+        assert info.subquery_alias == "t1"
+
+    def test_extract_outer_query_preserves_select_clause(self):
+        """Test that extract_outer_query preserves SELECT clause with column aliases"""
+        from pymongosql.superset_mongodb.detector import SubqueryDetector
+
+        # Exact pattern from Superset
+        query = """
+        SELECT order_date AS order_date, status AS status, total_amount AS total_amount, currency AS currency
+        FROM (SELECT order_date, status, total_amount, currency FROM orders) AS virtual_table
+        GROUP BY order_date, status, total_amount, currency
+        LIMIT 1000
+        """
+
+        result = SubqueryDetector.extract_outer_query(query)
+        assert result is not None
+
+        outer_query, table_alias = result
+
+        # Verify table alias is correct
+        assert table_alias == "virtual_table"
+
+        # Verify SELECT clause is preserved
+        assert "order_date AS order_date" in outer_query
+        assert "status AS status" in outer_query
+        assert "total_amount AS total_amount" in outer_query
+        assert "currency AS currency" in outer_query
+
+        # Verify it has the table reference
+        assert "virtual_table" in outer_query
+
+        # Verify GROUP BY is preserved
+        assert "GROUP BY" in outer_query
+        assert "order_date" in outer_query
+        assert "status" in outer_query
+
+        # Verify LIMIT is preserved
+        assert "LIMIT 1000" in outer_query
+
+    def test_extract_outer_query_with_where_clause(self):
+        """Test outer query extraction with WHERE clause"""
+        from pymongosql.superset_mongodb.detector import SubqueryDetector
+
+        query = """
+        SELECT _id AS _id, name AS name
+        FROM (SELECT _id, name FROM users) AS virtual_table
+        WHERE name = 'test'
+        GROUP BY _id, name
+        """
+
+        result = SubqueryDetector.extract_outer_query(query)
+        assert result is not None
+
+        outer_query, table_alias = result
+
+        # Verify WHERE clause is preserved
+        assert "WHERE name = 'test'" in outer_query
+        assert "_id AS _id" in outer_query
+        assert "virtual_table" in outer_query
+
+    def test_extract_outer_query_complex_pattern(self):
+        """Test extraction with complex column aliases and multiple conditions"""
+        from pymongosql.superset_mongodb.detector import SubqueryDetector
+
+        query = """
+        SELECT col1 AS column_one, col2 AS column_two, col3 AS column_three
+        FROM (SELECT col1, col2, col3 FROM data_table WHERE col1 > 0) AS virtual_table
+        WHERE col2 IS NOT NULL
+        GROUP BY col1, col2, col3
+        ORDER BY col1 DESC
+        LIMIT 100
+        """
+
+        result = SubqueryDetector.extract_outer_query(query)
+        assert result is not None
+
+        outer_query, table_alias = result
+
+        # Verify all important elements are preserved
+        assert "col1 AS column_one" in outer_query
+        assert "col2 AS column_two" in outer_query
+        assert "col3 AS column_three" in outer_query
+        assert "WHERE col2 IS NOT NULL" in outer_query
+        assert "GROUP BY col1, col2, col3" in outer_query
+        assert "ORDER BY col1 DESC" in outer_query
+        assert "LIMIT 100" in outer_query
+        assert "virtual_table" in outer_query

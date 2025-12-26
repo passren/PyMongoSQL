@@ -89,20 +89,58 @@ class SubqueryDetector:
         """
         Extract outer query with subquery placeholder.
 
+        Preserves the complete outer query structure while replacing the subquery
+        with a reference to the temporary table.
+
         Returns:
-            Tuple of (outer_query, subquery_alias) or None
+            Tuple of (outer_query, subquery_alias) or None if not a wrapped subquery
         """
         info = cls.detect(query)
         if not info.is_wrapped:
             return None
 
-        # Replace subquery with temporary table reference
-        outer = cls.WRAPPED_SUBQUERY_PATTERN.sub(
-            f"SELECT * FROM {info.subquery_alias}",
-            query,
+        # Pattern to capture: SELECT <columns> FROM ( <subquery> ) AS <alias> <rest>
+        # Matches both SELECT col1, col2 and SELECT col1 AS alias1, col2 AS alias2 formats
+        pattern = re.compile(
+            r"(SELECT\s+.+?)\s+FROM\s*\(\s*(?:select|SELECT)\s+.+?\s*\)\s+(?:AS\s+)?(\w+)(.*)",
+            re.IGNORECASE | re.DOTALL,
         )
 
-        return outer, info.subquery_alias
+        match = pattern.search(query)
+        if match:
+            select_clause = match.group(1).strip()
+            table_alias = match.group(2)
+            rest_of_query = match.group(3).strip()
+
+            if rest_of_query:
+                outer = f"{select_clause} FROM {table_alias} {rest_of_query}"
+            else:
+                outer = f"{select_clause} FROM {table_alias}"
+
+            return outer, table_alias
+
+        # If pattern doesn't match exactly, fall back to preserving SELECT clause
+        # Extract from SELECT to FROM keyword
+        select_match = re.search(r"(SELECT\s+.+?)\s+FROM", query, re.IGNORECASE | re.DOTALL)
+        if not select_match:
+            return None
+
+        select_clause = select_match.group(1).strip()
+
+        # Extract table alias and rest of query after the closing paren
+        rest_match = re.search(r"\)\s+(?:AS\s+)?(\w+)(.*)", query, re.IGNORECASE | re.DOTALL)
+        if rest_match:
+            table_alias = rest_match.group(1)
+            rest_of_query = rest_match.group(2).strip()
+
+            if rest_of_query:
+                outer = f"{select_clause} FROM {table_alias} {rest_of_query}"
+            else:
+                outer = f"{select_clause} FROM {table_alias}"
+
+            return outer, table_alias
+
+        return None
 
     @classmethod
     def is_simple_select(cls, query: str) -> bool:
