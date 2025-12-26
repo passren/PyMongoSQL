@@ -42,6 +42,26 @@ def connect(*args, **kwargs) -> "Connection":
     return Connection(*args, **kwargs)
 
 
+# Register superset execution strategy for mongodb+superset:// connections
+def _register_superset_executor() -> None:
+    """Register SupersetExecution strategy for superset mode.
+
+    This allows the executor and cursor to be unaware of superset -
+    the execution strategy is automatically selected based on the connection mode.
+    """
+    try:
+        from .executor import ExecutionPlanFactory
+        from .superset_mongodb.executor import SupersetExecution
+
+        ExecutionPlanFactory.register_strategy(SupersetExecution())
+    except ImportError:
+        # Superset module not available - skip registration
+        pass
+
+
+# Auto-register superset executor on module import
+_register_superset_executor()
+
 # SQLAlchemy integration (optional)
 # For SQLAlchemy functionality, import from pymongosql.sqlalchemy_mongodb:
 #   from pymongosql.sqlalchemy_mongodb import create_engine_url, create_engine_from_mongodb_uri

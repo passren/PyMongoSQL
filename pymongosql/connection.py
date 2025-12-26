@@ -12,6 +12,7 @@ from pymongo.errors import ConnectionFailure
 from .common import BaseCursor
 from .cursor import Cursor
 from .error import DatabaseError, NotSupportedError, OperationalError
+from .helper import ConnectionHelper
 
 _logger = logging.getLogger(__name__)
 
@@ -35,9 +36,17 @@ class Connection:
         to ensure full compatibility. All parameters are passed through directly
         to the underlying MongoClient.
 
+        Supports connection string patterns:
+        - mongodb://host:port/database - Core driver (no subquery support)
+        - mongodb+superset://host:port/database - Superset driver with subquery support
+
         See PyMongo MongoClient documentation for full parameter details.
         https://www.mongodb.com/docs/languages/python/pymongo-driver/current/connect/mongoclient/
         """
+        # Check if connection string specifies mode
+        connection_string = host if isinstance(host, str) else None
+        self._mode, host = ConnectionHelper.parse_connection_string(connection_string)
+
         # Extract commonly used parameters for backward compatibility
         self._host = host or "localhost"
         self._port = port or 27017
@@ -154,6 +163,11 @@ class Connection:
             raise OperationalError("No database selected")
         return self._database
 
+    @property
+    def mode(self) -> str:
+        """Get the specified mode"""
+        return self._mode
+
     def use_database(self, database_name: str) -> None:
         """Switch to a different database"""
         if self._client is None:
@@ -267,6 +281,7 @@ class Connection:
 
         new_cursor = cursor(
             connection=self,
+            mode=self._mode,
             **kwargs,
         )
         self.cursor_pool.append(new_cursor)
