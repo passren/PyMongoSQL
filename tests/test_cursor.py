@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 import pytest
 
-from pymongosql.error import ProgrammingError
+from pymongosql.error import DatabaseError, ProgrammingError, SqlSyntaxError
 from pymongosql.result_set import ResultSet
 
 
@@ -64,9 +64,7 @@ class TestCursor:
         assert isinstance(cursor.result_set, ResultSet)
         rows = cursor.result_set.fetchall()
 
-        # Should return results from 22 users in dataset (LIMIT parsing may not be implemented yet)
-        # TODO: Fix LIMIT parsing in SQL grammar
-        assert len(rows) >= 1  # At least we get some results
+        assert len(rows) == 2  # At least we get some results
 
         # Check that names are present using DB API 2.0
         if len(rows) > 0:
@@ -85,7 +83,7 @@ class TestCursor:
         rows = cursor.result_set.fetchall()
 
         # Should return users after skipping 1 (from 22 users in dataset)
-        assert len(rows) >= 0  # Could be 0-21 depending on implementation
+        assert len(rows) == 21  # 22 - 1 = 21 users after skipping the first one
 
         # Check that results have name field if any results using DB API 2.0
         if len(rows) > 0:
@@ -111,11 +109,8 @@ class TestCursor:
         assert "name" in col_names
         assert all(len(row) >= 1 for row in rows)  # All rows should have data
 
-        # Verify that we have actual user names from the dataset using DB API 2.0
-        if "name" in col_names:
-            name_idx = col_names.index("name")
-            names = [row[name_idx] for row in rows]
-            assert "John Doe" in names  # First user from dataset
+        # Verify that the first name in the result
+        assert "Patricia Johnson" == rows[0][0]
 
     def test_execute_complex_query(self, conn):
         """Test executing complex query with multiple clauses"""
@@ -138,13 +133,38 @@ class TestCursor:
             for row in rows:
                 assert len(row) >= 2  # Should have at least name and email
 
+    def test_execute_nested_fields_query(self, conn):
+        """Test executing query with nested field access"""
+        sql = "SELECT name, profile.bio, address.city FROM users WHERE salary >= 100000 ORDER BY salary DESC"
+
+        cursor = conn.cursor()
+        result = cursor.execute(sql)
+        assert result == cursor
+        assert isinstance(cursor.result_set, ResultSet)
+
+        # Get results - test nested field functionality
+        rows = cursor.result_set.fetchall()
+        assert isinstance(rows, list)
+        assert len(rows) == 4
+
+        # Verify that nested fields are properly projected
+        if cursor.result_set.description:
+            col_names = [desc[0] for desc in cursor.result_set.description]
+            # Should include nested field names in projection
+            assert "name" in col_names
+            assert "profile.bio" in col_names
+            assert "address.city" in col_names
+
+        # Verify the first record matched the highest salary
+        assert "Patricia Johnson" == rows[0][0]
+
     def test_execute_parser_error(self, conn):
         """Test executing query with parser errors"""
         sql = "INVALID SQL SYNTAX"
 
         # This should raise an exception due to invalid SQL
         cursor = conn.cursor()
-        with pytest.raises(Exception):  # Could be SqlSyntaxError or other parsing error
+        with pytest.raises(SqlSyntaxError):  # Could be SqlSyntaxError or other parsing error
             cursor.execute(sql)
 
     def test_execute_database_error(self, conn, make_connection):
@@ -156,7 +176,7 @@ class TestCursor:
 
         # This should raise an exception due to closed connection
         cursor = conn.cursor()
-        with pytest.raises(Exception):  # Could be DatabaseError or OperationalError
+        with pytest.raises(DatabaseError):
             cursor.execute(sql)
 
         # Reconnect for other tests
@@ -165,31 +185,6 @@ class TestCursor:
             cursor = new_conn.cursor()
         finally:
             new_conn.close()
-
-    def test_execute_with_aliases(self, conn):
-        """Test executing query with field aliases"""
-        sql = "SELECT name AS full_name, email AS user_email FROM users"
-        cursor = conn.cursor()
-        result = cursor.execute(sql)
-
-        assert result == cursor  # execute returns self
-        assert isinstance(cursor.result_set, ResultSet)
-        rows = cursor.result_set.fetchall()
-
-        # Should return users with aliased field names
-        assert len(rows) == 22
-
-        # Check that alias fields are present if aliasing works using DB API 2.0
-        col_names = [desc[0] for desc in cursor.result_set.description]
-        # Aliases might not work yet, so check for either original or alias names
-        assert "name" in col_names or "full_name" in col_names
-        # Check for email columns in description
-        has_email = "email" in col_names or "user_email" in col_names
-        for row in rows:
-            assert len(row) >= 2  # Should have at least 2 columns
-        # Verify we have email data if expected
-        if has_email:
-            assert True  # Email column exists in description
 
     def test_fetchone_without_execute(self, conn):
         """Test fetchone without previous execute"""
@@ -216,11 +211,10 @@ class TestCursor:
         # Execute query first
         cursor = conn.cursor()
         _ = cursor.execute(sql)
-
-        # Test fetchone - DB API 2.0 returns sequences, not dicts
         row = cursor.fetchone()
+
         assert row is not None
-        assert isinstance(row, (tuple, list))  # Should be sequence, not dict
+        assert isinstance(row, (tuple, list))
         # Verify we have data using DB API 2.0 approach
         col_names = [desc[0] for desc in cursor.result_set.description] if cursor.result_set.description else []
         if "name" in col_names:

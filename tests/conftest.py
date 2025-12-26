@@ -25,10 +25,42 @@ def make_conn(**kwargs):
     return Connection(**kwargs)
 
 
+def make_superset_conn(**kwargs):
+    """Create a superset-mode Connection using TEST_URI if provided, otherwise use a local default."""
+    if TEST_URI:
+        # Convert test URI to superset mode by replacing mongodb:// with mongodb+superset://
+        superset_uri = TEST_URI.replace("mongodb://", "mongodb+superset://", 1)
+        if "database" not in kwargs:
+            kwargs["database"] = TEST_DB
+        return Connection(host=superset_uri, **kwargs)
+
+    # Default local connection parameters with superset mode
+    defaults = {
+        "host": "mongodb+superset://testuser:testpass@localhost:27017/test_db?authSource=test_db",
+        "database": "test_db",
+    }
+    for k, v in defaults.items():
+        kwargs.setdefault(k, v)
+    return Connection(**kwargs)
+
+
 @pytest.fixture
 def conn():
     """Yield a Connection instance configured via environment variables and tear it down after use."""
     connection = make_conn()
+    try:
+        yield connection
+    finally:
+        try:
+            connection.close()
+        except Exception:
+            pass
+
+
+@pytest.fixture
+def superset_conn():
+    """Yield a superset-mode Connection instance and tear it down after use."""
+    connection = make_superset_conn()
     try:
         yield connection
     finally:

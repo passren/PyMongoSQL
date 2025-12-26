@@ -1,8 +1,9 @@
 # -*- coding: utf-8 -*-
 import logging
+import re
 from typing import Any, Dict, List, Optional, Sequence, Tuple
 
-from pymongo.cursor import Cursor as MongoCursor
+import jmespath
 from pymongo.errors import PyMongoError
 
 from .common import CursorIterator
@@ -18,28 +19,24 @@ class ResultSet(CursorIterator):
     def __init__(
         self,
         command_result: Optional[Dict[str, Any]] = None,
-        mongo_cursor: Optional[MongoCursor] = None,
         execution_plan: ExecutionPlan = None,
         arraysize: int = None,
+        database: Optional[Any] = None,
         **kwargs,
     ) -> None:
         super().__init__(arraysize=arraysize or self.DEFAULT_FETCH_SIZE, **kwargs)
 
-        # Handle both command results and legacy mongo cursor for backward compatibility
+        # Handle command results from db.command
         if command_result is not None:
             self._command_result = command_result
-            self._mongo_cursor = None
+            self._database = database
             # Extract cursor info from command result
             self._result_cursor = command_result.get("cursor", {})
+            self._cursor_id = self._result_cursor.get("id", 0)  # 0 means no more results
             self._raw_results = self._result_cursor.get("firstBatch", [])
             self._cached_results: List[Sequence[Any]] = []
-        elif mongo_cursor is not None:
-            self._mongo_cursor = mongo_cursor
-            self._command_result = None
-            self._raw_results = []
-            self._cached_results: List[Sequence[Any]] = []
         else:
-            raise ProgrammingError("Either command_result or mongo_cursor must be provided")
+            raise ProgrammingError("command_result must be provided")
 
         self._execution_plan = execution_plan
         self._is_closed = False
@@ -51,13 +48,21 @@ class ResultSet(CursorIterator):
 
         # Process firstBatch immediately if available (after all attributes are set)
         if command_result is not None and self._raw_results:
-            processed_batch = [self._process_document(doc) for doc in self._raw_results]
-            # Convert dictionaries to sequences for DB API 2.0 compliance
-            sequence_batch = [self._dict_to_sequence(doc) for doc in processed_batch]
-            self._cached_results.extend(sequence_batch)
+            self._process_and_cache_batch(self._raw_results)
 
         # Build description from projection
         self._build_description()
+
+    def _process_and_cache_batch(self, batch: List[Dict[str, Any]]) -> None:
+        """Process and cache a batch of documents"""
+        if not batch:
+            return
+        # Process results through projection mapping
+        processed_batch = [self._process_document(doc) for doc in batch]
+        # Convert dictionaries to output format (sequence or dict)
+        formatted_batch = [self._format_result(doc) for doc in processed_batch]
+        self._cached_results.extend(formatted_batch)
+        self._total_fetched += len(batch)
 
     def _build_description(self) -> None:
         """Build column description from execution plan projection"""
@@ -83,37 +88,37 @@ class ResultSet(CursorIterator):
         if self._cache_exhausted:
             return
 
-        if self._command_result is not None:
-            # For command results, we already have all data in firstBatch
-            # No additional fetching needed
+        # Fetch more results if needed and cursor has more data
+        while len(self._cached_results) < count and self._cursor_id != 0:
+            try:
+                # Use getMore to fetch next batch
+                if self._database is not None and self._execution_plan.collection:
+                    getmore_cmd = {
+                        "getMore": self._cursor_id,
+                        "collection": self._execution_plan.collection,
+                    }
+                    result = self._database.command(getmore_cmd)
+
+                    # Extract and process next batch
+                    cursor_info = result.get("cursor", {})
+                    next_batch = cursor_info.get("nextBatch", [])
+                    self._process_and_cache_batch(next_batch)
+
+                    # Update cursor ID for next iteration
+                    self._cursor_id = cursor_info.get("id", 0)
+                else:
+                    # No database access, mark as exhausted
+                    self._cache_exhausted = True
+                    break
+
+            except PyMongoError as e:
+                self._errors.append({"error": str(e), "type": type(e).__name__})
+                self._cache_exhausted = True
+                raise DatabaseError(f"Error fetching more results: {e}")
+
+        # Mark as exhausted if no more results available
+        if self._cursor_id == 0:
             self._cache_exhausted = True
-            return
-
-        elif self._mongo_cursor is not None:
-            # Fetch more results if needed (legacy mongo cursor support)
-            while len(self._cached_results) < count and not self._cache_exhausted:
-                try:
-                    # Iterate through cursor without calling limit() again
-                    batch = []
-                    for i, doc in enumerate(self._mongo_cursor):
-                        if i >= self.arraysize:
-                            break
-                        batch.append(doc)
-
-                    if not batch:
-                        self._cache_exhausted = True
-                        break
-
-                    # Process results through projection mapping
-                    processed_batch = [self._process_document(doc) for doc in batch]
-                    # Convert dictionaries to sequences for DB API 2.0 compliance
-                    sequence_batch = [self._dict_to_sequence(doc) for doc in processed_batch]
-                    self._cached_results.extend(sequence_batch)
-                    self._total_fetched += len(batch)
-
-                except PyMongoError as e:
-                    self._errors.append({"error": str(e), "type": type(e).__name__})
-                    raise DatabaseError(f"Error fetching results: {e}")
 
     def _process_document(self, doc: Dict[str, Any]) -> Dict[str, Any]:
         """Process a MongoDB document according to projection mapping"""
@@ -125,16 +130,53 @@ class ResultSet(CursorIterator):
         processed = {}
         for field_name, include_flag in self._execution_plan.projection_stage.items():
             if include_flag == 1:  # Field is included in projection
-                if field_name in doc:
-                    processed[field_name] = doc[field_name]
-                elif field_name != "_id":  # _id might be excluded by MongoDB
-                    # Field not found, set to None
-                    processed[field_name] = None
+                # Extract value using jmespath-compatible field path (convert numeric dot indexes to bracket form)
+                value = self._get_nested_value(doc, field_name)
+                # Convert the projection key back to bracket notation for client-facing results
+                display_key = self._mongo_to_bracket_key(field_name)
+                processed[display_key] = value
 
         return processed
 
-    def _dict_to_sequence(self, doc: Dict[str, Any]) -> Tuple[Any, ...]:
-        """Convert document dictionary to sequence according to column order"""
+    def _mongo_to_bracket_key(self, field_path: str) -> str:
+        """Convert Mongo dot-index notation to bracket notation.
+
+        Transforms numeric dot segments into bracket indices for both display keys
+        and JMESPath-compatible field paths.
+
+        Examples:
+            items.0 -> items[0]
+            items.1.name -> items[1].name
+        """
+        if not isinstance(field_path, str):
+            return field_path
+        # Replace .<number> with [<number>]
+        return re.sub(r"\.(\d+)", r"[\1]", field_path)
+
+    def _get_nested_value(self, doc: Dict[str, Any], field_path: str) -> Any:
+        """Extract nested field value from document using JMESPath
+
+        Supports:
+            - Simple fields: "name" -> doc["name"]
+            - Nested fields: "profile.bio" -> doc["profile"]["bio"]
+            - Array indexing: "address.coordinates[1]" -> doc["address"]["coordinates"][1]
+            - Wildcards: "items[*].name" -> [item["name"] for item in items]
+        """
+        try:
+            # Optimization: for simple field names without dots/brackets, use direct access
+            if "." not in field_path and "[" not in field_path:
+                return doc.get(field_path)
+
+            # Convert normalized Mongo-style numeric segments to bracket notation
+            normalized_field = self._mongo_to_bracket_key(field_path)
+            # Use jmespath for complex paths
+            return jmespath.search(normalized_field, doc)
+        except Exception as e:
+            _logger.debug(f"Error extracting field '{field_path}': {e}")
+            return None
+
+    def _format_result(self, doc: Dict[str, Any]) -> Tuple[Any, ...]:
+        """Format processed document to output format (tuple for DB API 2.0 compliance)"""
         if self._column_names is None:
             # First time - establish column order
             self._column_names = list(doc.keys())
@@ -214,33 +256,16 @@ class ResultSet(CursorIterator):
         all_results = []
 
         try:
-            if self._command_result is not None:
-                # Handle command result (db.command)
-                if not self._cache_exhausted:
-                    # Results are already processed in constructor, just extend
-                    all_results.extend(self._cached_results)
-                    self._total_fetched += len(self._cached_results)
-                    self._cache_exhausted = True
+            # Ensure all results are available in cache by requesting a very large number
+            # This will trigger getMore calls until all data is exhausted
+            if not self._cache_exhausted and self._cursor_id != 0:
+                self._ensure_results_available(float("inf"))
 
-            elif self._mongo_cursor is not None:
-                # Handle legacy mongo cursor (for backward compatibility)
-                # Add cached results
-                all_results.extend(self._cached_results)
-                self._cached_results.clear()
-
-                # Fetch remaining from cursor
-                if not self._cache_exhausted:
-                    # Iterate through all remaining documents in the cursor
-                    remaining_docs = list(self._mongo_cursor)
-                    if remaining_docs:
-                        # Process results through projection mapping
-                        processed_docs = [self._process_document(doc) for doc in remaining_docs]
-                        # Convert dictionaries to sequences for DB API 2.0 compliance
-                        sequence_docs = [self._dict_to_sequence(doc) for doc in processed_docs]
-                        all_results.extend(sequence_docs)
-                        self._total_fetched += len(remaining_docs)
-
-                    self._cache_exhausted = True
+            # Now get everything from cache
+            all_results.extend(self._cached_results)
+            self._total_fetched += len(self._cached_results)
+            self._cached_results.clear()
+            self._cache_exhausted = True
 
         except PyMongoError as e:
             self._errors.append({"error": str(e), "type": type(e).__name__})
@@ -258,23 +283,24 @@ class ResultSet(CursorIterator):
     def close(self) -> None:
         """Close the result set and free resources"""
         if not self._is_closed:
-            try:
-                if self._mongo_cursor:
-                    self._mongo_cursor.close()
-                # No special cleanup needed for command results
-            except Exception as e:
-                _logger.warning(f"Error closing MongoDB cursor: {e}")
-            finally:
-                self._is_closed = True
-                self._mongo_cursor = None
-                self._command_result = None
-                self._cached_results.clear()
+            self._is_closed = True
+            self._command_result = None
+            self._database = None
+            self._cached_results.clear()
 
     def __enter__(self):
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.close()
+
+
+class DictResultSet(ResultSet):
+    """Result set that returns dictionaries instead of sequences"""
+
+    def _format_result(self, doc: Dict[str, Any]) -> Dict[str, Any]:
+        """Override to return dictionary directly instead of converting to sequence"""
+        return doc
 
 
 # For backward compatibility

@@ -17,10 +17,12 @@ class BaseCursor(metaclass=ABCMeta):
     def __init__(
         self,
         connection: "Connection",
+        mode: str = "standard",
         **kwargs,
     ) -> None:
         super().__init__()
         self._connection = connection
+        self.mode = mode
 
     @property
     def connection(self) -> "Connection":

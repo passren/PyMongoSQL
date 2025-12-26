@@ -3,7 +3,7 @@
 Expression handlers for converting SQL expressions to MongoDB query format
 """
 import logging
-import time
+import re
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional, Tuple
@@ -45,6 +45,10 @@ class ParseResult:
     sort_fields: List[Dict[str, int]] = field(default_factory=list)
     limit_value: Optional[int] = None
     offset_value: Optional[int] = None
+
+    # Subquery info (for wrapped subqueries, e.g., Superset outering)
+    subquery_plan: Optional[Any] = None
+    subquery_alias: Optional[str] = None
 
     # Factory methods for different use cases
     @classmethod
@@ -98,6 +102,27 @@ class ContextUtilsMixin:
         """Check if context has children"""
         return hasattr(ctx, "children") and bool(ctx.children)
 
+    @staticmethod
+    def normalize_field_path(path: str) -> str:
+        """Normalize jmspath/bracket notation to MongoDB dot notation.
+
+        Examples:
+            items[0] -> items.0
+            items[1].name -> items.1.name
+            arr['key'] or arr["key"] -> arr.key
+        """
+        if not isinstance(path, str):
+            return path
+
+        s = path.strip()
+        # Convert quoted bracket identifiers ["name"] or ['name'] -> .name
+        s = re.sub(r"\[\s*['\"]([^'\"]+)['\"]\s*\]", r".\1", s)
+        # Convert numeric bracket indexes [0] -> .0
+        s = re.sub(r"\[\s*(\d+)\s*\]", r".\1", s)
+        # Collapse multiple dots and strip leading/trailing dots
+        s = re.sub(r"\.{2,}", ".", s).strip(".")
+        return s
+
 
 class LoggingMixin:
     """Mixin providing structured logging functionality"""
@@ -114,11 +139,10 @@ class LoggingMixin:
             },
         )
 
-    def _log_operation_success(self, operation: str, operation_id: int, processing_time: float, **extra_data):
+    def _log_operation_success(self, operation: str, operation_id: int, **extra_data):
         """Log successful operation completion"""
         log_data = {
             "operation": operation,
-            "processing_time_ms": processing_time,
             "operation_id": operation_id,
         }
         log_data.update(extra_data)
@@ -129,7 +153,6 @@ class LoggingMixin:
         operation: str,
         ctx: Any,
         operation_id: int,
-        processing_time: float,
         error: Exception,
     ):
         """Log operation error with context"""
@@ -141,7 +164,6 @@ class LoggingMixin:
                 "context_text": ContextUtilsMixin.get_context_text(ctx),
                 "context_type": ContextUtilsMixin.get_context_type_name(ctx),
                 "operation": operation,
-                "processing_time_ms": processing_time,
                 "operation_id": operation_id,
             },
             exc_info=True,
@@ -244,7 +266,6 @@ class ComparisonExpressionHandler(BaseHandler, ContextUtilsMixin, LoggingMixin, 
 
     def handle_expression(self, ctx: Any) -> ParseResult:
         """Convert comparison expression to MongoDB filter"""
-        start_time = time.time()
         operation_id = id(ctx)
         self._log_operation_start("comparison_parsing", ctx, operation_id)
 
@@ -255,11 +276,9 @@ class ComparisonExpressionHandler(BaseHandler, ContextUtilsMixin, LoggingMixin, 
 
             mongo_filter = self._build_mongo_filter(field_name, operator, value)
 
-            processing_time = (time.time() - start_time) * 1000
             self._log_operation_success(
                 "comparison_parsing",
                 operation_id,
-                processing_time,
                 field_name=field_name,
                 operator=operator,
             )
@@ -267,8 +286,7 @@ class ComparisonExpressionHandler(BaseHandler, ContextUtilsMixin, LoggingMixin, 
             return ParseResult(filter_conditions=mongo_filter)
 
         except Exception as e:
-            processing_time = (time.time() - start_time) * 1000
-            self._log_operation_error("comparison_parsing", ctx, operation_id, processing_time, e)
+            self._log_operation_error("comparison_parsing", ctx, operation_id, e)
             return ParseResult(has_errors=True, error_message=str(e))
 
     def _build_mongo_filter(self, field_name: str, operator: str, value: Any) -> Dict[str, Any]:
@@ -358,21 +376,23 @@ class ComparisonExpressionHandler(BaseHandler, ContextUtilsMixin, LoggingMixin, 
             sql_keywords = ["IN(", "LIKE", "BETWEEN", "ISNULL", "ISNOTNULL"]
             for keyword in sql_keywords:
                 if keyword in text:
-                    return text.split(keyword, 1)[0].strip()
+                    candidate = text.split(keyword, 1)[0].strip()
+                    return self.normalize_field_path(candidate)
 
             # Try operator-based splitting
             operator = self._find_operator_in_text(text, COMPARISON_OPERATORS)
             if operator:
                 parts = self._split_by_operator(text, operator)
                 if parts:
-                    return parts[0].strip("'\"()")
+                    candidate = parts[0].strip("'\"()")
+                    return self.normalize_field_path(candidate)
 
             # Fallback to children parsing
             if self.has_children(ctx):
                 for child in ctx.children:
                     child_text = self.get_context_text(child)
                     if child_text not in COMPARISON_OPERATORS and not child_text.startswith(("'", '"')):
-                        return child_text
+                        return self.normalize_field_path(child_text)
 
             return "unknown_field"
         except Exception as e:
@@ -544,7 +564,6 @@ class LogicalExpressionHandler(BaseHandler, ContextUtilsMixin, LoggingMixin, Ope
 
     def handle_expression(self, ctx: Any) -> ParseResult:
         """Convert logical expression to MongoDB filter"""
-        start_time = time.time()
         operation_id = id(ctx)
         self._log_operation_start("logical_parsing", ctx, operation_id)
 
@@ -561,11 +580,9 @@ class LogicalExpressionHandler(BaseHandler, ContextUtilsMixin, LoggingMixin, Ope
             # Combine operands based on logical operator
             mongo_filter = self._combine_operands(operator, processed_operands)
 
-            processing_time = (time.time() - start_time) * 1000
             self._log_operation_success(
                 "logical_parsing",
                 operation_id,
-                processing_time,
                 operator=operator,
                 processed_count=len(processed_operands),
             )
@@ -573,8 +590,7 @@ class LogicalExpressionHandler(BaseHandler, ContextUtilsMixin, LoggingMixin, Ope
             return ParseResult(filter_conditions=mongo_filter)
 
         except Exception as e:
-            processing_time = (time.time() - start_time) * 1000
-            self._log_operation_error("logical_parsing", ctx, operation_id, processing_time, e)
+            self._log_operation_error("logical_parsing", ctx, operation_id, e)
             return ParseResult(has_errors=True, error_message=str(e))
 
     def _process_operands(self, operands: List[Any]) -> List[Dict[str, Any]]:
@@ -731,7 +747,6 @@ class FunctionExpressionHandler(BaseHandler, ContextUtilsMixin, LoggingMixin):
 
     def handle_expression(self, ctx: Any) -> ParseResult:
         """Handle function expressions"""
-        start_time = time.time()
         operation_id = id(ctx)
         self._log_operation_start("function_parsing", ctx, operation_id)
 
@@ -742,19 +757,16 @@ class FunctionExpressionHandler(BaseHandler, ContextUtilsMixin, LoggingMixin):
             # For now, just return a placeholder - this would need full implementation
             mongo_filter = {"$expr": {self.FUNCTION_MAP.get(function_name.upper(), "$sum"): arguments}}
 
-            processing_time = (time.time() - start_time) * 1000
             self._log_operation_success(
                 "function_parsing",
                 operation_id,
-                processing_time,
                 function_name=function_name,
             )
 
             return ParseResult(filter_conditions=mongo_filter)
 
         except Exception as e:
-            processing_time = (time.time() - start_time) * 1000
-            self._log_operation_error("function_parsing", ctx, operation_id, processing_time, e)
+            self._log_operation_error("function_parsing", ctx, operation_id, e)
             return ParseResult(has_errors=True, error_message=str(e))
 
     def _is_function_context(self, ctx: Any) -> bool:
@@ -873,7 +885,7 @@ class EnhancedWhereHandler(ContextUtilsMixin):
 # Visitor Handler Classes for AST Processing
 
 
-class SelectHandler(BaseHandler):
+class SelectHandler(BaseHandler, ContextUtilsMixin):
     """Handles SELECT statement parsing"""
 
     def can_handle(self, ctx: Any) -> bool:
@@ -893,7 +905,7 @@ class SelectHandler(BaseHandler):
         return projection
 
     def _extract_field_and_alias(self, item) -> Tuple[str, Optional[str]]:
-        """Extract field name and alias from projection item context"""
+        """Extract field name and alias from projection item context with nested field support"""
         if not hasattr(item, "children") or not item.children:
             return str(item), None
 
@@ -903,6 +915,9 @@ class SelectHandler(BaseHandler):
         # OR children[1] might be just symbolPrimitive (without AS)
 
         field_name = item.children[0].getText()
+        # Normalize bracket notation (jmspath) to Mongo dot notation
+        field_name = self.normalize_field_path(field_name)
+
         alias = None
 
         if len(item.children) >= 2:
@@ -927,7 +942,8 @@ class FromHandler(BaseHandler):
 
     def handle_visitor(self, ctx: PartiQLParser.FromClauseContext, parse_result: "ParseResult") -> Any:
         if hasattr(ctx, "tableReference") and ctx.tableReference():
-            collection_name = ctx.tableReference().getText()
+            table_text = ctx.tableReference().getText()
+            collection_name = table_text
             parse_result.collection = collection_name
             return collection_name
         return None

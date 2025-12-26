@@ -2,14 +2,11 @@
 import logging
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Sequence, Tuple, TypeVar
 
-from pymongo.cursor import Cursor as MongoCursor
-from pymongo.errors import PyMongoError
-
 from .common import BaseCursor, CursorIterator
 from .error import DatabaseError, OperationalError, ProgrammingError, SqlSyntaxError
-from .result_set import ResultSet
+from .executor import ExecutionContext, ExecutionPlanFactory
+from .result_set import DictResultSet, ResultSet
 from .sql.builder import ExecutionPlan
-from .sql.parser import SQLParser
 
 if TYPE_CHECKING:
     from .connection import Connection
@@ -23,16 +20,16 @@ class Cursor(BaseCursor, CursorIterator):
 
     NO_RESULT_SET = "No result set."
 
-    def __init__(self, connection: "Connection", **kwargs) -> None:
+    def __init__(self, connection: "Connection", mode: str = "standard", **kwargs) -> None:
         super().__init__(
             connection=connection,
+            mode=mode,
             **kwargs,
         )
         self._kwargs = kwargs
         self._result_set: Optional[ResultSet] = None
         self._result_set_class = ResultSet
         self._current_execution_plan: Optional[ExecutionPlan] = None
-        self._mongo_cursor: Optional[MongoCursor] = None
         self._is_closed = False
 
     @property
@@ -40,8 +37,8 @@ class Cursor(BaseCursor, CursorIterator):
         return self._result_set
 
     @result_set.setter
-    def result_set(self, val: ResultSet) -> None:
-        self._result_set = val
+    def result_set(self, rs: ResultSet) -> None:
+        self._result_set = rs
 
     @property
     def has_result_set(self) -> bool:
@@ -52,8 +49,8 @@ class Cursor(BaseCursor, CursorIterator):
         return self._result_set_class
 
     @result_set_class.setter
-    def result_set_class(self, val: type) -> None:
-        self._result_set_class = val
+    def result_set_class(self, rs_cls: type) -> None:
+        self._result_set_class = rs_cls
 
     @property
     def rowcount(self) -> int:
@@ -78,74 +75,6 @@ class Cursor(BaseCursor, CursorIterator):
         if self._is_closed:
             raise ProgrammingError("Cursor is closed")
 
-    def _parse_sql(self, sql: str) -> ExecutionPlan:
-        """Parse SQL statement and return ExecutionPlan"""
-        try:
-            parser = SQLParser(sql)
-            execution_plan = parser.get_execution_plan()
-
-            if not execution_plan.validate():
-                raise SqlSyntaxError("Generated query plan is invalid")
-
-            return execution_plan
-
-        except SqlSyntaxError:
-            raise
-        except Exception as e:
-            _logger.error(f"SQL parsing failed: {e}")
-            raise SqlSyntaxError(f"Failed to parse SQL: {e}")
-
-    def _execute_execution_plan(self, execution_plan: ExecutionPlan) -> None:
-        """Execute an ExecutionPlan against MongoDB using db.command"""
-        try:
-            # Get database
-            if not execution_plan.collection:
-                raise ProgrammingError("No collection specified in query")
-
-            db = self.connection.database
-
-            # Build MongoDB find command
-            find_command = {"find": execution_plan.collection, "filter": execution_plan.filter_stage or {}}
-
-            # Apply projection if specified (already in MongoDB format)
-            if execution_plan.projection_stage:
-                find_command["projection"] = execution_plan.projection_stage
-
-            # Apply sort if specified
-            if execution_plan.sort_stage:
-                sort_spec = {}
-                for sort_dict in execution_plan.sort_stage:
-                    for field, direction in sort_dict.items():
-                        sort_spec[field] = direction
-                find_command["sort"] = sort_spec
-
-            # Apply skip if specified
-            if execution_plan.skip_stage:
-                find_command["skip"] = execution_plan.skip_stage
-
-            # Apply limit if specified
-            if execution_plan.limit_stage:
-                find_command["limit"] = execution_plan.limit_stage
-
-            _logger.debug(f"Executing MongoDB command: {find_command}")
-
-            # Execute find command directly
-            result = db.command(find_command)
-
-            # Create result set from command result
-            self._result_set = self._result_set_class(
-                command_result=result, execution_plan=execution_plan, **self._kwargs
-            )
-
-            _logger.info(f"Query executed successfully on collection '{execution_plan.collection}'")
-
-        except PyMongoError as e:
-            _logger.error(f"MongoDB command execution failed: {e}")
-            raise DatabaseError(f"Command execution failed: {e}")
-        except Exception as e:
-            _logger.error(f"Unexpected error during command execution: {e}")
-            raise OperationalError(f"Command execution error: {e}")
-
     def execute(self: _T, operation: str, parameters: Optional[Dict[str, Any]] = None) -> _T:
         """Execute a SQL statement
 
@@ -162,11 +91,25 @@ class Cursor(BaseCursor, CursorIterator):
             _logger.warning("Parameter substitution not yet implemented, ignoring parameters")
 
         try:
-            # Parse SQL to ExecutionPlan
-            self._current_execution_plan = self._parse_sql(operation)
+            # Create execution context
+            context = ExecutionContext(operation, self.mode)
 
-            # Execute the execution plan
-            self._execute_execution_plan(self._current_execution_plan)
+            # Get appropriate execution strategy
+            strategy = ExecutionPlanFactory.get_strategy(context)
+
+            # Execute using selected strategy (Standard or Subquery)
+            result = strategy.execute(context, self.connection)
+
+            # Store execution plan for reference
+            self._current_execution_plan = strategy.execution_plan
+
+            # Create result set from command result
+            self._result_set = self._result_set_class(
+                command_result=result,
+                execution_plan=self._current_execution_plan,
+                database=self.connection.database,
+                **self._kwargs,
+            )
 
             return self
 
@@ -236,15 +179,6 @@ class Cursor(BaseCursor, CursorIterator):
     def close(self) -> None:
         """Close the cursor and free resources"""
         try:
-            if self._mongo_cursor:
-                # Close MongoDB cursor
-                try:
-                    self._mongo_cursor.close()
-                except Exception as e:
-                    _logger.warning(f"Error closing MongoDB cursor: {e}")
-                finally:
-                    self._mongo_cursor = None
-
             if self._result_set:
                 # Close result set
                 try:
@@ -274,3 +208,12 @@ class Cursor(BaseCursor, CursorIterator):
                 self.close()
             except Exception:
                 pass  # Ignore errors during cleanup
+
+
+class DictCursor(Cursor):
+    """Cursor that returns results as dictionaries instead of tuples/sequences"""
+
+    def __init__(self, connection: "Connection", **kwargs) -> None:
+        super().__init__(connection=connection, **kwargs)
+        # Override result set class to use DictResultSet
+        self._result_set_class = DictResultSet

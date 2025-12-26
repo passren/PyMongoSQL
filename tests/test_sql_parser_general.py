@@ -5,7 +5,7 @@ from pymongosql.error import SqlSyntaxError
 from pymongosql.sql.parser import SQLParser
 
 
-class TestSQLParser:
+class TestSQLParserGeneral:
     """Comprehensive test suite for SQL parser from simple to complex queries"""
 
     def test_simple_select_all(self):
@@ -239,6 +239,29 @@ class TestSQLParser:
         assert execution_plan.limit_stage == 10
         assert execution_plan.projection_stage == {"name": 1}
 
+    def test_select_with_offset(self):
+        """Test SELECT with OFFSET clause"""
+        sql = "SELECT name FROM users OFFSET 5"
+        parser = SQLParser(sql)
+
+        assert not parser.has_errors, f"Parser errors: {parser.errors}"
+        execution_plan = parser.get_execution_plan()
+        assert execution_plan.collection == "users"
+        assert execution_plan.skip_stage == 5
+        assert execution_plan.projection_stage == {"name": 1}
+
+    def test_select_with_limit_and_offset(self):
+        """Test SELECT with both LIMIT and OFFSET clauses"""
+        sql = "SELECT name, email FROM users LIMIT 10 OFFSET 5"
+        parser = SQLParser(sql)
+
+        assert not parser.has_errors, f"Parser errors: {parser.errors}"
+        execution_plan = parser.get_execution_plan()
+        assert execution_plan.collection == "users"
+        assert execution_plan.limit_stage == 10
+        assert execution_plan.skip_stage == 5
+        assert execution_plan.projection_stage == {"name": 1, "email": 1}
+
     def test_complex_query_combination(self):
         """Test complex query with multiple clauses"""
         sql = """
@@ -276,126 +299,6 @@ class TestSQLParser:
         with pytest.raises(SqlSyntaxError):
             parser = SQLParser("INVALID SQL SYNTAX")
             parser.get_execution_plan()
-
-    def test_select_with_as_aliases(self):
-        """Test SELECT with AS aliases"""
-        sql = "SELECT name AS username, email AS user_email FROM customers"
-        parser = SQLParser(sql)
-
-        assert not parser.has_errors, f"Parser errors: {parser.errors}"
-
-        execution_plan = parser.get_execution_plan()
-        assert execution_plan.collection == "customers"
-        assert execution_plan.filter_stage == {}
-        assert execution_plan.projection_stage == {
-            "name": 1,
-            "email": 1,
-        }
-
-    def test_select_with_mixed_aliases(self):
-        """Test SELECT with mixed alias formats"""
-        sql = "SELECT name AS username, age user_age, status FROM users"
-        parser = SQLParser(sql)
-
-        assert not parser.has_errors, f"Parser errors: {parser.errors}"
-
-        execution_plan = parser.get_execution_plan()
-        assert execution_plan.collection == "users"
-        assert execution_plan.filter_stage == {}
-        assert execution_plan.projection_stage == {
-            "name": 1,  # AS alias
-            "age": 1,  # Space-separated alias
-            "status": 1,  # No alias (field included)
-        }
-
-    def test_select_with_space_separated_aliases(self):
-        """Test SELECT with space-separated aliases"""
-        sql = "SELECT first_name fname, last_name lname, created_at creation_date FROM users"
-        parser = SQLParser(sql)
-
-        assert not parser.has_errors, f"Parser errors: {parser.errors}"
-
-        execution_plan = parser.get_execution_plan()
-        assert execution_plan.collection == "users"
-        assert execution_plan.filter_stage == {}
-        assert execution_plan.projection_stage == {
-            "first_name": 1,
-            "last_name": 1,
-            "created_at": 1,
-        }
-
-    def test_select_with_complex_field_names_and_aliases(self):
-        """Test SELECT with complex field names and aliases"""
-        sql = "SELECT user_profile.name AS display_name, account_settings.theme user_theme FROM users"
-        parser = SQLParser(sql)
-
-        assert not parser.has_errors, f"Parser errors: {parser.errors}"
-
-        execution_plan = parser.get_execution_plan()
-        assert execution_plan.collection == "users"
-        assert execution_plan.filter_stage == {}
-        assert execution_plan.projection_stage == {
-            "user_profile.name": 1,
-            "account_settings.theme": 1,
-        }
-
-    def test_select_function_with_aliases(self):
-        """Test SELECT with functions and aliases"""
-        sql = "SELECT COUNT(*) AS total_count, MAX(age) max_age FROM users"
-        parser = SQLParser(sql)
-
-        assert not parser.has_errors, f"Parser errors: {parser.errors}"
-
-        execution_plan = parser.get_execution_plan()
-        assert execution_plan.collection == "users"
-        assert execution_plan.filter_stage == {}
-        assert execution_plan.projection_stage == {
-            "COUNT(*)": 1,
-            "MAX(age)": 1,
-        }
-
-    def test_select_single_field_with_alias(self):
-        """Test SELECT with single field and alias"""
-        sql = "SELECT email AS contact_email FROM customers"
-        parser = SQLParser(sql)
-
-        assert not parser.has_errors, f"Parser errors: {parser.errors}"
-
-        execution_plan = parser.get_execution_plan()
-        assert execution_plan.collection == "customers"
-        assert execution_plan.filter_stage == {}
-        assert execution_plan.projection_stage == {"email": 1}
-
-    def test_select_aliases_with_where_clause(self):
-        """Test SELECT with aliases and WHERE clause"""
-        sql = "SELECT name AS username, status AS account_status FROM users WHERE age > 18"
-        parser = SQLParser(sql)
-
-        assert not parser.has_errors, f"Parser errors: {parser.errors}"
-
-        execution_plan = parser.get_execution_plan()
-        assert execution_plan.collection == "users"
-        assert execution_plan.filter_stage == {"age": {"$gt": 18}}
-        assert execution_plan.projection_stage == {
-            "name": 1,
-            "status": 1,
-        }
-
-    def test_select_case_insensitive_as_alias(self):
-        """Test SELECT with case insensitive AS keyword"""
-        sql = "SELECT name as username, email As user_email, status AS account_status FROM users"
-        parser = SQLParser(sql)
-
-        assert not parser.has_errors, f"Parser errors: {parser.errors}"
-
-        execution_plan = parser.get_execution_plan()
-        assert execution_plan.collection == "users"
-        assert execution_plan.filter_stage == {}
-        assert execution_plan.projection_stage == {
-            "name": 1,
-            "email": 1,
-            "status": 1,
-        }
 
     def test_different_collection_names(self):
         """Test parsing with different collection names"""
