@@ -1,15 +1,4 @@
 # -*- coding: utf-8 -*-
-"""
-Tests for superset subquery connection mode.
-
-Tests the mongodb+superset:// connection pattern and verifies that:
-1. Superset mode is correctly detected from connection strings
-2. SubqueryExecution strategy is registered and used
-3. Subqueries are supported in superset mode
-4. Subqueries are rejected in core mode
-"""
-
-
 from pymongosql.executor import ExecutionContext, ExecutionPlanFactory
 from pymongosql.helper import ConnectionHelper
 from pymongosql.superset_mongodb.executor import SupersetExecution
@@ -18,45 +7,64 @@ from pymongosql.superset_mongodb.executor import SupersetExecution
 class TestSupersetConnectionString:
     """Test parsing of superset connection strings"""
 
-    def test_parse_superset_mode(self):
-        """Test parsing mongodb+superset:// connection string"""
-        mode, normalized = ConnectionHelper.parse_connection_string("mongodb+superset://localhost:27017/testdb")
+    def test_parse_superset_mode_with_query_param(self):
+        """Test parsing connection string with ?mode=superset query parameter"""
+        mode, db, normalized = ConnectionHelper.parse_connection_string(
+            "mongodb://localhost:27017/testdb?mode=superset"
+        )
         assert mode == "superset"
+        assert db == "testdb"
+        assert "mode" not in normalized
         assert normalized == "mongodb://localhost:27017/testdb"
+
+    def test_parse_srv_with_superset_mode(self):
+        """Test parsing mongodb+srv with superset mode"""
+        mode, db, normalized = ConnectionHelper.parse_connection_string("mongodb+srv://localhost/testdb?mode=superset")
+        assert mode == "superset"
+        assert db == "testdb"
+        assert "mongodb+srv" in normalized
+        assert "mode" not in normalized
 
     def test_parse_core_mode(self):
         """Test parsing standard mongodb:// connection string"""
-        mode, normalized = ConnectionHelper.parse_connection_string("mongodb://localhost:27017/testdb")
+        mode, db, normalized = ConnectionHelper.parse_connection_string("mongodb://localhost:27017/testdb")
         assert mode == "standard"
+        assert db == "testdb"
         assert normalized == "mongodb://localhost:27017/testdb"
 
     def test_parse_with_credentials(self):
         """Test parsing connection string with username and password"""
-        mode, normalized = ConnectionHelper.parse_connection_string(
-            "mongodb+superset://user:pass@localhost:27017/testdb"
+        mode, db, normalized = ConnectionHelper.parse_connection_string(
+            "mongodb://user:pass@localhost:27017/testdb?mode=superset"
         )
         assert mode == "superset"
+        assert db == "testdb"
         assert "user:pass@localhost" in normalized
+        assert "mode" not in normalized
 
     def test_parse_with_query_params(self):
-        """Test parsing connection string with query parameters"""
-        mode, normalized = ConnectionHelper.parse_connection_string(
-            "mongodb+superset://localhost:27017/testdb?retryWrites=true&w=majority"
+        """Test parsing connection string with multiple query parameters"""
+        mode, db, normalized = ConnectionHelper.parse_connection_string(
+            "mongodb://localhost:27017/testdb?mode=superset&retryWrites=true&w=majority"
         )
         assert mode == "superset"
+        assert db == "testdb"
         assert "retryWrites=true" in normalized
         assert "w=majority" in normalized
+        assert "mode" not in normalized
 
     def test_parse_none_connection_string(self):
         """Test parsing None connection string returns defaults"""
-        mode, normalized = ConnectionHelper.parse_connection_string(None)
+        mode, db, normalized = ConnectionHelper.parse_connection_string(None)
         assert mode == "standard"
+        assert db is None
         assert normalized is None
 
     def test_parse_empty_connection_string(self):
         """Test parsing empty connection string returns defaults"""
-        mode, normalized = ConnectionHelper.parse_connection_string("")
+        mode, db, normalized = ConnectionHelper.parse_connection_string("")
         assert mode == "standard"
+        assert db is None
         assert normalized is None
 
 
@@ -113,15 +121,15 @@ class TestConnectionModeDetection:
         """Test that superset mode is correctly detected"""
         from pymongosql.helper import ConnectionHelper
 
-        is_superset, _ = ConnectionHelper.parse_connection_string("mongodb+superset://localhost:27017/testdb")
-        assert is_superset == "superset"
+        mode, db, _ = ConnectionHelper.parse_connection_string("mongodb://localhost:27017/testdb?mode=superset")
+        assert mode == "superset"
 
     def test_core_mode_detection(self):
         """Test that core mode is correctly detected"""
         from pymongosql.helper import ConnectionHelper
 
-        is_core, _ = ConnectionHelper.parse_connection_string("mongodb://localhost:27017/testdb")
-        assert is_core == "standard"
+        mode, db, _ = ConnectionHelper.parse_connection_string("mongodb://localhost:27017/testdb")
+        assert mode == "standard"
 
 
 class TestSubqueryExecutionIntegration:
@@ -432,6 +440,43 @@ class TestSubqueryExecutionIntegration:
         assert "_id" in col_names
         assert "name" in col_names
         assert "age" in col_names
+
+    def test_subquery_with_field_aliases_in_inner_query(self, superset_conn):
+        """Test superset execution with field aliases in the inner MongoDB query"""
+        cursor = superset_conn.cursor()
+
+        # Inner query has aliases
+        subquery_sql = "SELECT * FROM (SELECT name AS user_name, email AS user_email FROM users) AS u LIMIT 3"
+
+        cursor.execute(subquery_sql)
+        rows = cursor.fetchall()
+
+        # Check that aliases appear in cursor description
+        assert cursor.result_set.description is not None
+        col_names = [desc[0] for desc in cursor.result_set.description]
+
+        # Aliases from inner query should be preserved
+        assert "user_name" in col_names
+        assert "user_email" in col_names
+        assert len(rows) <= 3
+
+    def test_subquery_with_nested_field_alias(self, superset_conn):
+        """Test superset execution with nested field alias in inner query"""
+        cursor = superset_conn.cursor()
+
+        # Inner query has nested field with alias
+        subquery_sql = "SELECT * FROM (SELECT _id AS id, name FROM users) AS u WHERE u.id > 0 LIMIT 2"
+
+        cursor.execute(subquery_sql)
+        rows = cursor.fetchall()
+
+        # Check that aliases appear in cursor description
+        assert cursor.result_set.description is not None
+        col_names = [desc[0] for desc in cursor.result_set.description]
+
+        # Alias from inner query should be preserved
+        assert "id" in col_names
+        assert len(rows) <= 2
 
 
 class TestSubqueryDetector:

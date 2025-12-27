@@ -344,3 +344,92 @@ class TestSQLParserGeneral:
         # Verify ORDER BY and LIMIT
         assert execution_plan.sort_stage == [{"age": -1}]  # DESC = -1
         assert execution_plan.limit_stage == 5
+
+    def test_select_with_simple_alias(self):
+        """Test SELECT with a simple field alias"""
+        sql = "SELECT name AS user_name FROM users"
+        parser = SQLParser(sql)
+
+        assert not parser.has_errors, f"Parser errors: {parser.errors}"
+
+        execution_plan = parser.get_execution_plan()
+        assert execution_plan.collection == "users"
+        assert execution_plan.projection_stage == {"name": 1}
+        assert execution_plan.column_aliases == {"name": "user_name"}
+
+    def test_select_with_multiple_aliases(self):
+        """Test SELECT with multiple field aliases"""
+        sql = "SELECT name AS user_name, email AS user_email, age AS user_age FROM users"
+        parser = SQLParser(sql)
+
+        assert not parser.has_errors, f"Parser errors: {parser.errors}"
+
+        execution_plan = parser.get_execution_plan()
+        assert execution_plan.collection == "users"
+        assert execution_plan.projection_stage == {"name": 1, "email": 1, "age": 1}
+        assert execution_plan.column_aliases == {
+            "name": "user_name",
+            "email": "user_email",
+            "age": "user_age",
+        }
+
+    def test_select_with_nested_field_alias(self):
+        """Test SELECT with nested field alias like field.idx[0] as a"""
+        sql = "SELECT field.idx[0] AS a FROM users"
+        parser = SQLParser(sql)
+
+        assert not parser.has_errors, f"Parser errors: {parser.errors}"
+
+        execution_plan = parser.get_execution_plan()
+        assert execution_plan.collection == "users"
+        # Nested field should be normalized to mongo dot notation
+        assert "field.idx.0" in execution_plan.projection_stage
+        assert execution_plan.projection_stage["field.idx.0"] == 1
+        assert execution_plan.column_aliases.get("field.idx.0") == "a"
+
+    def test_select_mixed_with_and_without_aliases(self):
+        """Test SELECT with some fields having aliases and some not"""
+        sql = "SELECT name AS user_name, email, age AS user_age FROM users"
+        parser = SQLParser(sql)
+
+        assert not parser.has_errors, f"Parser errors: {parser.errors}"
+
+        execution_plan = parser.get_execution_plan()
+        assert execution_plan.collection == "users"
+        assert execution_plan.projection_stage == {"name": 1, "email": 1, "age": 1}
+        # Only fields with aliases should be in column_aliases
+        assert execution_plan.column_aliases == {
+            "name": "user_name",
+            "age": "user_age",
+        }
+
+    def test_select_alias_without_as_keyword(self):
+        """Test SELECT with implicit alias (without AS keyword)"""
+        sql = "SELECT name user_name, email user_email FROM users"
+        parser = SQLParser(sql)
+
+        assert not parser.has_errors, f"Parser errors: {parser.errors}"
+
+        execution_plan = parser.get_execution_plan()
+        assert execution_plan.collection == "users"
+        assert execution_plan.projection_stage == {"name": 1, "email": 1}
+        assert execution_plan.column_aliases == {
+            "name": "user_name",
+            "email": "user_email",
+        }
+
+    def test_select_with_alias_and_where_clause(self):
+        """Test SELECT with aliases and WHERE clause"""
+        sql = "SELECT name AS user_name, age AS user_age FROM users WHERE status = 'active'"
+        parser = SQLParser(sql)
+
+        assert not parser.has_errors, f"Parser errors: {parser.errors}"
+
+        execution_plan = parser.get_execution_plan()
+        assert execution_plan.collection == "users"
+        assert execution_plan.projection_stage == {"name": 1, "age": 1}
+        assert execution_plan.column_aliases == {
+            "name": "user_name",
+            "age": "user_age",
+        }
+        assert execution_plan.filter_stage == {"status": "active"}

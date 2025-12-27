@@ -38,14 +38,18 @@ class Connection:
 
         Supports connection string patterns:
         - mongodb://host:port/database - Core driver (no subquery support)
-        - mongodb+superset://host:port/database - Superset driver with subquery support
+        - mongodb+srv://host:port/database - Cloud/SRV connection string
+        - mongodb://host:port/database?mode=superset - Superset driver with subquery support
+        - mongodb+srv://host:port/database?mode=superset - Cloud SRV with superset mode
+
+        Mode is specified via the ?mode= query parameter. If not specified, defaults to "standard".
 
         See PyMongo MongoClient documentation for full parameter details.
         https://www.mongodb.com/docs/languages/python/pymongo-driver/current/connect/mongoclient/
         """
         # Check if connection string specifies mode
         connection_string = host if isinstance(host, str) else None
-        mode, host = ConnectionHelper.parse_connection_string(connection_string)
+        mode, db_from_uri, host = ConnectionHelper.parse_connection_string(connection_string)
 
         self._mode = kwargs.pop("mode", None)
         if not self._mode and mode:
@@ -56,7 +60,10 @@ class Connection:
         self._port = port or 27017
 
         # Handle database parameter separately (not a MongoClient parameter)
+        # Explicit 'database' parameter takes precedence over database in URI
         self._database_name = kwargs.pop("database", None)
+        if not self._database_name and db_from_uri:
+            self._database_name = db_from_uri
 
         # Store all PyMongo parameters to pass through directly
         self._pymongo_params = kwargs.copy()

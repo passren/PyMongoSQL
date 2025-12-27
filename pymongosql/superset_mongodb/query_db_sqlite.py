@@ -1,14 +1,4 @@
 # -*- coding: utf-8 -*-
-"""
-SQLite3 bridge for handling query database operations.
-
-This module manages the creation, population, and querying of in-memory SQLite3
-databases that serve as an intermediate layer between MongoDB and Superset,
-enabling support for complex SQL operations that MongoDB cannot handle natively.
-
-SQLiteBridge is the default implementation of the QueryDatabase interface.
-"""
-
 import logging
 import sqlite3
 from typing import Any, Dict, List, Optional

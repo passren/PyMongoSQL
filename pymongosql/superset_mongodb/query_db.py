@@ -1,14 +1,4 @@
 # -*- coding: utf-8 -*-
-"""
-Query database abstraction layer.
-
-This module provides an abstract interface for databases used
-during subquery execution. Allows plugging in different RDBMS backends
-(SQLite3, PostgreSQL, MySQL, etc.) while maintaining a unified interface.
-
-Default implementation uses SQLite3 for in-memory processing.
-"""
-
 import logging
 from abc import ABC, abstractmethod
 from typing import Any, Dict, List

@@ -28,15 +28,18 @@ def make_conn(**kwargs):
 def make_superset_conn(**kwargs):
     """Create a superset-mode Connection using TEST_URI if provided, otherwise use a local default."""
     if TEST_URI:
-        # Convert test URI to superset mode by replacing mongodb:// with mongodb+superset://
-        superset_uri = TEST_URI.replace("mongodb://", "mongodb+superset://", 1)
+        # Convert test URI to superset mode by adding ?mode=superset query parameter
+        if "?" in TEST_URI:
+            superset_uri = TEST_URI + "&mode=superset"
+        else:
+            superset_uri = TEST_URI + "?mode=superset"
         if "database" not in kwargs:
             kwargs["database"] = TEST_DB
         return Connection(host=superset_uri, **kwargs)
 
     # Default local connection parameters with superset mode
     defaults = {
-        "host": "mongodb+superset://testuser:testpass@localhost:27017/test_db?authSource=test_db",
+        "host": "mongodb://testuser:testpass@localhost:27017/test_db?authSource=test_db&mode=superset",
         "database": "test_db",
     }
     for k, v in defaults.items():

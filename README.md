@@ -14,16 +14,18 @@ PyMongoSQL is a Python [DB API 2.0 (PEP 249)](https://www.python.org/dev/peps/pe
 
 ## Objectives
 
-PyMongoSQL implements the DB API 2.0 interfaces to provide SQL-like access to MongoDB. The project aims to:
+PyMongoSQL implements the DB API 2.0 interfaces to provide SQL-like access to MongoDB, built on PartiQL syntax for querying semi-structured data. The project aims to:
 
-- Bridge the gap between SQL and NoSQL by providing SQL capabilities for MongoDB
-- Support standard SQL DQL (Data Query Language) operations including SELECT statements with WHERE, ORDER BY, and LIMIT clauses
+- Bridge the gap between SQL and NoSQL by providing SQL capabilities for MongoDB's nested document structures
+- Support standard SQL DQL (Data Query Language) operations including SELECT statements with WHERE, ORDER BY, and LIMIT clauses on nested and hierarchical data
 - Provide seamless integration with existing Python applications that expect DB API 2.0 compliance
-- Enable easy migration from traditional SQL databases to MongoDB
+- Enable easy migration from traditional SQL databases to MongoDB without rewriting queries for document traversal
 
 ## Features
 
 - **DB API 2.0 Compliant**: Full compatibility with Python Database API 2.0 specification
+- **PartiQL-based SQL Syntax**: Built on [PartiQL](https://partiql.org/tutorial.html) (SQL for semi-structured data), enabling seamless SQL querying of nested and hierarchical MongoDB documents
+- **Nested Structure Support**: Query and filter deeply nested fields and arrays within MongoDB documents using standard SQL syntax
 - **SQLAlchemy Integration**: Complete ORM and Core support with dedicated MongoDB dialect
 - **SQL Query Support**: SELECT statements with WHERE conditions, field selection, and aliases
 - **Connection String Support**: MongoDB URI format for easy configuration
@@ -140,6 +142,7 @@ while users:
 ### SELECT Statements
 - Field selection: `SELECT name, age FROM users`
 - Wildcards: `SELECT * FROM products`
+- **Field aliases**: `SELECT name as user_name, age as user_age FROM users`
 - **Nested fields**: `SELECT profile.name, profile.age FROM users`
 - **Array access**: `SELECT items[0], items[1].name FROM orders`
 
@@ -175,6 +178,27 @@ while users:
   - `LIST TABLES/COLLECTIONS`
 
 These features are on our development roadmap and contributions are welcome!
+
+## Apache Superset Integration
+
+PyMongoSQL can be used as a database driver in Apache Superset for querying and visualizing MongoDB data:
+
+1. **Install PyMongoSQL**: Install PyMongoSQL on the Superset app server:
+   ```bash
+   pip install pymongosql
+   ```
+2. **Create Connection**: Connect to your MongoDB instance using the connection URI with superset mode:
+   ```
+   mongodb://username:password@host:port/database?mode=superset
+   ```
+   or for MongoDB Atlas:
+   ```
+   mongodb+srv://username:password@host/database?mode=superset
+   ```
+3. **Use SQL Lab**: Write and execute SQL queries against MongoDB collections directly in Superset's SQL Lab
+4. **Create Visualizations**: Build charts and dashboards from your MongoDB queries using Superset's visualization tools
+
+This allows seamless integration between MongoDB data and Superset's BI capabilities without requiring data migration to traditional SQL databases.
 
 ## Contributing
 

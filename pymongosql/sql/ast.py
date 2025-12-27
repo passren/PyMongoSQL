@@ -50,9 +50,11 @@ class MongoSQLParserVisitor(PartiQLParserVisitor):
         """Convert the parse result to an ExecutionPlan using BuilderFactory"""
         builder = BuilderFactory.create_query_builder().collection(self._parse_result.collection)
 
-        builder.filter(self._parse_result.filter_conditions).project(self._parse_result.projection).sort(
-            self._parse_result.sort_fields
-        ).limit(self._parse_result.limit_value).skip(self._parse_result.offset_value)
+        builder.filter(self._parse_result.filter_conditions).project(self._parse_result.projection).column_aliases(
+            self._parse_result.column_aliases
+        ).sort(self._parse_result.sort_fields).limit(self._parse_result.limit_value).skip(
+            self._parse_result.offset_value
+        )
 
         return builder.build()
 

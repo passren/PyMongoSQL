@@ -156,7 +156,7 @@ class TestConnection:
         # Test that explicit database parameter overrides URI default
         if TEST_URI:
             # Construct a URI with an explicit database path
-            conn = Connection(host=f"{TEST_URI.rstrip('/')}/uri_db", database="explicit_db")
+            conn = Connection(host=f"{TEST_URI}", database="explicit_db")
         else:
             conn = Connection(host="mongodb://localhost:27017/uri_db", database="explicit_db")
         assert conn.database is not None
@@ -166,9 +166,22 @@ class TestConnection:
     def test_no_database_param_uses_client_default_database(self):
         """When no explicit database parameter is passed, use client's default from URI if present"""
         if TEST_URI:
-            conn = Connection(host=f"{TEST_URI.rstrip('/')}/test_db")
+            conn = Connection(host=f"{TEST_URI}")
         else:
             conn = Connection(host="mongodb://localhost:27017/test_db")
         assert conn.database is not None
         assert conn.database.name == "test_db"
+        conn.close()
+
+    def test_connection_string_with_mode_query_param(self):
+        """Test that connection string with ?mode parameter is parsed correctly"""
+        if TEST_URI:
+            # Test with mode parameter in query string
+            test_url = f"{TEST_URI.rstrip('&')}&mode=superset"
+        else:
+            test_url = "mongodb://localhost:27017/test_db?mode=superset"
+
+        conn = Connection(host=test_url)
+        assert conn.mode == "superset"
+        assert conn.database_name == "test_db"
         conn.close()

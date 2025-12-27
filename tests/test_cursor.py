@@ -261,6 +261,79 @@ class TestCursor:
                 names = [row[name_idx] for row in rows]
                 assert "John Doe" in names  # First user from dataset
 
+    def test_description_type_and_shape(self, conn):
+        """Ensure cursor.description returns a list of DB-API description tuples"""
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM users")
+        desc = cursor.description
+        assert isinstance(desc, list)
+        assert all(isinstance(d, tuple) and len(d) == 7 and isinstance(d[0], str) for d in desc)
+        # type_code should be a type object (e.g., str) or None when unknown
+        assert all((isinstance(d[1], type) or d[1] is None) for d in desc)
+
+    def test_description_projection(self, conn):
+        """Ensure projection via SQL reflects in the description names and types"""
+        cursor = conn.cursor()
+        cursor.execute("SELECT name, email FROM users")
+        desc = cursor.description
+        assert isinstance(desc, list)
+        col_names = [d[0] for d in desc]
+        assert "name" in col_names
+        assert "email" in col_names
+        for d in desc:
+            if d[0] in ("name", "email"):
+                assert isinstance(d[1], type) or d[1] is None
+
+    def test_cursor_pagination_fetchmany_triggers_getmore(self, conn, monkeypatch):
+        """Test that cursor.fetchmany triggers getMore when executing SQL that yields a paginated cursor
+
+        We monkeypatch the underlying database.command to force a small server batch size
+        so that pagination/getMore behaviour is triggered while still using SQL via cursor.execute.
+        """
+        db = conn.database
+        original_cmd = db.command
+
+        def wrapper(cmd, *args, **kwargs):
+            # Force small batchSize for find on users to simulate pagination
+            if isinstance(cmd, dict) and cmd.get("find") == "users" and "batchSize" not in cmd:
+                cmd = dict(cmd)
+                cmd["batchSize"] = 3
+            return original_cmd(cmd, *args, **kwargs)
+
+        monkeypatch.setattr(db, "command", wrapper)
+
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM users")
+
+        # Fetch many rows through cursor - should span multiple batches
+        rows = cursor.fetchmany(10)
+        assert len(rows) == 10
+        assert cursor.rowcount >= 10
+
+    def test_cursor_pagination_fetchall_triggers_getmore(self, conn, monkeypatch):
+        """Test that cursor.fetchall retrieves all rows across multiple batches using SQL
+
+        Same approach: monkeypatch to force a small server batch size while using cursor.execute.
+        """
+        db = conn.database
+        original_cmd = db.command
+
+        def wrapper(cmd, *args, **kwargs):
+            if isinstance(cmd, dict) and cmd.get("find") == "users" and "batchSize" not in cmd:
+                cmd = dict(cmd)
+                cmd["batchSize"] = 4
+            return original_cmd(cmd, *args, **kwargs)
+
+        monkeypatch.setattr(db, "command", wrapper)
+
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM users")
+
+        rows = cursor.fetchall()
+        # There are 22 users in test dataset
+        assert len(rows) == 22
+        assert cursor.rowcount == 22
+
     def test_close(self, conn):
         """Test cursor close"""
         # Should not raise any exception
@@ -281,3 +354,47 @@ class TestCursor:
 
         # Test rowcount property (should be -1 when no query executed)
         assert cursor.rowcount == -1
+
+    def test_execute_with_field_alias(self, conn):
+        """Test executing SELECT with field aliases"""
+        sql = "SELECT name AS user_name, email AS user_email FROM users LIMIT 5"
+        cursor = conn.cursor()
+        result = cursor.execute(sql)
+
+        assert result == cursor  # execute returns self
+        assert isinstance(cursor.result_set, ResultSet)
+
+        # Check that aliases appear in cursor description
+        assert cursor.result_set.description is not None
+        col_names = [desc[0] for desc in cursor.result_set.description]
+
+        # Aliases should appear in the description instead of original field names
+        assert "user_name" in col_names
+        assert "user_email" in col_names
+        assert "name" not in col_names
+        assert "email" not in col_names
+
+        rows = cursor.result_set.fetchall()
+        assert len(rows) == 5
+        assert len(rows[0]) == 2  # Should have 2 columns
+
+    def test_execute_with_nested_field_alias(self, conn):
+        """Test executing SELECT with nested field alias"""
+        sql = "SELECT products.name AS product_name, products.price AS product_price FROM products LIMIT 3"
+        cursor = conn.cursor()
+        result = cursor.execute(sql)
+
+        assert result == cursor  # execute returns self
+        assert isinstance(cursor.result_set, ResultSet)
+
+        # Check that aliases appear in cursor description
+        assert cursor.result_set.description is not None
+        col_names = [desc[0] for desc in cursor.result_set.description]
+
+        # Aliases should appear in the description
+        assert "product_name" in col_names
+        assert "product_price" in col_names
+
+        rows = cursor.result_set.fetchall()
+        assert len(rows) == 3
+        assert len(rows[0]) == 2  # Should have 2 columns

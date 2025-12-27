@@ -1,12 +1,4 @@
 # -*- coding: utf-8 -*-
-"""
-Subquery detection and execution context management for handling Superset-style queries.
-
-This module provides utilities to detect and manage the execution context for SQL queries
-that contain subqueries, enabling the use of SQLite3 as an intermediate database for
-complex query operations that MongoDB cannot handle natively.
-"""
-
 import re
 from dataclasses import dataclass
 from typing import Optional, Tuple
