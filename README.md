@@ -109,32 +109,42 @@ with connect(host="mongodb://localhost:27017/database") as conn:
     with conn.cursor() as cursor:
         cursor.execute('SELECT COUNT(*) as total FROM users')
         result = cursor.fetchone()
-        print(f"Total users: {result['total']}")
+        print(f"Total users: {result[0]}")
 ```
 
-### Query with Parameters
+### Using DictCursor for Dictionary Results
 
 ```python
 from pymongosql import connect
+from pymongosql.cursor import DictCursor
 
-connection = connect(host="mongodb://localhost:27017/database")
+with connect(host="mongodb://localhost:27017/database") as conn:
+    with conn.cursor(DictCursor) as cursor:
+        cursor.execute('SELECT COUNT(*) as total FROM users')
+        result = cursor.fetchone()
+        print(f"Total users: {result['total']}")
+```
+
+### Cursor vs DictCursor
+
+PyMongoSQL provides two cursor types for different result formats:
+
+**Cursor** (default) - Returns results as tuples:
+```python
 cursor = connection.cursor()
+cursor.execute('SELECT name, email FROM users')
+row = cursor.fetchone()
+print(row[0])  # Access by index
+```
 
-# Parameterized queries for security
-min_age = 18
-status = 'active'
+**DictCursor** - Returns results as dict:
+```python
+from pymongosql.cursor import DictCursor
 
-cursor.execute('''
-    SELECT name, email, created_at 
-    FROM users 
-    WHERE age >= ? AND status = ?
-''', [min_age, status])
-
-users = cursor.fetchmany(5)  # Fetch first 5 results
-while users:
-    for user in users:
-        print(f"User: {user['name']} ({user['email']})")
-    users = cursor.fetchmany(5)  # Fetch next 5
+cursor = connection.cursor(DictCursor)
+cursor.execute('SELECT name, email FROM users')
+row = cursor.fetchone()
+print(row['name'])  # Access by column name
 ```
 
 ## Supported SQL Features
@@ -166,19 +176,6 @@ while users:
 - LIMIT: `LIMIT 10`
 - Combined: `ORDER BY created_at DESC LIMIT 5`
 
-## Limitations & Roadmap
-
-**Note**: Currently PyMongoSQL focuses on Data Query Language (DQL) operations. The following SQL features are **not yet supported** but are planned for future releases:
-
-- **DML Operations** (Data Manipulation Language)
-  - `INSERT`, `UPDATE`, `DELETE`
-- **DDL Operations** (Data Definition Language)  
-  - `CREATE TABLE/COLLECTION`, `DROP TABLE/COLLECTION`
-  - `CREATE INDEX`, `DROP INDEX`
-  - `LIST TABLES/COLLECTIONS`
-
-These features are on our development roadmap and contributions are welcome!
-
 ## Apache Superset Integration
 
 PyMongoSQL can be used as a database driver in Apache Superset for querying and visualizing MongoDB data:
@@ -199,6 +196,21 @@ PyMongoSQL can be used as a database driver in Apache Superset for querying and 
 4. **Create Visualizations**: Build charts and dashboards from your MongoDB queries using Superset's visualization tools
 
 This allows seamless integration between MongoDB data and Superset's BI capabilities without requiring data migration to traditional SQL databases.
+
+<h2 style="color: red;">Limitations & Roadmap</h2>
+
+**Note**: Currently PyMongoSQL focuses on Data Query Language (DQL) operations. The following SQL features are **not yet supported** but are planned for future releases:
+
+- **Parameterized Queries**
+  - Parameter substitution support (?, :pram, etc.)
+- **DML Operations** (Data Manipulation Language)
+  - `INSERT`, `UPDATE`, `DELETE`
+- **DDL Operations** (Data Definition Language)  
+  - `CREATE TABLE/COLLECTION`, `DROP TABLE/COLLECTION`
+  - `CREATE INDEX`, `DROP INDEX`
+  - `LIST TABLES/COLLECTIONS`
+
+These features are on our development roadmap and contributions are welcome!
 
 ## Contributing
 
