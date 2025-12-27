@@ -272,7 +272,6 @@ class ResultSet(CursorIterator):
 
             # Now get everything from cache
             all_results.extend(self._cached_results)
-            self._total_fetched += len(self._cached_results)
             self._cached_results.clear()
             self._cache_exhausted = True
 

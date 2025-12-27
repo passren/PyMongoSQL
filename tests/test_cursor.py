@@ -261,6 +261,56 @@ class TestCursor:
                 names = [row[name_idx] for row in rows]
                 assert "John Doe" in names  # First user from dataset
 
+    def test_cursor_pagination_fetchmany_triggers_getmore(self, conn, monkeypatch):
+        """Test that cursor.fetchmany triggers getMore when executing SQL that yields a paginated cursor
+
+        We monkeypatch the underlying database.command to force a small server batch size
+        so that pagination/getMore behaviour is triggered while still using SQL via cursor.execute.
+        """
+        db = conn.database
+        original_cmd = db.command
+
+        def wrapper(cmd, *args, **kwargs):
+            # Force small batchSize for find on users to simulate pagination
+            if isinstance(cmd, dict) and cmd.get("find") == "users" and "batchSize" not in cmd:
+                cmd = dict(cmd)
+                cmd["batchSize"] = 3
+            return original_cmd(cmd, *args, **kwargs)
+
+        monkeypatch.setattr(db, "command", wrapper)
+
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM users")
+
+        # Fetch many rows through cursor - should span multiple batches
+        rows = cursor.fetchmany(10)
+        assert len(rows) == 10
+        assert cursor.rowcount >= 10
+
+    def test_cursor_pagination_fetchall_triggers_getmore(self, conn, monkeypatch):
+        """Test that cursor.fetchall retrieves all rows across multiple batches using SQL
+
+        Same approach: monkeypatch to force a small server batch size while using cursor.execute.
+        """
+        db = conn.database
+        original_cmd = db.command
+
+        def wrapper(cmd, *args, **kwargs):
+            if isinstance(cmd, dict) and cmd.get("find") == "users" and "batchSize" not in cmd:
+                cmd = dict(cmd)
+                cmd["batchSize"] = 4
+            return original_cmd(cmd, *args, **kwargs)
+
+        monkeypatch.setattr(db, "command", wrapper)
+
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM users")
+
+        rows = cursor.fetchall()
+        # There are 22 users in test dataset
+        assert len(rows) == 22
+        assert cursor.rowcount == 22
+
     def test_close(self, conn):
         """Test cursor close"""
         # Should not raise any exception
