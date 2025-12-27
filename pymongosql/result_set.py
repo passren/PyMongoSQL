@@ -77,10 +77,14 @@ class ResultSet(CursorIterator):
 
         # Build description from projection (now in MongoDB format {field: 1})
         description = []
+        column_aliases = getattr(self._execution_plan, "column_aliases", {})
+
         for field_name, include_flag in self._execution_plan.projection_stage.items():
             # SQL cursor description format: (name, type_code, display_size, internal_size, precision, scale, null_ok)
             if include_flag == 1:  # Field is included in projection
-                description.append((field_name, str, None, None, None, None, None))
+                # Use alias if available, otherwise use field name
+                display_name = column_aliases.get(field_name, field_name)
+                description.append((display_name, str, None, None, None, None, None))
 
         self._description = description
 

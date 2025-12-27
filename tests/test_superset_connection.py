@@ -441,6 +441,43 @@ class TestSubqueryExecutionIntegration:
         assert "name" in col_names
         assert "age" in col_names
 
+    def test_subquery_with_field_aliases_in_inner_query(self, superset_conn):
+        """Test superset execution with field aliases in the inner MongoDB query"""
+        cursor = superset_conn.cursor()
+
+        # Inner query has aliases
+        subquery_sql = "SELECT * FROM (SELECT name AS user_name, email AS user_email FROM users) AS u LIMIT 3"
+
+        cursor.execute(subquery_sql)
+        rows = cursor.fetchall()
+
+        # Check that aliases appear in cursor description
+        assert cursor.result_set.description is not None
+        col_names = [desc[0] for desc in cursor.result_set.description]
+
+        # Aliases from inner query should be preserved
+        assert "user_name" in col_names
+        assert "user_email" in col_names
+        assert len(rows) <= 3
+
+    def test_subquery_with_nested_field_alias(self, superset_conn):
+        """Test superset execution with nested field alias in inner query"""
+        cursor = superset_conn.cursor()
+
+        # Inner query has nested field with alias
+        subquery_sql = "SELECT * FROM (SELECT _id AS id, name FROM users) AS u WHERE u.id > 0 LIMIT 2"
+
+        cursor.execute(subquery_sql)
+        rows = cursor.fetchall()
+
+        # Check that aliases appear in cursor description
+        assert cursor.result_set.description is not None
+        col_names = [desc[0] for desc in cursor.result_set.description]
+
+        # Alias from inner query should be preserved
+        assert "id" in col_names
+        assert len(rows) <= 2
+
 
 class TestSubqueryDetector:
     """Test subquery detection and outer query extraction"""

@@ -13,6 +13,7 @@ class ExecutionPlan:
     collection: Optional[str] = None
     filter_stage: Dict[str, Any] = field(default_factory=dict)
     projection_stage: Dict[str, Any] = field(default_factory=dict)
+    column_aliases: Dict[str, str] = field(default_factory=dict)  # Maps field_name -> alias
     sort_stage: List[Dict[str, int]] = field(default_factory=list)
     limit_stage: Optional[int] = None
     skip_stage: Optional[int] = None
@@ -53,6 +54,7 @@ class ExecutionPlan:
             collection=self.collection,
             filter_stage=self.filter_stage.copy(),
             projection_stage=self.projection_stage.copy(),
+            column_aliases=self.column_aliases.copy(),
             sort_stage=self.sort_stage.copy(),
             limit_stage=self.limit_stage,
             skip_stage=self.skip_stage,
@@ -151,6 +153,16 @@ class MongoQueryBuilder:
 
         self._execution_plan.skip_stage = count
         _logger.debug(f"Set skip to: {count}")
+        return self
+
+    def column_aliases(self, aliases: Dict[str, str]) -> "MongoQueryBuilder":
+        """Set column aliases mapping (field_name -> alias)"""
+        if not isinstance(aliases, dict):
+            self._add_error("Column aliases must be a dictionary")
+            return self
+
+        self._execution_plan.column_aliases = aliases
+        _logger.debug(f"Set column aliases to: {aliases}")
         return self
 
     def where(self, field: str, operator: str, value: Any) -> "MongoQueryBuilder":

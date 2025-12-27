@@ -39,6 +39,7 @@ class ParseResult:
     # Visitor parsing state fields
     collection: Optional[str] = None
     projection: Dict[str, Any] = field(default_factory=dict)
+    column_aliases: Dict[str, str] = field(default_factory=dict)  # Maps field_name -> alias
     sort_fields: List[Dict[str, int]] = field(default_factory=list)
     limit_value: Optional[int] = None
     offset_value: Optional[int] = None
@@ -891,14 +892,19 @@ class SelectHandler(BaseHandler, ContextUtilsMixin):
 
     def handle_visitor(self, ctx: PartiQLParser.SelectItemsContext, parse_result: "ParseResult") -> Any:
         projection = {}
+        column_aliases = {}
 
         if hasattr(ctx, "projectionItems") and ctx.projectionItems():
             for item in ctx.projectionItems().projectionItem():
                 field_name, alias = self._extract_field_and_alias(item)
                 # Use MongoDB standard projection format: {field: 1} to include field
                 projection[field_name] = 1
+                # Store alias if present
+                if alias:
+                    column_aliases[field_name] = alias
 
         parse_result.projection = projection
+        parse_result.column_aliases = column_aliases
         return projection
 
     def _extract_field_and_alias(self, item) -> Tuple[str, Optional[str]]:

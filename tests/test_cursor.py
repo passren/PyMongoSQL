@@ -354,3 +354,47 @@ class TestCursor:
 
         # Test rowcount property (should be -1 when no query executed)
         assert cursor.rowcount == -1
+
+    def test_execute_with_field_alias(self, conn):
+        """Test executing SELECT with field aliases"""
+        sql = "SELECT name AS user_name, email AS user_email FROM users LIMIT 5"
+        cursor = conn.cursor()
+        result = cursor.execute(sql)
+
+        assert result == cursor  # execute returns self
+        assert isinstance(cursor.result_set, ResultSet)
+
+        # Check that aliases appear in cursor description
+        assert cursor.result_set.description is not None
+        col_names = [desc[0] for desc in cursor.result_set.description]
+
+        # Aliases should appear in the description instead of original field names
+        assert "user_name" in col_names
+        assert "user_email" in col_names
+        assert "name" not in col_names
+        assert "email" not in col_names
+
+        rows = cursor.result_set.fetchall()
+        assert len(rows) == 5
+        assert len(rows[0]) == 2  # Should have 2 columns
+
+    def test_execute_with_nested_field_alias(self, conn):
+        """Test executing SELECT with nested field alias"""
+        sql = "SELECT products.name AS product_name, products.price AS product_price FROM products LIMIT 3"
+        cursor = conn.cursor()
+        result = cursor.execute(sql)
+
+        assert result == cursor  # execute returns self
+        assert isinstance(cursor.result_set, ResultSet)
+
+        # Check that aliases appear in cursor description
+        assert cursor.result_set.description is not None
+        col_names = [desc[0] for desc in cursor.result_set.description]
+
+        # Aliases should appear in the description
+        assert "product_name" in col_names
+        assert "product_price" in col_names
+
+        rows = cursor.result_set.fetchall()
+        assert len(rows) == 3
+        assert len(rows[0]) == 2  # Should have 2 columns
