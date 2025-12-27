@@ -261,6 +261,29 @@ class TestCursor:
                 names = [row[name_idx] for row in rows]
                 assert "John Doe" in names  # First user from dataset
 
+    def test_description_type_and_shape(self, conn):
+        """Ensure cursor.description returns a list of DB-API description tuples"""
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM users")
+        desc = cursor.description
+        assert isinstance(desc, list)
+        assert all(isinstance(d, tuple) and len(d) == 7 and isinstance(d[0], str) for d in desc)
+        # type_code should be a type object (e.g., str) or None when unknown
+        assert all((isinstance(d[1], type) or d[1] is None) for d in desc)
+
+    def test_description_projection(self, conn):
+        """Ensure projection via SQL reflects in the description names and types"""
+        cursor = conn.cursor()
+        cursor.execute("SELECT name, email FROM users")
+        desc = cursor.description
+        assert isinstance(desc, list)
+        col_names = [d[0] for d in desc]
+        assert "name" in col_names
+        assert "email" in col_names
+        for d in desc:
+            if d[0] in ("name", "email"):
+                assert (isinstance(d[1], type) or d[1] is None)
+
     def test_cursor_pagination_fetchmany_triggers_getmore(self, conn, monkeypatch):
         """Test that cursor.fetchmany triggers getMore when executing SQL that yields a paginated cursor
 

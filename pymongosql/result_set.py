@@ -42,7 +42,7 @@ class ResultSet(CursorIterator):
         self._is_closed = False
         self._cache_exhausted = False
         self._total_fetched = 0
-        self._description: Optional[List[Tuple[str, str, None, None, None, None, None]]] = None
+        self._description: Optional[List[Tuple[str, Any, None, None, None, None, None]]] = None
         self._column_names: Optional[List[str]] = None  # Track column order for sequences
         self._errors: List[Dict[str, str]] = []
 
@@ -70,7 +70,7 @@ class ResultSet(CursorIterator):
             # No projection specified, build description from column names if available
             if self._column_names:
                 self._description = [
-                    (col_name, "VARCHAR", None, None, None, None, None) for col_name in self._column_names
+                    (col_name, str, None, None, None, None, None) for col_name in self._column_names
                 ]
             else:
                 # Will be built dynamically when columns are established
@@ -82,7 +82,7 @@ class ResultSet(CursorIterator):
         for field_name, include_flag in self._execution_plan.projection_stage.items():
             # SQL cursor description format: (name, type_code, display_size, internal_size, precision, scale, null_ok)
             if include_flag == 1:  # Field is included in projection
-                description.append((field_name, "VARCHAR", None, None, None, None, None))
+                description.append((field_name, str, None, None, None, None, None))
 
         self._description = description
 
@@ -202,19 +202,15 @@ class ResultSet(CursorIterator):
     @property
     def description(
         self,
-    ) -> Optional[List[Tuple[str, str, None, None, None, None, None]]]:
+    ) -> Optional[List[Tuple[str, Any, None, None, None, None, None]]]:
         """Return column description"""
         if self._description is None:
             # Try to build description from established column names
             try:
-                if not self._cache_exhausted:
-                    # Fetch one result to establish column names if needed
-                    self._ensure_results_available(1)
-
                 if self._column_names:
                     # Build description from established column names
                     self._description = [
-                        (col_name, "VARCHAR", None, None, None, None, None) for col_name in self._column_names
+                        (col_name, str, None, None, None, None, None) for col_name in self._column_names
                     ]
             except Exception as e:
                 _logger.warning(f"Could not build dynamic description: {e}")
