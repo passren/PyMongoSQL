@@ -1,14 +1,4 @@
 # -*- coding: utf-8 -*-
-"""
-Query execution strategies for handling both simple and subquery-based SQL operations.
-
-This module provides different execution strategies:
-- StandardExecution: Direct MongoDB query for simple SELECT statements
-
-The intermediate database is configurable - any backend implementing QueryDatabase
-interface can be used (SQLite3, PostgreSQL, MySQL, etc.).
-"""
-
 import logging
 from abc import ABC, abstractmethod
 from dataclasses import dataclass

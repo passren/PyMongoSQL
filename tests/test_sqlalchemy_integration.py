@@ -1,14 +1,4 @@
 #!/usr/bin/env python3
-"""
-Real Integration Tests for PyMongoSQL SQLAlchemy Dialect
-
-This test suite validates the SQLAlchemy dialect integration by:
-1. Using real MongoDB connections (same as other tests)
-2. Creating SQLAlchemy ORM models
-3. Testing query operations with actual data
-4. Validating object creation from query results
-"""
-
 import os
 
 import pytest

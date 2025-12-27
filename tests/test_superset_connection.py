@@ -1,15 +1,4 @@
 # -*- coding: utf-8 -*-
-"""
-Tests for superset subquery connection mode.
-
-Tests the ?mode=superset query parameter and verifies that:
-1. Superset mode is correctly detected from connection strings with ?mode=superset
-2. SubqueryExecution strategy is registered and used
-3. Subqueries are supported in superset mode
-4. Subqueries are rejected in core mode
-"""
-
-
 from pymongosql.executor import ExecutionContext, ExecutionPlanFactory
 from pymongosql.helper import ConnectionHelper
 from pymongosql.superset_mongodb.executor import SupersetExecution

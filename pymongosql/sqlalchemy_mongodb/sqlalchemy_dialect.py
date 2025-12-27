@@ -1,12 +1,4 @@
 # -*- coding: utf-8 -*-
-"""
-SQLAlchemy dialect for PyMongoSQL.
-
-This module provides a SQLAlchemy dialect that allows PyMongoSQL to work
-seamlessly with SQLAlchemy's ORM and core query functionality.
-
-Supports both SQLAlchemy 1.x and 2.x versions.
-"""
 import logging
 from typing import Any, Dict, List, Optional, Tuple, Type
 

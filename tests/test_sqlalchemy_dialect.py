@@ -1,9 +1,4 @@
 #!/usr/bin/env python3
-"""
-Tests for PyMongoSQL SQLAlchemy dialect.
-
-This test suite validates the SQLAlchemy integration functionality.
-"""
 import unittest
 from typing import Callable
 from unittest.mock import Mock, patch

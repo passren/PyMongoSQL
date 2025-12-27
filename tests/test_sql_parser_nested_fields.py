@@ -1,7 +1,4 @@
 # -*- coding: utf-8 -*-
-"""
-Comprehensive tests for nested field support in PyMongoSQL
-"""
 import pytest
 
 from pymongosql.error import SqlSyntaxError

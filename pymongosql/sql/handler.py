@@ -1,7 +1,4 @@
 # -*- coding: utf-8 -*-
-"""
-Expression handlers for converting SQL expressions to MongoDB query format
-"""
 import logging
 import re
 from abc import ABC, abstractmethod

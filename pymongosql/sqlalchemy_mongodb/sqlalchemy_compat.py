@@ -1,9 +1,4 @@
 # -*- coding: utf-8 -*-
-"""
-SQLAlchemy version compatibility utilities for PyMongoSQL.
-
-This module provides utilities to work with different SQLAlchemy versions.
-"""
 import warnings
 from typing import Any, Dict, Optional
 

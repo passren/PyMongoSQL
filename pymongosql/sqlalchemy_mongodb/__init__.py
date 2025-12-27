@@ -1,14 +1,4 @@
 # -*- coding: utf-8 -*-
-"""
-SQLAlchemy MongoDB dialect and integration for PyMongoSQL.
-
-This package provides SQLAlchemy integration including:
-- MongoDB-specific dialect
-- Version compatibility utilities
-- Engine creation helpers
-- MongoDB URI handling
-"""
-
 # SQLAlchemy integration
 try:
     # Import and register the dialect automatically
@@ -80,11 +70,7 @@ def register_dialect():
 
         # Register for standard MongoDB URLs
         registry.register("mongodb", "pymongosql.sqlalchemy_mongodb.sqlalchemy_dialect", "PyMongoSQLDialect")
-
-        # Try to register SRV and Superset forms so SQLAlchemy can resolve these URL patterns
-        # (either with '+' or dotted notation for compatibility with different SQLAlchemy versions).
-        # Some SQLAlchemy versions accept '+' in scheme names; others import the dotted plugin name.
-        # Attempt all registrations but don't fail if some are not supported.
+        # Register for MongoDB SRV URLs
         try:
             registry.register("mongodb+srv", "pymongosql.sqlalchemy_mongodb.sqlalchemy_dialect", "PyMongoSQLDialect")
             registry.register("mongodb.srv", "pymongosql.sqlalchemy_mongodb.sqlalchemy_dialect", "PyMongoSQLDialect")

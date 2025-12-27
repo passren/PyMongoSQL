@@ -1,7 +1,4 @@
 # -*- coding: utf-8 -*-
-"""
-Query builder for constructing MongoDB queries in a fluent, readable way
-"""
 import logging
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional, Union
