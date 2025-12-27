@@ -69,9 +69,7 @@ class ResultSet(CursorIterator):
         if not self._execution_plan.projection_stage:
             # No projection specified, build description from column names if available
             if self._column_names:
-                self._description = [
-                    (col_name, str, None, None, None, None, None) for col_name in self._column_names
-                ]
+                self._description = [(col_name, str, None, None, None, None, None) for col_name in self._column_names]
             else:
                 # Will be built dynamically when columns are established
                 self._description = None

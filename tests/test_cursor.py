@@ -282,7 +282,7 @@ class TestCursor:
         assert "email" in col_names
         for d in desc:
             if d[0] in ("name", "email"):
-                assert (isinstance(d[1], type) or d[1] is None)
+                assert isinstance(d[1], type) or d[1] is None
 
     def test_cursor_pagination_fetchmany_triggers_getmore(self, conn, monkeypatch):
         """Test that cursor.fetchmany triggers getMore when executing SQL that yields a paginated cursor
