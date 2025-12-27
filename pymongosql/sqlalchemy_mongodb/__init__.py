@@ -52,98 +52,21 @@ def create_engine_url(
         >>> url = create_engine_url("localhost", 27017, "mydb", mode="superset")
         >>> engine = sqlalchemy.create_engine(url)
     """
-    scheme = "mongodb+superset" if mode == "superset" else "mongodb"
+    scheme = "mongodb"
 
     params = []
     for key, value in kwargs.items():
         params.append(f"{key}={value}")
+
+    # Add mode parameter if not standard
+    if mode != "standard":
+        params.append(f"mode={mode}")
 
     param_str = "&".join(params)
     if param_str:
         param_str = "?" + param_str
 
     return f"{scheme}://{host}:{port}/{database}{param_str}"
-
-
-def create_mongodb_url(mongodb_uri: str) -> str:
-    """Convert a standard MongoDB URI to work with PyMongoSQL SQLAlchemy dialect.
-
-    Args:
-        mongodb_uri: Standard MongoDB connection string
-                    (e.g., 'mongodb://localhost:27017/mydb' or 'mongodb+srv://...')
-
-    Returns:
-        SQLAlchemy-compatible URL for PyMongoSQL
-
-    Example:
-        >>> url = create_mongodb_url("mongodb://user:pass@localhost:27017/mydb")
-        >>> engine = sqlalchemy.create_engine(url)
-    """
-    # Return the MongoDB URI as-is since the dialect now handles MongoDB URLs directly
-    return mongodb_uri
-
-
-def create_engine_from_mongodb_uri(mongodb_uri: str, **engine_kwargs):
-    """Create a SQLAlchemy engine from any MongoDB connection string.
-
-    This function handles mongodb://, mongodb+srv://, and mongodb+superset:// URIs properly.
-    Use this instead of create_engine() directly for special URI schemes.
-
-    Args:
-        mongodb_uri: MongoDB connection string (supports standard, SRV, and superset modes)
-        **engine_kwargs: Additional arguments passed to create_engine
-
-    Returns:
-        SQLAlchemy Engine object
-
-    Example:
-        >>> # For SRV records (Atlas/Cloud)
-        >>> engine = create_engine_from_mongodb_uri("mongodb+srv://user:pass@cluster.net/db")
-        >>> # For standard MongoDB
-        >>> engine = create_engine_from_mongodb_uri("mongodb://localhost:27017/mydb")
-        >>> # For superset mode (with subquery support)
-        >>> engine = create_engine_from_mongodb_uri("mongodb+superset://localhost:27017/mydb")
-    """
-    try:
-        from sqlalchemy import create_engine
-
-        if mongodb_uri.startswith("mongodb+srv://"):
-            # For MongoDB+SRV, convert to standard mongodb:// for SQLAlchemy compatibility
-            # SQLAlchemy doesn't handle the + character in scheme names well
-            converted_uri = mongodb_uri.replace("mongodb+srv://", "mongodb://")
-
-            # Create engine with converted URI
-            engine = create_engine(converted_uri, **engine_kwargs)
-
-            def custom_create_connect_args(url):
-                # Use original SRV URI for actual MongoDB connection
-                opts = {"host": mongodb_uri}
-                return [], opts
-
-            engine.dialect.create_connect_args = custom_create_connect_args
-            return engine
-        elif mongodb_uri.startswith("mongodb+superset://"):
-            # For MongoDB+Superset, convert to standard mongodb:// for SQLAlchemy compatibility
-            # but preserve the superset mode by passing it through connection options
-            converted_uri = mongodb_uri.replace("mongodb+superset://", "mongodb://")
-
-            # Create engine with converted URI
-            engine = create_engine(converted_uri, **engine_kwargs)
-
-            def custom_create_connect_args(url):
-                # Use original superset URI for actual MongoDB connection
-                # This preserves the superset mode for subquery support
-                opts = {"host": mongodb_uri}
-                return [], opts
-
-            engine.dialect.create_connect_args = custom_create_connect_args
-            return engine
-        else:
-            # Standard mongodb:// URLs work fine with SQLAlchemy
-            return create_engine(mongodb_uri, **engine_kwargs)
-
-    except ImportError:
-        raise ImportError("SQLAlchemy is required for engine creation")
 
 
 def register_dialect():
@@ -166,20 +89,7 @@ def register_dialect():
             registry.register("mongodb+srv", "pymongosql.sqlalchemy_mongodb.sqlalchemy_dialect", "PyMongoSQLDialect")
             registry.register("mongodb.srv", "pymongosql.sqlalchemy_mongodb.sqlalchemy_dialect", "PyMongoSQLDialect")
         except Exception:
-            # If registration fails we fall back to handling SRV URIs in
-            # create_engine_from_mongodb_uri by converting 'mongodb+srv' to 'mongodb'.
-            pass
-
-        try:
-            registry.register(
-                "mongodb+superset", "pymongosql.sqlalchemy_mongodb.sqlalchemy_dialect", "PyMongoSQLDialect"
-            )
-            registry.register(
-                "mongodb.superset", "pymongosql.sqlalchemy_mongodb.sqlalchemy_dialect", "PyMongoSQLDialect"
-            )
-        except Exception:
-            # If registration fails we fall back to handling Superset URIs in
-            # create_engine_from_mongodb_uri by converting 'mongodb+superset' to 'mongodb'.
+            # If registration fails, users can convert URIs to standard mongodb:// format
             pass
 
         return True
@@ -197,8 +107,6 @@ _registration_successful = register_dialect()
 # Export all SQLAlchemy-related functionality
 __all__ = [
     "create_engine_url",
-    "create_mongodb_url",
-    "create_engine_from_mongodb_uri",
     "register_dialect",
     "__sqlalchemy_version__",
     "__supports_sqlalchemy__",

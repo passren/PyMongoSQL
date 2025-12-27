@@ -172,3 +172,16 @@ class TestConnection:
         assert conn.database is not None
         assert conn.database.name == "test_db"
         conn.close()
+
+    def test_connection_string_with_mode_query_param(self):
+        """Test that connection string with ?mode parameter is parsed correctly"""
+        if TEST_URI:
+            # Test with mode parameter in query string
+            test_url = f"{TEST_URI.rstrip('/')}/test_db?mode=superset"
+        else:
+            test_url = "mongodb://localhost:27017/test_db?mode=superset"
+
+        conn = Connection(host=test_url)
+        assert conn.mode == "superset"
+        assert conn.database_name == "test_db"
+        conn.close()
