@@ -8,7 +8,7 @@ from antlr4.error.ErrorListener import ErrorListener
 
 from ..error import SqlSyntaxError
 from .ast import MongoSQLLexer, MongoSQLParser, MongoSQLParserVisitor
-from .builder import ExecutionPlan
+from .query_builder import QueryExecutionPlan
 
 _logger = logging.getLogger(__name__)
 
@@ -126,13 +126,13 @@ class SQLParser(metaclass=ABCMeta):
 
         _logger.debug("AST validation successful")
 
-    def get_execution_plan(self) -> ExecutionPlan:
-        """Parse SQL and return ExecutionPlan directly"""
+    def get_execution_plan(self) -> QueryExecutionPlan:
+        """Parse SQL and return QueryExecutionPlan directly"""
         if self._ast is None:
             raise SqlSyntaxError("No AST available - parsing may have failed")
 
         try:
-            # Create and use visitor to generate ExecutionPlan
+            # Create and use visitor to generate execution plan
             self._visitor = MongoSQLParserVisitor()
             self._visitor.visit(self._ast)
             execution_plan = self._visitor.parse_to_execution_plan()
@@ -141,12 +141,12 @@ class SQLParser(metaclass=ABCMeta):
             if not execution_plan.validate():
                 raise SqlSyntaxError("Generated execution plan is invalid")
 
-            _logger.debug(f"Generated ExecutionPlan for collection: {execution_plan.collection}")
+            _logger.debug(f"Generated QueryExecutionPlan for collection: {execution_plan.collection}")
             return execution_plan
 
         except Exception as e:
-            _logger.error(f"Failed to generate ExecutionPlan from AST: {e}")
-            raise SqlSyntaxError(f"ExecutionPlan generation failed: {e}") from e
+            _logger.error(f"Failed to generate execution plan from AST: {e}")
+            raise SqlSyntaxError(f"Execution plan generation failed: {e}") from e
 
     def get_parse_info(self) -> dict:
         """Get detailed parsing information for debugging"""

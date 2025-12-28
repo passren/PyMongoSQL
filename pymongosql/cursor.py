@@ -6,7 +6,7 @@ from .common import BaseCursor, CursorIterator
 from .error import DatabaseError, OperationalError, ProgrammingError, SqlSyntaxError
 from .executor import ExecutionContext, ExecutionPlanFactory
 from .result_set import DictResultSet, ResultSet
-from .sql.builder import ExecutionPlan
+from .sql.query_builder import QueryExecutionPlan
 
 if TYPE_CHECKING:
     from .connection import Connection
@@ -29,7 +29,7 @@ class Cursor(BaseCursor, CursorIterator):
         self._kwargs = kwargs
         self._result_set: Optional[ResultSet] = None
         self._result_set_class = ResultSet
-        self._current_execution_plan: Optional[ExecutionPlan] = None
+        self._current_execution_plan: Optional[QueryExecutionPlan] = None
         self._is_closed = False
 
     @property

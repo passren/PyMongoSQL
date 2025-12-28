@@ -4,7 +4,7 @@ from typing import Any, Dict, List, Optional
 
 from ..executor import ExecutionContext, StandardExecution
 from ..result_set import ResultSet
-from ..sql.builder import ExecutionPlan
+from ..sql.query_builder import QueryExecutionPlan
 from .detector import SubqueryDetector
 from .query_db_sqlite import QueryDBSQLite
 
@@ -30,10 +30,10 @@ class SupersetExecution(StandardExecution):
                              Defaults to SQLiteBridge if not provided.
         """
         self._query_db_factory = query_db_factory or QueryDBSQLite
-        self._execution_plan: Optional[ExecutionPlan] = None
+        self._execution_plan: Optional[QueryExecutionPlan] = None
 
     @property
-    def execution_plan(self) -> ExecutionPlan:
+    def execution_plan(self) -> QueryExecutionPlan:
         return self._execution_plan
 
     def supports(self, context: ExecutionContext) -> bool:
@@ -129,7 +129,7 @@ class SupersetExecution(StandardExecution):
                 except Exception as e:
                     _logger.warning(f"Could not extract column names from empty result: {e}")
 
-            self._execution_plan = ExecutionPlan(collection="query_db_result", projection_stage=projection_stage)
+            self._execution_plan = QueryExecutionPlan(collection="query_db_result", projection_stage=projection_stage)
 
             return result_set
 

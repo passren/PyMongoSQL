@@ -8,7 +8,7 @@ from pymongo.errors import PyMongoError
 
 from .common import CursorIterator
 from .error import DatabaseError, ProgrammingError
-from .sql.builder import ExecutionPlan
+from .sql.query_builder import QueryExecutionPlan
 
 _logger = logging.getLogger(__name__)
 
@@ -19,7 +19,7 @@ class ResultSet(CursorIterator):
     def __init__(
         self,
         command_result: Optional[Dict[str, Any]] = None,
-        execution_plan: ExecutionPlan = None,
+        execution_plan: QueryExecutionPlan = None,
         arraysize: int = None,
         database: Optional[Any] = None,
         **kwargs,

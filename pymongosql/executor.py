@@ -7,8 +7,8 @@ from typing import Any, Dict, Optional, Sequence, Union
 from pymongo.errors import PyMongoError
 
 from .error import DatabaseError, OperationalError, ProgrammingError, SqlSyntaxError
-from .sql.builder import ExecutionPlan
 from .sql.parser import SQLParser
+from .sql.query_builder import QueryExecutionPlan
 
 _logger = logging.getLogger(__name__)
 
@@ -30,7 +30,7 @@ class ExecutionStrategy(ABC):
 
     @property
     @abstractmethod
-    def execution_plan(self) -> ExecutionPlan:
+    def execution_plan(self) -> QueryExecutionPlan:
         """Name of the execution plan"""
         pass
 
@@ -64,7 +64,7 @@ class StandardExecution(ExecutionStrategy):
     """Standard execution strategy for simple SELECT queries without subqueries"""
 
     @property
-    def execution_plan(self) -> ExecutionPlan:
+    def execution_plan(self) -> QueryExecutionPlan:
         """Return standard execution plan"""
         return self._execution_plan
 
@@ -72,8 +72,8 @@ class StandardExecution(ExecutionStrategy):
         """Support simple queries without subqueries"""
         return "standard" in context.execution_mode.lower()
 
-    def _parse_sql(self, sql: str) -> ExecutionPlan:
-        """Parse SQL statement and return ExecutionPlan"""
+    def _parse_sql(self, sql: str) -> QueryExecutionPlan:
+        """Parse SQL statement and return QueryExecutionPlan"""
         try:
             parser = SQLParser(sql)
             execution_plan = parser.get_execution_plan()
@@ -117,11 +117,11 @@ class StandardExecution(ExecutionStrategy):
 
     def _execute_execution_plan(
         self,
-        execution_plan: ExecutionPlan,
+        execution_plan: QueryExecutionPlan,
         db: Any,
         parameters: Optional[Sequence[Any]] = None,
     ) -> Optional[Dict[str, Any]]:
-        """Execute an ExecutionPlan against MongoDB using db.command"""
+        """Execute a QueryExecutionPlan against MongoDB using db.command"""
         try:
             # Get database
             if not execution_plan.collection:

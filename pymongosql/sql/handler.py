@@ -5,8 +5,6 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional, Tuple
 
-from .partiql.PartiQLParser import PartiQLParser
-
 _logger = logging.getLogger(__name__)
 
 
@@ -28,8 +26,8 @@ OPERATOR_MAP = {
 
 
 @dataclass
-class ParseResult:
-    """Unified result container for both expression parsing and visitor state management"""
+class QueryParseResult:
+    """Result container for query (SELECT) expression parsing and visitor state management"""
 
     # Core parsing fields
     filter_conditions: Dict[str, Any] = field(default_factory=dict)  # Unified filter field for all MongoDB conditions
@@ -50,12 +48,12 @@ class ParseResult:
 
     # Factory methods for different use cases
     @classmethod
-    def for_visitor(cls) -> "ParseResult":
-        """Create ParseResult for visitor parsing"""
+    def for_visitor(cls) -> "QueryParseResult":
+        """Create QueryParseResult for visitor parsing"""
         return cls()
 
-    def merge_expression(self, other: "ParseResult") -> "ParseResult":
-        """Merge expression results from another ParseResult"""
+    def merge_expression(self, other: "QueryParseResult") -> "QueryParseResult":
+        """Merge expression results from another QueryParseResult"""
         if other.has_errors:
             self.has_errors = True
             self.error_message = other.error_message
@@ -221,7 +219,7 @@ class BaseHandler(ABC):
         """Check if this handler can process the given context"""
         pass
 
-    def handle(self, ctx: Any, parse_result: Optional["ParseResult"] = None) -> Any:
+    def handle(self, ctx: Any, parse_result: Optional["QueryParseResult"] = None) -> Any:
         """Handle the context and return appropriate result"""
         # Default implementation for expression handlers
         if parse_result is None:
@@ -229,11 +227,11 @@ class BaseHandler(ABC):
         else:
             return self.handle_visitor(ctx, parse_result)
 
-    def handle_expression(self, ctx: Any) -> ParseResult:
+    def handle_expression(self, ctx: Any) -> QueryParseResult:
         """Handle expression parsing (to be overridden by expression handlers)"""
         raise NotImplementedError("Expression handlers must implement handle_expression")
 
-    def handle_visitor(self, ctx: Any, parse_result: "ParseResult") -> Any:
+    def handle_visitor(self, ctx: Any, parse_result: "QueryParseResult") -> Any:
         """Handle visitor operations (to be overridden by visitor handlers)"""
         raise NotImplementedError("Visitor handlers must implement handle_visitor")
 
@@ -262,7 +260,7 @@ class ComparisonExpressionHandler(BaseHandler, ContextUtilsMixin, LoggingMixin, 
             hasattr(ctx, "comparisonOperator") or self._is_comparison_context(ctx) or self._has_comparison_pattern(ctx)
         )
 
-    def handle_expression(self, ctx: Any) -> ParseResult:
+    def handle_expression(self, ctx: Any) -> QueryParseResult:
         """Convert comparison expression to MongoDB filter"""
         operation_id = id(ctx)
         self._log_operation_start("comparison_parsing", ctx, operation_id)
@@ -281,11 +279,11 @@ class ComparisonExpressionHandler(BaseHandler, ContextUtilsMixin, LoggingMixin, 
                 operator=operator,
             )
 
-            return ParseResult(filter_conditions=mongo_filter)
+            return QueryParseResult(filter_conditions=mongo_filter)
 
         except Exception as e:
             self._log_operation_error("comparison_parsing", ctx, operation_id, e)
-            return ParseResult(has_errors=True, error_message=str(e))
+            return QueryParseResult(has_errors=True, error_message=str(e))
 
     def _build_mongo_filter(self, field_name: str, operator: str, value: Any) -> Dict[str, Any]:
         """Build MongoDB filter from field, operator and value"""
@@ -560,7 +558,7 @@ class LogicalExpressionHandler(BaseHandler, ContextUtilsMixin, LoggingMixin, Ope
         except Exception:
             return False
 
-    def handle_expression(self, ctx: Any) -> ParseResult:
+    def handle_expression(self, ctx: Any) -> QueryParseResult:
         """Convert logical expression to MongoDB filter"""
         operation_id = id(ctx)
         self._log_operation_start("logical_parsing", ctx, operation_id)
@@ -585,11 +583,11 @@ class LogicalExpressionHandler(BaseHandler, ContextUtilsMixin, LoggingMixin, Ope
                 processed_count=len(processed_operands),
             )
 
-            return ParseResult(filter_conditions=mongo_filter)
+            return QueryParseResult(filter_conditions=mongo_filter)
 
         except Exception as e:
             self._log_operation_error("logical_parsing", ctx, operation_id, e)
-            return ParseResult(has_errors=True, error_message=str(e))
+            return QueryParseResult(has_errors=True, error_message=str(e))
 
     def _process_operands(self, operands: List[Any]) -> List[Dict[str, Any]]:
         """Process operands and return processed filters"""
@@ -743,7 +741,7 @@ class FunctionExpressionHandler(BaseHandler, ContextUtilsMixin, LoggingMixin):
         """Check if context represents a function call"""
         return hasattr(ctx, "functionName") or self._is_function_context(ctx)
 
-    def handle_expression(self, ctx: Any) -> ParseResult:
+    def handle_expression(self, ctx: Any) -> QueryParseResult:
         """Handle function expressions"""
         operation_id = id(ctx)
         self._log_operation_start("function_parsing", ctx, operation_id)
@@ -761,11 +759,11 @@ class FunctionExpressionHandler(BaseHandler, ContextUtilsMixin, LoggingMixin):
                 function_name=function_name,
             )
 
-            return ParseResult(filter_conditions=mongo_filter)
+            return QueryParseResult(filter_conditions=mongo_filter)
 
         except Exception as e:
             self._log_operation_error("function_parsing", ctx, operation_id, e)
-            return ParseResult(has_errors=True, error_message=str(e))
+            return QueryParseResult(has_errors=True, error_message=str(e))
 
     def _is_function_context(self, ctx: Any) -> bool:
         """Check if context is a function call"""
@@ -804,10 +802,14 @@ class HandlerFactory:
     def _initialize_visitor_handlers(cls):
         """Lazy initialization of visitor handlers"""
         if cls._visitor_handlers is None:
+            from .insert_handler import InsertHandler
+            from .query_handler import FromHandler, SelectHandler, WhereHandler
+
             cls._visitor_handlers = {
                 "select": SelectHandler(),
                 "from": FromHandler(),
                 "where": WhereHandler(),
+                "insert": InsertHandler(),
             }
         return cls._visitor_handlers
 
@@ -843,137 +845,3 @@ class HandlerFactory:
     def get_handler(cls, ctx: Any) -> Optional[BaseHandler]:
         """Backward compatibility method"""
         return cls.get_expression_handler(ctx)
-
-
-class EnhancedWhereHandler(ContextUtilsMixin):
-    """Enhanced WHERE clause handler using expression handlers"""
-
-    def handle(self, ctx: PartiQLParser.WhereClauseSelectContext) -> Dict[str, Any]:
-        """Handle WHERE clause with proper expression parsing"""
-        if not hasattr(ctx, "exprSelect") or not ctx.exprSelect():
-            _logger.debug("No expression found in WHERE clause")
-            return {}
-
-        expression_ctx = ctx.exprSelect()
-        handler = HandlerFactory.get_expression_handler(expression_ctx)
-
-        if handler:
-            _logger.debug(
-                f"Using {type(handler).__name__} for WHERE clause",
-                extra={"context_text": self.get_context_text(expression_ctx)[:100]},
-            )
-            result = handler.handle_expression(expression_ctx)
-            if result.has_errors:
-                _logger.warning(
-                    "Expression parsing error, falling back to text search",
-                    extra={"error": result.error_message},
-                )
-                # Fallback to text-based filter
-                return {"$text": {"$search": self.get_context_text(expression_ctx)}}
-            return result.filter_conditions
-        else:
-            # Fallback to simple text-based search
-            _logger.debug(
-                "No suitable expression handler found, using text search",
-                extra={"context_text": self.get_context_text(expression_ctx)[:100]},
-            )
-            return {"$text": {"$search": self.get_context_text(expression_ctx)}}
-
-
-# Visitor Handler Classes for AST Processing
-
-
-class SelectHandler(BaseHandler, ContextUtilsMixin):
-    """Handles SELECT statement parsing"""
-
-    def can_handle(self, ctx: Any) -> bool:
-        """Check if this is a select context"""
-        return hasattr(ctx, "projectionItems")
-
-    def handle_visitor(self, ctx: PartiQLParser.SelectItemsContext, parse_result: "ParseResult") -> Any:
-        projection = {}
-        column_aliases = {}
-
-        if hasattr(ctx, "projectionItems") and ctx.projectionItems():
-            for item in ctx.projectionItems().projectionItem():
-                field_name, alias = self._extract_field_and_alias(item)
-                # Use MongoDB standard projection format: {field: 1} to include field
-                projection[field_name] = 1
-                # Store alias if present
-                if alias:
-                    column_aliases[field_name] = alias
-
-        parse_result.projection = projection
-        parse_result.column_aliases = column_aliases
-        return projection
-
-    def _extract_field_and_alias(self, item) -> Tuple[str, Optional[str]]:
-        """Extract field name and alias from projection item context with nested field support"""
-        if not hasattr(item, "children") or not item.children:
-            return str(item), None
-
-        # According to grammar: projectionItem : expr ( AS? symbolPrimitive )? ;
-        # children[0] is always the expression
-        # If there's an alias, children[1] might be AS and children[2] symbolPrimitive
-        # OR children[1] might be just symbolPrimitive (without AS)
-
-        field_name = item.children[0].getText()
-        # Normalize bracket notation (jmspath) to Mongo dot notation
-        field_name = self.normalize_field_path(field_name)
-
-        alias = None
-
-        if len(item.children) >= 2:
-            # Check if we have an alias
-            if len(item.children) == 3:
-                # Pattern: expr AS symbolPrimitive
-                if hasattr(item.children[1], "getText") and item.children[1].getText().upper() == "AS":
-                    alias = item.children[2].getText()
-            elif len(item.children) == 2:
-                # Pattern: expr symbolPrimitive (without AS)
-                alias = item.children[1].getText()
-
-        return field_name, alias
-
-
-class FromHandler(BaseHandler):
-    """Handles FROM clause parsing"""
-
-    def can_handle(self, ctx: Any) -> bool:
-        """Check if this is a from context"""
-        return hasattr(ctx, "tableReference")
-
-    def handle_visitor(self, ctx: PartiQLParser.FromClauseContext, parse_result: "ParseResult") -> Any:
-        if hasattr(ctx, "tableReference") and ctx.tableReference():
-            table_text = ctx.tableReference().getText()
-            collection_name = table_text
-            parse_result.collection = collection_name
-            return collection_name
-        return None
-
-
-class WhereHandler(BaseHandler):
-    """Handles WHERE clause parsing"""
-
-    def __init__(self):
-        self._expression_handler = EnhancedWhereHandler()
-
-    def can_handle(self, ctx: Any) -> bool:
-        """Check if this is a where context"""
-        return hasattr(ctx, "exprSelect")
-
-    def handle_visitor(self, ctx: PartiQLParser.WhereClauseSelectContext, parse_result: "ParseResult") -> Any:
-        if hasattr(ctx, "exprSelect") and ctx.exprSelect():
-            try:
-                # Use enhanced expression handler for better parsing
-                filter_conditions = self._expression_handler.handle(ctx)
-                parse_result.filter_conditions = filter_conditions
-                return filter_conditions
-            except Exception as e:
-                _logger.warning(f"Failed to parse WHERE expression, falling back to text search: {e}")
-                # Fallback to simple text search
-                filter_text = ctx.exprSelect().getText()
-                fallback_filter = {"$text": {"$search": filter_text}}
-                parse_result.filter_conditions = fallback_filter
-                return fallback_filter
-        return {}

@@ -1,13 +1,17 @@
 # -*- coding: utf-8 -*-
 import logging
-from typing import Any, Dict
+from typing import Any, Dict, Union
 
 from ..error import SqlSyntaxError
-from .builder import BuilderFactory, ExecutionPlan
-from .handler import BaseHandler, HandlerFactory, ParseResult
+from .builder import BuilderFactory
+from .handler import BaseHandler, HandlerFactory
+from .insert_builder import InsertExecutionPlan
+from .insert_handler import InsertParseResult
 from .partiql.PartiQLLexer import PartiQLLexer
 from .partiql.PartiQLParser import PartiQLParser
 from .partiql.PartiQLParserVisitor import PartiQLParserVisitor
+from .query_builder import QueryExecutionPlan
+from .query_handler import QueryParseResult
 
 _logger = logging.getLogger(__name__)
 
@@ -29,7 +33,10 @@ class MongoSQLParserVisitor(PartiQLParserVisitor):
 
     def __init__(self) -> None:
         super().__init__()
-        self._parse_result = ParseResult.for_visitor()
+        self._parse_result = QueryParseResult.for_visitor()
+        self._insert_parse_result = InsertParseResult.for_insert_visitor()
+        # Track current statement kind generically so UPDATE/DELETE can reuse this
+        self._current_operation: str = "select"  # expected values: select | insert | update | delete
         self._handlers = self._initialize_handlers()
 
     def _initialize_handlers(self) -> Dict[str, BaseHandler]:
@@ -42,12 +49,19 @@ class MongoSQLParserVisitor(PartiQLParserVisitor):
         }
 
     @property
-    def parse_result(self) -> ParseResult:
+    def parse_result(self) -> QueryParseResult:
         """Get the current parse result"""
         return self._parse_result
 
-    def parse_to_execution_plan(self) -> ExecutionPlan:
-        """Convert the parse result to an ExecutionPlan using BuilderFactory"""
+    def parse_to_execution_plan(self) -> Union[QueryExecutionPlan, InsertExecutionPlan]:
+        """Convert the parse result to an execution plan using BuilderFactory."""
+        if self._current_operation == "insert":
+            return self._build_insert_plan()
+
+        return self._build_query_plan()
+
+    def _build_query_plan(self) -> QueryExecutionPlan:
+        """Build a query execution plan from SELECT parsing."""
         builder = BuilderFactory.create_query_builder().collection(self._parse_result.collection)
 
         builder.filter(self._parse_result.filter_conditions).project(self._parse_result.projection).column_aliases(
@@ -55,6 +69,21 @@ class MongoSQLParserVisitor(PartiQLParserVisitor):
         ).sort(self._parse_result.sort_fields).limit(self._parse_result.limit_value).skip(
             self._parse_result.offset_value
         )
+
+        return builder.build()
+
+    def _build_insert_plan(self) -> InsertExecutionPlan:
+        """Build an INSERT execution plan from INSERT parsing."""
+        builder = BuilderFactory.create_insert_builder().collection(self._insert_parse_result.collection)
+
+        documents = self._insert_parse_result.insert_documents or []
+        builder.insert_documents(documents)
+
+        if self._insert_parse_result.parameter_style:
+            builder.parameter_style(self._insert_parse_result.parameter_style)
+
+        if self._insert_parse_result.parameter_count > 0:
+            builder.parameter_count(self._insert_parse_result.parameter_count)
 
         return builder.build()
 
