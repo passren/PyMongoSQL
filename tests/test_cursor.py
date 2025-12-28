@@ -398,3 +398,29 @@ class TestCursor:
         rows = cursor.result_set.fetchall()
         assert len(rows) == 3
         assert len(rows[0]) == 2  # Should have 2 columns
+
+    def test_execute_with_positional_parameters(self, conn):
+        """Test executing SELECT with positional parameters (?)"""
+        sql = "SELECT name, email FROM users WHERE age > ? AND active = ?"
+        cursor = conn.cursor()
+        result = cursor.execute(sql, [25, True])
+
+        assert result == cursor  # execute returns self
+        assert isinstance(cursor.result_set, ResultSet)
+
+        rows = cursor.result_set.fetchall()
+        assert len(rows) > 0  # Should have results matching the filter
+        assert len(rows[0]) == 2  # Should have name and email columns
+
+    def test_execute_with_named_parameters(self, conn):
+        """Test executing SELECT with named parameters (:name)"""
+        sql = "SELECT name, email FROM users WHERE age > :min_age AND active = :is_active"
+        cursor = conn.cursor()
+        result = cursor.execute(sql, {"min_age": 25, "is_active": True})
+
+        assert result == cursor  # execute returns self
+        assert isinstance(cursor.result_set, ResultSet)
+
+        rows = cursor.result_set.fetchall()
+        assert len(rows) > 0  # Should have results matching the filter
+        assert len(rows[0]) == 2  # Should have name and email columns

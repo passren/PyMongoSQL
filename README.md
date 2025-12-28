@@ -109,10 +109,49 @@ with connect(host="mongodb://localhost:27017/database") as conn:
     with conn.cursor() as cursor:
         cursor.execute('SELECT COUNT(*) as total FROM users')
         result = cursor.fetchone()
+        print(f"Total users: {result[0]}")
+```
+
+### Using DictCursor for Dictionary Results
+
+```python
+from pymongosql import connect
+from pymongosql.cursor import DictCursor
+
+with connect(host="mongodb://localhost:27017/database") as conn:
+    with conn.cursor(DictCursor) as cursor:
+        cursor.execute('SELECT COUNT(*) as total FROM users')
+        result = cursor.fetchone()
         print(f"Total users: {result['total']}")
 ```
 
+### Cursor vs DictCursor
+
+PyMongoSQL provides two cursor types for different result formats:
+
+**Cursor** (default) - Returns results as tuples:
+```python
+cursor = connection.cursor()
+cursor.execute('SELECT name, email FROM users')
+row = cursor.fetchone()
+print(row[0])  # Access by index
+```
+
+**DictCursor** - Returns results as dict:
+```python
+from pymongosql.cursor import DictCursor
+
+cursor = connection.cursor(DictCursor)
+cursor.execute('SELECT name, email FROM users')
+row = cursor.fetchone()
+print(row['name'])  # Access by column name
+```
+
 ### Query with Parameters
+
+PyMongoSQL supports two styles of parameterized queries for safe value substitution:
+
+**Positional Parameters with ?**
 
 ```python
 from pymongosql import connect
@@ -120,22 +159,27 @@ from pymongosql import connect
 connection = connect(host="mongodb://localhost:27017/database")
 cursor = connection.cursor()
 
-# Parameterized queries for security
-min_age = 18
-status = 'active'
-
-cursor.execute('''
-    SELECT name, email, created_at 
-    FROM users 
-    WHERE age >= ? AND status = ?
-''', [min_age, status])
-
-users = cursor.fetchmany(5)  # Fetch first 5 results
-while users:
-    for user in users:
-        print(f"User: {user['name']} ({user['email']})")
-    users = cursor.fetchmany(5)  # Fetch next 5
+cursor.execute(
+    'SELECT name, email FROM users WHERE age > ? AND status = ?',
+    [25, 'active']
+)
 ```
+
+**Named Parameters with :name**
+
+```python
+from pymongosql import connect
+
+connection = connect(host="mongodb://localhost:27017/database")
+cursor = connection.cursor()
+
+cursor.execute(
+    'SELECT name, email FROM users WHERE age > :age AND status = :status',
+    {'age': 25, 'status': 'active'}
+)
+```
+
+Parameters are substituted into the MongoDB filter during execution, providing protection against injection attacks.
 
 ## Supported SQL Features
 
@@ -166,19 +210,6 @@ while users:
 - LIMIT: `LIMIT 10`
 - Combined: `ORDER BY created_at DESC LIMIT 5`
 
-## Limitations & Roadmap
-
-**Note**: Currently PyMongoSQL focuses on Data Query Language (DQL) operations. The following SQL features are **not yet supported** but are planned for future releases:
-
-- **DML Operations** (Data Manipulation Language)
-  - `INSERT`, `UPDATE`, `DELETE`
-- **DDL Operations** (Data Definition Language)  
-  - `CREATE TABLE/COLLECTION`, `DROP TABLE/COLLECTION`
-  - `CREATE INDEX`, `DROP INDEX`
-  - `LIST TABLES/COLLECTIONS`
-
-These features are on our development roadmap and contributions are welcome!
-
 ## Apache Superset Integration
 
 PyMongoSQL can be used as a database driver in Apache Superset for querying and visualizing MongoDB data:
@@ -199,6 +230,19 @@ PyMongoSQL can be used as a database driver in Apache Superset for querying and 
 4. **Create Visualizations**: Build charts and dashboards from your MongoDB queries using Superset's visualization tools
 
 This allows seamless integration between MongoDB data and Superset's BI capabilities without requiring data migration to traditional SQL databases.
+
+<h2 style="color: red;">Limitations & Roadmap</h2>
+
+**Note**: Currently PyMongoSQL focuses on Data Query Language (DQL) operations. The following SQL features are **not yet supported** but are planned for future releases:
+
+- **DML Operations** (Data Manipulation Language)
+  - `INSERT`, `UPDATE`, `DELETE`
+- **DDL Operations** (Data Definition Language)  
+  - `CREATE TABLE/COLLECTION`, `DROP TABLE/COLLECTION`
+  - `CREATE INDEX`, `DROP INDEX`
+  - `LIST TABLES/COLLECTIONS`
+
+These features are on our development roadmap and contributions are welcome!
 
 ## Contributing
 

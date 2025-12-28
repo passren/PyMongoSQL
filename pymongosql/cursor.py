@@ -75,20 +75,19 @@ class Cursor(BaseCursor, CursorIterator):
         if self._is_closed:
             raise ProgrammingError("Cursor is closed")
 
-    def execute(self: _T, operation: str, parameters: Optional[Dict[str, Any]] = None) -> _T:
+    def execute(self: _T, operation: str, parameters: Optional[Any] = None) -> _T:
         """Execute a SQL statement
 
         Args:
             operation: SQL statement to execute
-            parameters: Parameters for the SQL statement (not yet implemented)
+            parameters: Parameters to substitute placeholders in the SQL
+                - Sequence for positional parameters with ? placeholders
+                - Dict for named parameters with :name placeholders
 
         Returns:
             Self for method chaining
         """
         self._check_closed()
-
-        if parameters:
-            _logger.warning("Parameter substitution not yet implemented, ignoring parameters")
 
         try:
             # Create execution context
@@ -98,7 +97,7 @@ class Cursor(BaseCursor, CursorIterator):
             strategy = ExecutionPlanFactory.get_strategy(context)
 
             # Execute using selected strategy (Standard or Subquery)
-            result = strategy.execute(context, self.connection)
+            result = strategy.execute(context, self.connection, parameters)
 
             # Store execution plan for reference
             self._current_execution_plan = strategy.execution_plan

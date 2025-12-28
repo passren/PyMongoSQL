@@ -324,7 +324,7 @@ def main():
                     setup_test_data()
                     print(f"\n[SUCCESS] MongoDB {version} test instance is ready!")
                     print(
-                        f"Connection: mongodb://{TEST_USERNAME}:{TEST_PASSWORD}@{MONGODB_HOST}:{MONGODB_PORT}/{MONGODB_DATABASE}?authSource={TEST_AUTH_SOURCE}"  # noqa: E501
+                        f"Connection: mongodb://{MONGODB_HOST}:{MONGODB_PORT}/{MONGODB_DATABASE}?authSource={TEST_AUTH_SOURCE}"  # noqa: E501
                     )
                 else:
                     print("[ERROR] Failed to create database user")
