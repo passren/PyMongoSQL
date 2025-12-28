@@ -2,7 +2,7 @@
 import logging
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, Sequence, Union
 
 from pymongo.errors import PyMongoError
 
@@ -19,6 +19,7 @@ class ExecutionContext:
 
     query: str
     execution_mode: str = "standard"
+    parameters: Optional[Union[Sequence[Any], Dict[str, Any]]] = None
 
     def __repr__(self) -> str:
         return f"ExecutionContext(mode={self.execution_mode}, " f"query={self.query})"
@@ -38,6 +39,7 @@ class ExecutionStrategy(ABC):
         self,
         context: ExecutionContext,
         connection: Any,
+        parameters: Optional[Union[Sequence[Any], Dict[str, Any]]] = None,
     ) -> Optional[Dict[str, Any]]:
         """
         Execute query and return result set.
@@ -45,6 +47,7 @@ class ExecutionStrategy(ABC):
         Args:
             context: ExecutionContext with query and subquery info
             connection: MongoDB connection
+            parameters: Sequence for positional (?) or Dict for named (:param) parameters
 
         Returns:
             command_result with query results
@@ -86,19 +89,59 @@ class StandardExecution(ExecutionStrategy):
             _logger.error(f"SQL parsing failed: {e}")
             raise SqlSyntaxError(f"Failed to parse SQL: {e}")
 
-    def _execute_execution_plan(self, execution_plan: ExecutionPlan, db: Any) -> Optional[Dict[str, Any]]:
+    def _replace_placeholders(self, obj: Any, parameters: Sequence[Any]) -> Any:
+        """Recursively replace ? placeholders with parameter values in filter/projection dicts"""
+        param_index = [0]  # Use list to allow modification in nested function
+
+        def replace_recursive(value: Any) -> Any:
+            if isinstance(value, str):
+                # Replace ? with the next parameter value
+                if value == "?":
+                    if param_index[0] < len(parameters):
+                        result = parameters[param_index[0]]
+                        param_index[0] += 1
+                        return result
+                    else:
+                        raise ProgrammingError(
+                            f"Not enough parameters provided: expected at least {param_index[0] + 1}"
+                        )
+                return value
+            elif isinstance(value, dict):
+                return {k: replace_recursive(v) for k, v in value.items()}
+            elif isinstance(value, list):
+                return [replace_recursive(item) for item in value]
+            else:
+                return value
+
+        return replace_recursive(obj)
+
+    def _execute_execution_plan(
+        self,
+        execution_plan: ExecutionPlan,
+        db: Any,
+        parameters: Optional[Sequence[Any]] = None,
+    ) -> Optional[Dict[str, Any]]:
         """Execute an ExecutionPlan against MongoDB using db.command"""
         try:
             # Get database
             if not execution_plan.collection:
                 raise ProgrammingError("No collection specified in query")
 
+            # Replace placeholders with parameters in filter_stage only (not in projection)
+            filter_stage = execution_plan.filter_stage or {}
+
+            if parameters:
+                # Positional parameters with ? (named parameters are converted to positional in execute())
+                filter_stage = self._replace_placeholders(filter_stage, parameters)
+
+            projection_stage = execution_plan.projection_stage or {}
+
             # Build MongoDB find command
-            find_command = {"find": execution_plan.collection, "filter": execution_plan.filter_stage or {}}
+            find_command = {"find": execution_plan.collection, "filter": filter_stage}
 
             # Apply projection if specified
-            if execution_plan.projection_stage:
-                find_command["projection"] = execution_plan.projection_stage
+            if projection_stage:
+                find_command["projection"] = projection_stage
 
             # Apply sort if specified
             if execution_plan.sort_stage:
@@ -135,14 +178,28 @@ class StandardExecution(ExecutionStrategy):
         self,
         context: ExecutionContext,
         connection: Any,
+        parameters: Optional[Union[Sequence[Any], Dict[str, Any]]] = None,
     ) -> Optional[Dict[str, Any]]:
         """Execute standard query directly against MongoDB"""
         _logger.debug(f"Using standard execution for query: {context.query[:100]}")
 
-        # Parse the query
-        self._execution_plan = self._parse_sql(context.query)
+        # Preprocess query to convert named parameters to positional
+        processed_query = context.query
+        processed_params = parameters
+        if isinstance(parameters, dict):
+            # Convert :param_name to ? for parsing
+            import re
 
-        return self._execute_execution_plan(self._execution_plan, connection.database)
+            param_names = re.findall(r":(\w+)", context.query)
+            # Convert dict parameters to list in order of appearance
+            processed_params = [parameters[name] for name in param_names]
+            # Replace :param_name with ?
+            processed_query = re.sub(r":(\w+)", "?", context.query)
+
+        # Parse the query
+        self._execution_plan = self._parse_sql(processed_query)
+
+        return self._execute_execution_plan(self._execution_plan, connection.database, processed_params)
 
 
 class ExecutionPlanFactory:

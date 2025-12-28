@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 import logging
 from abc import ABCMeta, abstractmethod
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Sequence, Tuple, Union
 
 from .error import ProgrammingError
 
@@ -38,12 +38,12 @@ class BaseCursor(metaclass=ABCMeta):
     def execute(
         self,
         operation: str,
-        parameters: Optional[Dict[str, Any]] = None,
+        parameters: Optional[Union[Sequence[Any], Dict[str, Any]]] = None,
     ):
         raise NotImplementedError  # pragma: no cover
 
     @abstractmethod
-    def executemany(self, operation: str, seq_of_parameters: List[Optional[Dict[str, Any]]]) -> None:
+    def executemany(self, operation: str, seq_of_parameters: List[Union[Sequence[Any], Dict[str, Any]]]) -> None:
         raise NotImplementedError  # pragma: no cover
 
     @abstractmethod

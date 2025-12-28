@@ -44,6 +44,7 @@ class SupersetExecution(StandardExecution):
         self,
         context: ExecutionContext,
         connection: Any,
+        parameters: Optional[Any] = None,
     ) -> Optional[Dict[str, Any]]:
         """Execute query in two stages: MongoDB for subquery, intermediate DB for outer query"""
         _logger.debug(f"Using subquery execution for query: {context.query[:100]}")
@@ -54,7 +55,7 @@ class SupersetExecution(StandardExecution):
         # If no subquery detected, fall back to standard execution
         if not query_info.has_subquery:
             _logger.debug("No subquery detected, falling back to standard execution")
-            return super().execute(context, connection)
+            return super().execute(context, connection, parameters)
 
         # Stage 1: Execute MongoDB subquery
         mongo_query = query_info.subquery_text

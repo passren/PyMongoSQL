@@ -147,6 +147,40 @@ row = cursor.fetchone()
 print(row['name'])  # Access by column name
 ```
 
+### Query with Parameters
+
+PyMongoSQL supports two styles of parameterized queries for safe value substitution:
+
+**Positional Parameters with ?**
+
+```python
+from pymongosql import connect
+
+connection = connect(host="mongodb://localhost:27017/database")
+cursor = connection.cursor()
+
+cursor.execute(
+    'SELECT name, email FROM users WHERE age > ? AND status = ?',
+    [25, 'active']
+)
+```
+
+**Named Parameters with :name**
+
+```python
+from pymongosql import connect
+
+connection = connect(host="mongodb://localhost:27017/database")
+cursor = connection.cursor()
+
+cursor.execute(
+    'SELECT name, email FROM users WHERE age > :age AND status = :status',
+    {'age': 25, 'status': 'active'}
+)
+```
+
+Parameters are substituted into the MongoDB filter during execution, providing protection against injection attacks.
+
 ## Supported SQL Features
 
 ### SELECT Statements
@@ -201,8 +235,6 @@ This allows seamless integration between MongoDB data and Superset's BI capabili
 
 **Note**: Currently PyMongoSQL focuses on Data Query Language (DQL) operations. The following SQL features are **not yet supported** but are planned for future releases:
 
-- **Parameterized Queries**
-  - Parameter substitution support (?, :pram, etc.)
 - **DML Operations** (Data Manipulation Language)
   - `INSERT`, `UPDATE`, `DELETE`
 - **DDL Operations** (Data Definition Language)  
