@@ -11,6 +11,7 @@ from .ast import MongoSQLLexer, MongoSQLParser, MongoSQLParserVisitor
 from .delete_builder import DeleteExecutionPlan
 from .insert_builder import InsertExecutionPlan
 from .query_builder import QueryExecutionPlan
+from .update_builder import UpdateExecutionPlan
 
 _logger = logging.getLogger(__name__)
 
@@ -128,8 +129,10 @@ class SQLParser(metaclass=ABCMeta):
 
         _logger.debug("AST validation successful")
 
-    def get_execution_plan(self) -> Union[QueryExecutionPlan, InsertExecutionPlan, DeleteExecutionPlan]:
-        """Parse SQL and return an execution plan (SELECT, INSERT, or DELETE)."""
+    def get_execution_plan(
+        self,
+    ) -> Union[QueryExecutionPlan, InsertExecutionPlan, DeleteExecutionPlan, UpdateExecutionPlan]:
+        """Parse SQL and return an execution plan (SELECT, INSERT, DELETE, or UPDATE)."""
         if self._ast is None:
             raise SqlSyntaxError("No AST available - parsing may have failed")
 

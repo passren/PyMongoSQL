@@ -8,9 +8,11 @@ from pymongo.errors import PyMongoError
 
 from .error import DatabaseError, OperationalError, ProgrammingError, SqlSyntaxError
 from .helper import SQLHelper
+from .sql.delete_builder import DeleteExecutionPlan
 from .sql.insert_builder import InsertExecutionPlan
 from .sql.parser import SQLParser
 from .sql.query_builder import QueryExecutionPlan
+from .sql.update_builder import UpdateExecutionPlan
 
 _logger = logging.getLogger(__name__)
 
@@ -263,10 +265,6 @@ class InsertExecution(ExecutionStrategy):
 class DeleteExecution(ExecutionStrategy):
     """Strategy for executing DELETE statements."""
 
-    def __init__(self) -> None:
-        """Initialize DELETE execution strategy."""
-        self._execution_plan: Optional[Any] = None
-
     @property
     def execution_plan(self) -> Any:
         return self._execution_plan
@@ -275,8 +273,6 @@ class DeleteExecution(ExecutionStrategy):
         return context.query.lstrip().upper().startswith("DELETE")
 
     def _parse_sql(self, sql: str) -> Any:
-        from .sql.delete_builder import DeleteExecutionPlan
-
         try:
             parser = SQLParser(sql)
             plan = parser.get_execution_plan()
@@ -340,10 +336,104 @@ class DeleteExecution(ExecutionStrategy):
         return self._execute_execution_plan(self._execution_plan, connection.database, parameters)
 
 
+class UpdateExecution(ExecutionStrategy):
+    """Strategy for executing UPDATE statements."""
+
+    @property
+    def execution_plan(self) -> Any:
+        return self._execution_plan
+
+    def supports(self, context: ExecutionContext) -> bool:
+        return context.query.lstrip().upper().startswith("UPDATE")
+
+    def _parse_sql(self, sql: str) -> Any:
+        try:
+            parser = SQLParser(sql)
+            plan = parser.get_execution_plan()
+
+            if not isinstance(plan, UpdateExecutionPlan):
+                raise SqlSyntaxError("Expected UPDATE execution plan")
+
+            if not plan.validate():
+                raise SqlSyntaxError("Generated update plan is invalid")
+
+            return plan
+        except SqlSyntaxError:
+            raise
+        except Exception as e:
+            _logger.error(f"SQL parsing failed: {e}")
+            raise SqlSyntaxError(f"Failed to parse SQL: {e}")
+
+    def _execute_execution_plan(
+        self,
+        execution_plan: Any,
+        db: Any,
+        parameters: Optional[Union[Sequence[Any], Dict[str, Any]]] = None,
+    ) -> Optional[Dict[str, Any]]:
+        try:
+            if not execution_plan.collection:
+                raise ProgrammingError("No collection specified in update")
+
+            if not execution_plan.update_fields:
+                raise ProgrammingError("No fields to update specified")
+
+            filter_conditions = execution_plan.filter_conditions or {}
+            update_fields = execution_plan.update_fields or {}
+
+            # Replace placeholders if parameters provided
+            # Note: We need to replace both update_fields and filter_conditions in one pass
+            # to maintain correct parameter ordering (SET clause first, then WHERE clause)
+            if parameters:
+                # Combine structures for replacement in correct order
+                combined = {"update_fields": update_fields, "filter_conditions": filter_conditions}
+                replaced = SQLHelper.replace_placeholders_generic(combined, parameters, execution_plan.parameter_style)
+                update_fields = replaced["update_fields"]
+                filter_conditions = replaced["filter_conditions"]
+
+            # MongoDB update command format
+            # https://www.mongodb.com/docs/manual/reference/command/update/
+            command = {
+                "update": execution_plan.collection,
+                "updates": [
+                    {
+                        "q": filter_conditions,  # query filter
+                        "u": {"$set": update_fields},  # update document using $set operator
+                        "multi": True,  # update all matching documents (like SQL UPDATE)
+                        "upsert": False,  # don't insert if no match
+                    }
+                ],
+            }
+
+            _logger.debug(f"Executing MongoDB update command: {command}")
+
+            return db.command(command)
+        except PyMongoError as e:
+            _logger.error(f"MongoDB update failed: {e}")
+            raise DatabaseError(f"Update execution failed: {e}")
+        except (ProgrammingError, DatabaseError, OperationalError):
+            # Re-raise our own errors without wrapping
+            raise
+        except Exception as e:
+            _logger.error(f"Unexpected error during update execution: {e}")
+            raise OperationalError(f"Update execution error: {e}")
+
+    def execute(
+        self,
+        context: ExecutionContext,
+        connection: Any,
+        parameters: Optional[Union[Sequence[Any], Dict[str, Any]]] = None,
+    ) -> Optional[Dict[str, Any]]:
+        _logger.debug(f"Using update execution for query: {context.query[:100]}")
+
+        self._execution_plan = self._parse_sql(context.query)
+
+        return self._execute_execution_plan(self._execution_plan, connection.database, parameters)
+
+
 class ExecutionPlanFactory:
     """Factory for creating appropriate execution strategy based on query context"""
 
-    _strategies = [DeleteExecution(), InsertExecution(), StandardQueryExecution()]
+    _strategies = [StandardQueryExecution(), InsertExecution(), UpdateExecution(), DeleteExecution()]
 
     @classmethod
     def get_strategy(cls, context: ExecutionContext) -> ExecutionStrategy:

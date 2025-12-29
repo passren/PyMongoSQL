@@ -809,6 +809,7 @@ class HandlerFactory:
             from .delete_handler import DeleteHandler
             from .insert_handler import InsertHandler
             from .query_handler import FromHandler, SelectHandler, WhereHandler
+            from .update_handler import UpdateHandler
 
             cls._visitor_handlers = {
                 "select": SelectHandler(),
@@ -816,6 +817,7 @@ class HandlerFactory:
                 "where": WhereHandler(),
                 "insert": InsertHandler(),
                 "delete": DeleteHandler(),
+                "update": UpdateHandler(),
             }
         return cls._visitor_handlers
 

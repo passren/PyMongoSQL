@@ -14,6 +14,8 @@ from .partiql.PartiQLParser import PartiQLParser
 from .partiql.PartiQLParserVisitor import PartiQLParserVisitor
 from .query_builder import QueryExecutionPlan
 from .query_handler import QueryParseResult
+from .update_builder import UpdateExecutionPlan
+from .update_handler import UpdateParseResult
 
 _logger = logging.getLogger(__name__)
 
@@ -38,6 +40,7 @@ class MongoSQLParserVisitor(PartiQLParserVisitor):
         self._parse_result = QueryParseResult.for_visitor()
         self._insert_parse_result = InsertParseResult.for_visitor()
         self._delete_parse_result = DeleteParseResult.for_visitor()
+        self._update_parse_result = UpdateParseResult.for_visitor()
         # Track current statement kind generically so UPDATE/DELETE can reuse this
         self._current_operation: str = "select"  # expected values: select | insert | update | delete
         self._handlers = self._initialize_handlers()
@@ -50,6 +53,7 @@ class MongoSQLParserVisitor(PartiQLParserVisitor):
             "from": HandlerFactory.get_visitor_handler("from"),
             "where": HandlerFactory.get_visitor_handler("where"),
             "insert": HandlerFactory.get_visitor_handler("insert"),
+            "update": HandlerFactory.get_visitor_handler("update"),
             "delete": HandlerFactory.get_visitor_handler("delete"),
         }
 
@@ -58,12 +62,16 @@ class MongoSQLParserVisitor(PartiQLParserVisitor):
         """Get the current parse result"""
         return self._parse_result
 
-    def parse_to_execution_plan(self) -> Union[QueryExecutionPlan, InsertExecutionPlan, DeleteExecutionPlan]:
+    def parse_to_execution_plan(
+        self,
+    ) -> Union[QueryExecutionPlan, InsertExecutionPlan, DeleteExecutionPlan, UpdateExecutionPlan]:
         """Convert the parse result to an execution plan using BuilderFactory."""
         if self._current_operation == "insert":
             return self._build_insert_plan()
         elif self._current_operation == "delete":
             return self._build_delete_plan()
+        elif self._current_operation == "update":
+            return self._build_update_plan()
 
         return self._build_query_plan()
 
@@ -107,6 +115,23 @@ class MongoSQLParserVisitor(PartiQLParserVisitor):
 
         if self._delete_parse_result.filter_conditions:
             builder.filter_conditions(self._delete_parse_result.filter_conditions)
+
+        return builder.build()
+
+    def _build_update_plan(self) -> UpdateExecutionPlan:
+        """Build an UPDATE execution plan from UPDATE parsing."""
+        _logger.debug(
+            f"Building UPDATE plan with collection: {self._update_parse_result.collection}, "
+            f"update_fields: {self._update_parse_result.update_fields}, "
+            f"filters: {self._update_parse_result.filter_conditions}"
+        )
+        builder = BuilderFactory.create_update_builder().collection(self._update_parse_result.collection)
+
+        if self._update_parse_result.update_fields:
+            builder.update_fields(self._update_parse_result.update_fields)
+
+        if self._update_parse_result.filter_conditions:
+            builder.filter_conditions(self._update_parse_result.filter_conditions)
 
         return builder.build()
 
@@ -212,6 +237,12 @@ class MongoSQLParserVisitor(PartiQLParserVisitor):
                 if handler:
                     return handler.handle_where_clause(ctx, self._delete_parse_result)
                 return {}
+            # For UPDATE, use the update handler
+            elif self._current_operation == "update":
+                handler = self._handlers.get("update")
+                if handler:
+                    return handler.handle_where_clause(ctx, self._update_parse_result)
+                return {}
             else:
                 # For other operations, use the where handler
                 handler = self._handlers["where"]
@@ -293,3 +324,29 @@ class MongoSQLParserVisitor(PartiQLParserVisitor):
         except Exception as e:
             _logger.warning(f"Error processing OFFSET clause: {e}")
             return self.visitChildren(ctx)
+
+    def visitUpdateClause(self, ctx: PartiQLParser.UpdateClauseContext) -> Any:
+        """Handle UPDATE clause to extract collection/table name."""
+        _logger.debug("Processing UPDATE clause")
+        self._current_operation = "update"
+        # Reset update parse result for this statement
+        self._update_parse_result = UpdateParseResult.for_visitor()
+
+        handler = self._handlers.get("update")
+        if handler:
+            handler.handle_visitor(ctx, self._update_parse_result)
+
+        # Visit children to process SET and WHERE clauses
+        return self.visitChildren(ctx)
+
+    def visitSetCommand(self, ctx: PartiQLParser.SetCommandContext) -> Any:
+        """Handle SET command for UPDATE statements."""
+        _logger.debug("Processing SET command")
+
+        if self._current_operation == "update":
+            handler = self._handlers.get("update")
+            if handler:
+                handler.handle_set_command(ctx, self._update_parse_result)
+                return None
+
+        return self.visitChildren(ctx)

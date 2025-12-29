@@ -198,7 +198,21 @@ class ResultSet(CursorIterator):
 
     @property
     def rowcount(self) -> int:
-        """Return number of rows fetched so far (not total available)"""
+        """Return number of rows fetched/affected"""
+        # Check for write operation results (UPDATE, DELETE, INSERT)
+        if hasattr(self, "_insert_result") and self._insert_result:
+            # INSERT operation - return number of inserted documents
+            return self._insert_result.get("n", 0)
+
+        # Check command result for write operations
+        if self._command_result:
+            # For UPDATE/DELETE operations, check 'n' (modified count) or 'nModified'
+            if "n" in self._command_result:
+                return self._command_result.get("n", 0)
+            if "nModified" in self._command_result:
+                return self._command_result.get("nModified", 0)
+
+        # For SELECT/QUERY operations, return number of fetched rows
         return self._total_fetched
 
     @property
