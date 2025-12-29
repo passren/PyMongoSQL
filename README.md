@@ -28,7 +28,7 @@ PyMongoSQL implements the DB API 2.0 interfaces to provide SQL-like access to Mo
 - **Nested Structure Support**: Query and filter deeply nested fields and arrays within MongoDB documents using standard SQL syntax
 - **SQLAlchemy Integration**: Complete ORM and Core support with dedicated MongoDB dialect
 - **SQL Query Support**: SELECT statements with WHERE conditions, field selection, and aliases
-- **DML Support (INSERT)**: Insert single or multiple documents using PartiQL object and bag syntax
+- **DML Support**: Full support for INSERT, UPDATE, and DELETE operations using PartiQL syntax
 - **Connection String Support**: MongoDB URI format for easy configuration
 
 ## Requirements
@@ -234,12 +234,96 @@ cursor.execute(
 ```python
 # Positional parameters using ? placeholders
 cursor.execute(
-  "INSERT INTO Music {'title': '?', 'artist': '?', 'year': '?'}",
+  "INSERT INTO Music {'title': ?, 'artist': ?, 'year': ?}",
   ["Song D", "Diana", 2020]
 )
 ```
 
 > Note: For INSERT, use positional parameters (`?`). Named placeholders (`:name`) are supported for SELECT queries; INSERT currently recommends `?` style.
+
+### UPDATE Statements
+
+PyMongoSQL supports updating documents in MongoDB collections using standard SQL UPDATE syntax.
+
+- **Update All Documents**
+
+```python
+cursor.execute("UPDATE Music SET available = false")
+```
+
+- **Update Multiple Fields**
+
+```python
+cursor.execute(
+  "UPDATE Music SET price = 19.99, available = true WHERE artist = 'Alice'"
+)
+```
+
+- **Update with Comparisons and Logical Operators**
+
+```python
+cursor.execute(
+  "UPDATE Music SET price = 9.99 WHERE year = 2020 AND stock > 5"
+)
+```
+
+- **Parameterized UPDATE**
+
+```python
+# Positional parameters using ? placeholders
+cursor.execute(
+  "UPDATE Music SET price = ?, stock = ? WHERE artist = ?",
+  [24.99, 50, "Bob"]
+)
+```
+
+- **Update Nested Fields**
+
+```python
+cursor.execute("UPDATE Music SET details.publisher = 'XYZ Records' WHERE title = 'Song A'")
+```
+
+- **Check Updated Row Count**
+
+```python
+cursor.execute("UPDATE Music SET available = false WHERE year = 2020")
+print(f"Updated {cursor.rowcount} documents")
+```
+
+### DELETE Statements
+
+PyMongoSQL supports deleting documents from MongoDB collections using standard SQL DELETE syntax.
+
+- **Delete All Documents**
+
+```python
+cursor.execute("DELETE FROM Music")
+```
+
+- **Delete with Logical Operators**
+
+```python
+cursor.execute(
+  "DELETE FROM Music WHERE year = 2019 AND available = false"
+)
+```
+
+- **Parameterized DELETE**
+
+```python
+# Positional parameters using ? placeholders
+cursor.execute(
+  "DELETE FROM Music WHERE artist = ? AND year < ?",
+  ["Charlie", 2021]
+)
+```
+
+- **Check Deleted Row Count**
+
+```python
+cursor.execute("DELETE FROM Music WHERE available = false")
+print(f"Deleted {cursor.rowcount} documents")
+```
 
 ## Apache Superset Integration
 
@@ -264,14 +348,16 @@ This allows seamless integration between MongoDB data and Superset's BI capabili
 
 <h2 style="color: red;">Limitations & Roadmap</h2>
 
-**Note**: PyMongoSQL focuses on Data Query Language (DQL) operations and selective DML support. The following SQL features are **not yet supported** but are planned for future releases:
+**Note**: PyMongoSQL currently supports DQL (Data Query Language) and DML (Data Manipulation Language) operations. The following SQL features are **not yet supported** but are planned for future releases:
 
-- **DML Operations** (Data Manipulation Language)
-  - `UPDATE`, `DELETE`
 - **DDL Operations** (Data Definition Language)  
   - `CREATE TABLE/COLLECTION`, `DROP TABLE/COLLECTION`
   - `CREATE INDEX`, `DROP INDEX`
   - `LIST TABLES/COLLECTIONS`
+  - `ALTER TABLE/COLLECTION`
+- **Advanced DML Operations**
+  - `MERGE`, `UPSERT`
+  - Transactions and multi-document operations
 
 These features are on our development roadmap and contributions are welcome!
 
