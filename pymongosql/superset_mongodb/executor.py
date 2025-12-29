@@ -2,16 +2,16 @@
 import logging
 from typing import Any, Dict, List, Optional
 
-from ..executor import ExecutionContext, StandardExecution
+from ..executor import ExecutionContext, StandardQueryExecution
 from ..result_set import ResultSet
-from ..sql.builder import ExecutionPlan
+from ..sql.query_builder import QueryExecutionPlan
 from .detector import SubqueryDetector
 from .query_db_sqlite import QueryDBSQLite
 
 _logger = logging.getLogger(__name__)
 
 
-class SupersetExecution(StandardExecution):
+class SupersetExecution(StandardQueryExecution):
     """Two-stage execution strategy for subquery-based queries using intermediate RDBMS.
 
     Uses a QueryDatabase backend (SQLite3 by default) to handle complex
@@ -30,15 +30,16 @@ class SupersetExecution(StandardExecution):
                              Defaults to SQLiteBridge if not provided.
         """
         self._query_db_factory = query_db_factory or QueryDBSQLite
-        self._execution_plan: Optional[ExecutionPlan] = None
+        self._execution_plan: Optional[QueryExecutionPlan] = None
 
     @property
-    def execution_plan(self) -> ExecutionPlan:
+    def execution_plan(self) -> QueryExecutionPlan:
         return self._execution_plan
 
     def supports(self, context: ExecutionContext) -> bool:
-        """Support queries with subqueries"""
-        return context.execution_mode == "superset"
+        """Support queries with subqueries, only SELECT statments is supported in this mode."""
+        normalized = context.query.lstrip().upper()
+        return "superset" in context.execution_mode.lower() and normalized.startswith("SELECT")
 
     def execute(
         self,
@@ -129,7 +130,7 @@ class SupersetExecution(StandardExecution):
                 except Exception as e:
                     _logger.warning(f"Could not extract column names from empty result: {e}")
 
-            self._execution_plan = ExecutionPlan(collection="query_db_result", projection_stage=projection_stage)
+            self._execution_plan = QueryExecutionPlan(collection="query_db_result", projection_stage=projection_stage)
 
             return result_set
 

@@ -16,10 +16,10 @@ PyMongoSQL is a Python [DB API 2.0 (PEP 249)](https://www.python.org/dev/peps/pe
 
 PyMongoSQL implements the DB API 2.0 interfaces to provide SQL-like access to MongoDB, built on PartiQL syntax for querying semi-structured data. The project aims to:
 
-- Bridge the gap between SQL and NoSQL by providing SQL capabilities for MongoDB's nested document structures
-- Support standard SQL DQL (Data Query Language) operations including SELECT statements with WHERE, ORDER BY, and LIMIT clauses on nested and hierarchical data
-- Provide seamless integration with existing Python applications that expect DB API 2.0 compliance
-- Enable easy migration from traditional SQL databases to MongoDB without rewriting queries for document traversal
+- **Bridge SQL and NoSQL**: Provide SQL capabilities for MongoDB's nested document structures
+- **Standard SQL Operations**: Support DQL (SELECT) and DML (INSERT, UPDATE, DELETE) operations with WHERE, ORDER BY, and LIMIT clauses
+- **Seamless Integration**: Full compatibility with Python applications expecting DB API 2.0 compliance
+- **Easy Migration**: Enable migration from traditional SQL databases to MongoDB without rewriting application code
 
 ## Features
 
@@ -28,6 +28,7 @@ PyMongoSQL implements the DB API 2.0 interfaces to provide SQL-like access to Mo
 - **Nested Structure Support**: Query and filter deeply nested fields and arrays within MongoDB documents using standard SQL syntax
 - **SQLAlchemy Integration**: Complete ORM and Core support with dedicated MongoDB dialect
 - **SQL Query Support**: SELECT statements with WHERE conditions, field selection, and aliases
+- **DML Support**: Full support for INSERT, UPDATE, and DELETE operations using PartiQL syntax
 - **Connection String Support**: MongoDB URI format for easy configuration
 
 ## Requirements
@@ -184,16 +185,18 @@ Parameters are substituted into the MongoDB filter during execution, providing p
 ## Supported SQL Features
 
 ### SELECT Statements
-- Field selection: `SELECT name, age FROM users`
-- Wildcards: `SELECT * FROM products`
-- **Field aliases**: `SELECT name as user_name, age as user_age FROM users`
+
+- **Field selection**: `SELECT name, age FROM users`
+- **Wildcards**: `SELECT * FROM products`
+- **Field aliases**: `SELECT name AS user_name, age AS user_age FROM users`
 - **Nested fields**: `SELECT profile.name, profile.age FROM users`
 - **Array access**: `SELECT items[0], items[1].name FROM orders`
 
 ### WHERE Clauses
-- Equality: `WHERE name = 'John'`
-- Comparisons: `WHERE age > 25`, `WHERE price <= 100.0`
-- Logical operators: `WHERE age > 18 AND status = 'active'`
+
+- **Equality**: `WHERE name = 'John'`
+- **Comparisons**: `WHERE age > 25`, `WHERE price <= 100.0`
+- **Logical operators**: `WHERE age > 18 AND status = 'active'`, `WHERE age < 30 OR role = 'admin'`
 - **Nested field filtering**: `WHERE profile.status = 'active'`
 - **Array filtering**: `WHERE items[0].price > 100`
 
@@ -206,9 +209,140 @@ Parameters are substituted into the MongoDB filter during execution, providing p
 > **Note**: Avoid SQL reserved words (`user`, `data`, `value`, `count`, etc.) as unquoted field names. Use alternatives or bracket notation for arrays.
 
 ### Sorting and Limiting
-- ORDER BY: `ORDER BY name ASC, age DESC`
-- LIMIT: `LIMIT 10`
-- Combined: `ORDER BY created_at DESC LIMIT 5`
+
+- **ORDER BY**: `ORDER BY name ASC, age DESC`
+- **LIMIT**: `LIMIT 10`
+- **Combined**: `ORDER BY created_at DESC LIMIT 5`
+
+### INSERT Statements
+
+PyMongoSQL supports inserting documents into MongoDB collections using PartiQL-style object and bag literals.
+
+**Single Document**
+
+```python
+cursor.execute(
+    "INSERT INTO Music {'title': 'Song A', 'artist': 'Alice', 'year': 2021}"
+)
+```
+
+**Multiple Documents (Bag Syntax)**
+
+```python
+cursor.execute(
+    "INSERT INTO Music << {'title': 'Song B', 'artist': 'Bob'}, {'title': 'Song C', 'artist': 'Charlie'} >>"
+)
+```
+
+**Parameterized INSERT**
+
+```python
+# Positional parameters using ? placeholders
+cursor.execute(
+    "INSERT INTO Music {'title': ?, 'artist': ?, 'year': ?}",
+    ["Song D", "Diana", 2020]
+)
+```
+
+> **Note**: For parameterized INSERT, use positional parameters (`?`). Named placeholders (`:name`) are supported for SELECT, UPDATE, and DELETE queries.
+
+### UPDATE Statements
+
+PyMongoSQL supports updating documents in MongoDB collections using standard SQL UPDATE syntax.
+
+**Update All Documents**
+
+```python
+cursor.execute("UPDATE Music SET available = false")
+```
+
+**Update with WHERE Clause**
+
+```python
+cursor.execute("UPDATE Music SET price = 14.99 WHERE year < 2020")
+```
+
+**Update Multiple Fields**
+
+```python
+cursor.execute(
+    "UPDATE Music SET price = 19.99, available = true WHERE artist = 'Alice'"
+)
+```
+
+**Update with Logical Operators**
+
+```python
+cursor.execute(
+    "UPDATE Music SET price = 9.99 WHERE year = 2020 AND stock > 5"
+)
+```
+
+**Parameterized UPDATE**
+
+```python
+# Positional parameters using ? placeholders
+cursor.execute(
+    "UPDATE Music SET price = ?, stock = ? WHERE artist = ?",
+    [24.99, 50, "Bob"]
+)
+```
+
+**Update Nested Fields**
+
+```python
+cursor.execute(
+    "UPDATE Music SET details.publisher = 'XYZ Records' WHERE title = 'Song A'"
+)
+```
+
+**Check Updated Row Count**
+
+```python
+cursor.execute("UPDATE Music SET available = false WHERE year = 2020")
+print(f"Updated {cursor.rowcount} documents")
+```
+
+### DELETE Statements
+
+PyMongoSQL supports deleting documents from MongoDB collections using standard SQL DELETE syntax.
+
+**Delete All Documents**
+
+```python
+cursor.execute("DELETE FROM Music")
+```
+
+**Delete with WHERE Clause**
+
+```python
+cursor.execute("DELETE FROM Music WHERE year < 2020")
+```
+
+**Delete with Logical Operators**
+
+```python
+cursor.execute(
+    "DELETE FROM Music WHERE year = 2019 AND available = false"
+)
+```
+
+**Parameterized DELETE**
+
+```python
+# Positional parameters using ? placeholders
+cursor.execute(
+    "DELETE FROM Music WHERE artist = ? AND year < ?",
+    ["Charlie", 2021]
+)
+```
+
+**Check Deleted Row Count**
+
+```python
+cursor.execute("DELETE FROM Music WHERE available = false")
+print(f"Deleted {cursor.rowcount} documents")
+```
 
 ## Apache Superset Integration
 
@@ -231,16 +365,18 @@ PyMongoSQL can be used as a database driver in Apache Superset for querying and 
 
 This allows seamless integration between MongoDB data and Superset's BI capabilities without requiring data migration to traditional SQL databases.
 
-<h2 style="color: red;">Limitations & Roadmap</h2>
+## Limitations & Roadmap
 
-**Note**: Currently PyMongoSQL focuses on Data Query Language (DQL) operations. The following SQL features are **not yet supported** but are planned for future releases:
+**Note**: PyMongoSQL currently supports DQL (Data Query Language) and DML (Data Manipulation Language) operations. The following SQL features are **not yet supported** but are planned for future releases:
 
-- **DML Operations** (Data Manipulation Language)
-  - `INSERT`, `UPDATE`, `DELETE`
 - **DDL Operations** (Data Definition Language)  
   - `CREATE TABLE/COLLECTION`, `DROP TABLE/COLLECTION`
   - `CREATE INDEX`, `DROP INDEX`
   - `LIST TABLES/COLLECTIONS`
+  - `ALTER TABLE/COLLECTION`
+- **Advanced DML Operations**
+  - `MERGE`, `UPSERT`
+  - Transactions and multi-document operations
 
 These features are on our development roadmap and contributions are welcome!
 

@@ -86,13 +86,13 @@ class TestSupersetExecutionStrategy:
         assert superset_strategy.supports(context) is True
 
     def test_standard_execution_rejects_subqueries(self):
-        """Test that StandardExecution doesn't support subqueries"""
-        from pymongosql.executor import StandardExecution
+        """Test that StandardQueryExecution doesn't support subqueries"""
+        from pymongosql.executor import StandardQueryExecution
 
         subquery_sql = "SELECT * FROM (SELECT id, name FROM users) AS u WHERE u.id > 10"
         context = ExecutionContext(subquery_sql, "superset")
 
-        standard_strategy = StandardExecution()
+        standard_strategy = StandardQueryExecution()
         assert standard_strategy.supports(context) is False
 
     def test_get_strategy_selects_subquery_execution(self):
@@ -104,14 +104,14 @@ class TestSupersetExecutionStrategy:
         assert isinstance(strategy, SupersetExecution)
 
     def test_get_strategy_selects_standard_execution(self):
-        """Test that get_strategy returns StandardExecution for simple queries"""
-        from pymongosql.executor import StandardExecution
+        """Test that get_strategy returns StandardQueryExecution for simple queries"""
+        from pymongosql.executor import StandardQueryExecution
 
         simple_sql = "SELECT id, name FROM users WHERE id > 10"
         context = ExecutionContext(simple_sql)
 
         strategy = ExecutionPlanFactory.get_strategy(context)
-        assert isinstance(strategy, StandardExecution)
+        assert isinstance(strategy, StandardQueryExecution)
 
 
 class TestConnectionModeDetection:
