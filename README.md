@@ -28,6 +28,7 @@ PyMongoSQL implements the DB API 2.0 interfaces to provide SQL-like access to Mo
 - **Nested Structure Support**: Query and filter deeply nested fields and arrays within MongoDB documents using standard SQL syntax
 - **SQLAlchemy Integration**: Complete ORM and Core support with dedicated MongoDB dialect
 - **SQL Query Support**: SELECT statements with WHERE conditions, field selection, and aliases
+- **DML Support (INSERT)**: Insert single or multiple documents using PartiQL object and bag syntax
 - **Connection String Support**: MongoDB URI format for easy configuration
 
 ## Requirements
@@ -210,6 +211,36 @@ Parameters are substituted into the MongoDB filter during execution, providing p
 - LIMIT: `LIMIT 10`
 - Combined: `ORDER BY created_at DESC LIMIT 5`
 
+### INSERT Statements
+
+PyMongoSQL supports inserting documents into MongoDB collections using PartiQL-style object and bag literals.
+
+- **Single Document**
+
+```python
+cursor.execute("INSERT INTO Music {'title': 'Song A', 'artist': 'Alice', 'year': 2021}")
+```
+
+- **Multiple Documents (Bag Syntax)**
+
+```python
+cursor.execute(
+  "INSERT INTO Music << {'title': 'Song B', 'artist': 'Bob'}, {'title': 'Song C', 'artist': 'Charlie'} >>"
+)
+```
+
+- **Parameterized INSERT (qmark placeholders)**
+
+```python
+# Positional parameters using ? placeholders
+cursor.execute(
+  "INSERT INTO Music {'title': '?', 'artist': '?', 'year': '?'}",
+  ["Song D", "Diana", 2020]
+)
+```
+
+> Note: For INSERT, use positional parameters (`?`). Named placeholders (`:name`) are supported for SELECT queries; INSERT currently recommends `?` style.
+
 ## Apache Superset Integration
 
 PyMongoSQL can be used as a database driver in Apache Superset for querying and visualizing MongoDB data:
@@ -233,10 +264,10 @@ This allows seamless integration between MongoDB data and Superset's BI capabili
 
 <h2 style="color: red;">Limitations & Roadmap</h2>
 
-**Note**: Currently PyMongoSQL focuses on Data Query Language (DQL) operations. The following SQL features are **not yet supported** but are planned for future releases:
+**Note**: PyMongoSQL focuses on Data Query Language (DQL) operations and selective DML support. The following SQL features are **not yet supported** but are planned for future releases:
 
 - **DML Operations** (Data Manipulation Language)
-  - `INSERT`, `UPDATE`, `DELETE`
+  - `UPDATE`, `DELETE`
 - **DDL Operations** (Data Definition Language)  
   - `CREATE TABLE/COLLECTION`, `DROP TABLE/COLLECTION`
   - `CREATE INDEX`, `DROP INDEX`

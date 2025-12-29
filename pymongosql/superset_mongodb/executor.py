@@ -37,8 +37,9 @@ class SupersetExecution(StandardQueryExecution):
         return self._execution_plan
 
     def supports(self, context: ExecutionContext) -> bool:
-        """Support queries with subqueries"""
-        return context.execution_mode == "superset"
+        """Support queries with subqueries, only SELECT statments is supported in this mode."""
+        normalized = context.query.lstrip().upper()
+        return "superset" in context.execution_mode.lower() and normalized.startswith("SELECT")
 
     def execute(
         self,
