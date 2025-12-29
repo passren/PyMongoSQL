@@ -2,8 +2,10 @@
 import logging
 import re
 from abc import ABC, abstractmethod
-from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional, Tuple
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple
+
+if TYPE_CHECKING:
+    from .query_handler import QueryParseResult
 
 _logger = logging.getLogger(__name__)
 
@@ -23,61 +25,6 @@ OPERATOR_MAP = {
     "IN": "$in",
     "NOT IN": "$nin",
 }
-
-
-@dataclass
-class QueryParseResult:
-    """Result container for query (SELECT) expression parsing and visitor state management"""
-
-    # Core parsing fields
-    filter_conditions: Dict[str, Any] = field(default_factory=dict)  # Unified filter field for all MongoDB conditions
-    has_errors: bool = False
-    error_message: Optional[str] = None
-
-    # Visitor parsing state fields
-    collection: Optional[str] = None
-    projection: Dict[str, Any] = field(default_factory=dict)
-    column_aliases: Dict[str, str] = field(default_factory=dict)  # Maps field_name -> alias
-    sort_fields: List[Dict[str, int]] = field(default_factory=list)
-    limit_value: Optional[int] = None
-    offset_value: Optional[int] = None
-
-    # Subquery info (for wrapped subqueries, e.g., Superset outering)
-    subquery_plan: Optional[Any] = None
-    subquery_alias: Optional[str] = None
-
-    # Factory methods for different use cases
-    @classmethod
-    def for_visitor(cls) -> "QueryParseResult":
-        """Create QueryParseResult for visitor parsing"""
-        return cls()
-
-    def merge_expression(self, other: "QueryParseResult") -> "QueryParseResult":
-        """Merge expression results from another QueryParseResult"""
-        if other.has_errors:
-            self.has_errors = True
-            self.error_message = other.error_message
-
-        # Merge filter conditions intelligently
-        if other.filter_conditions:
-            if not self.filter_conditions:
-                self.filter_conditions = other.filter_conditions
-            else:
-                # If both have filters, combine them with $and
-                self.filter_conditions = {"$and": [self.filter_conditions, other.filter_conditions]}
-
-        return self
-
-    # Backward compatibility properties
-    @property
-    def mongo_filter(self) -> Dict[str, Any]:
-        """Backward compatibility property for mongo_filter"""
-        return self.filter_conditions
-
-    @mongo_filter.setter
-    def mongo_filter(self, value: Dict[str, Any]):
-        """Backward compatibility setter for mongo_filter"""
-        self.filter_conditions = value
 
 
 class ContextUtilsMixin:
@@ -219,7 +166,7 @@ class BaseHandler(ABC):
         """Check if this handler can process the given context"""
         pass
 
-    def handle(self, ctx: Any, parse_result: Optional["QueryParseResult"] = None) -> Any:
+    def handle(self, ctx: Any, parse_result: Optional[Any] = None) -> Any:
         """Handle the context and return appropriate result"""
         # Default implementation for expression handlers
         if parse_result is None:
@@ -227,11 +174,11 @@ class BaseHandler(ABC):
         else:
             return self.handle_visitor(ctx, parse_result)
 
-    def handle_expression(self, ctx: Any) -> QueryParseResult:
+    def handle_expression(self, ctx: Any) -> Any:
         """Handle expression parsing (to be overridden by expression handlers)"""
         raise NotImplementedError("Expression handlers must implement handle_expression")
 
-    def handle_visitor(self, ctx: Any, parse_result: "QueryParseResult") -> Any:
+    def handle_visitor(self, ctx: Any, parse_result: Optional[Any] = None) -> Any:
         """Handle visitor operations (to be overridden by visitor handlers)"""
         raise NotImplementedError("Visitor handlers must implement handle_visitor")
 
@@ -260,8 +207,10 @@ class ComparisonExpressionHandler(BaseHandler, ContextUtilsMixin, LoggingMixin, 
             hasattr(ctx, "comparisonOperator") or self._is_comparison_context(ctx) or self._has_comparison_pattern(ctx)
         )
 
-    def handle_expression(self, ctx: Any) -> QueryParseResult:
+    def handle_expression(self, ctx: Any) -> "QueryParseResult":
         """Convert comparison expression to MongoDB filter"""
+        from .query_handler import QueryParseResult
+
         operation_id = id(ctx)
         self._log_operation_start("comparison_parsing", ctx, operation_id)
 
@@ -562,8 +511,10 @@ class LogicalExpressionHandler(BaseHandler, ContextUtilsMixin, LoggingMixin, Ope
         except Exception:
             return False
 
-    def handle_expression(self, ctx: Any) -> QueryParseResult:
+    def handle_expression(self, ctx: Any) -> "QueryParseResult":
         """Convert logical expression to MongoDB filter"""
+        from .query_handler import QueryParseResult
+
         operation_id = id(ctx)
         self._log_operation_start("logical_parsing", ctx, operation_id)
 
@@ -745,8 +696,10 @@ class FunctionExpressionHandler(BaseHandler, ContextUtilsMixin, LoggingMixin):
         """Check if context represents a function call"""
         return hasattr(ctx, "functionName") or self._is_function_context(ctx)
 
-    def handle_expression(self, ctx: Any) -> QueryParseResult:
+    def handle_expression(self, ctx: Any) -> "QueryParseResult":
         """Handle function expressions"""
+        from .query_handler import QueryParseResult
+
         operation_id = id(ctx)
         self._log_operation_start("function_parsing", ctx, operation_id)
 

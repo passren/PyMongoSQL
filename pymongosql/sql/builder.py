@@ -1,7 +1,17 @@
 # -*- coding: utf-8 -*-
 import logging
 from dataclasses import dataclass
-from typing import Any, Dict, Optional
+from typing import TYPE_CHECKING, Any, Dict, Optional, Union
+
+if TYPE_CHECKING:
+    from .delete_builder import DeleteExecutionPlan
+    from .delete_handler import DeleteParseResult
+    from .insert_builder import InsertExecutionPlan
+    from .insert_handler import InsertParseResult
+    from .query_builder import QueryExecutionPlan
+    from .query_handler import QueryParseResult
+    from .update_builder import UpdateExecutionPlan
+    from .update_handler import UpdateParseResult
 
 _logger = logging.getLogger(__name__)
 
@@ -66,7 +76,106 @@ class BuilderFactory:
         return MongoUpdateBuilder()
 
 
+class ExecutionPlanBuilder:
+    """Builder class to create execution plans from parse results.
+
+    This class decouples the AST visitor from execution plan creation,
+    providing a clean separation between parsing and plan generation.
+    """
+
+    @staticmethod
+    def build_from_parse_result(
+        parse_result: Union["QueryParseResult", "InsertParseResult", "DeleteParseResult", "UpdateParseResult"],
+        operation: str,
+    ) -> Union["QueryExecutionPlan", "InsertExecutionPlan", "DeleteExecutionPlan", "UpdateExecutionPlan"]:
+        """Build an execution plan from a parse result based on the operation type.
+
+        Args:
+            parse_result: The parse result from the AST visitor
+            operation: The operation type ('select', 'insert', 'delete', or 'update')
+
+        Returns:
+            The appropriate execution plan for the operation
+
+        Raises:
+            SqlSyntaxError: If the parse result is invalid or plan generation fails
+        """
+        if operation == "insert":
+            return ExecutionPlanBuilder._build_insert_plan(parse_result)
+        elif operation == "delete":
+            return ExecutionPlanBuilder._build_delete_plan(parse_result)
+        elif operation == "update":
+            return ExecutionPlanBuilder._build_update_plan(parse_result)
+        else:  # Default to SELECT/query
+            return ExecutionPlanBuilder._build_query_plan(parse_result)
+
+    @staticmethod
+    def _build_query_plan(parse_result: "QueryParseResult") -> "QueryExecutionPlan":
+        """Build a query execution plan from SELECT parsing."""
+        builder = BuilderFactory.create_query_builder().collection(parse_result.collection)
+
+        builder.filter(parse_result.filter_conditions).project(parse_result.projection).column_aliases(
+            parse_result.column_aliases
+        ).sort(parse_result.sort_fields).limit(parse_result.limit_value).skip(parse_result.offset_value)
+
+        return builder.build()
+
+    @staticmethod
+    def _build_insert_plan(parse_result: "InsertParseResult") -> "InsertExecutionPlan":
+        """Build an INSERT execution plan from INSERT parsing."""
+        from ..error import SqlSyntaxError
+
+        if parse_result.has_errors:
+            raise SqlSyntaxError(parse_result.error_message or "INSERT parsing failed")
+
+        builder = BuilderFactory.create_insert_builder().collection(parse_result.collection)
+
+        documents = parse_result.insert_documents or []
+        builder.insert_documents(documents)
+
+        if parse_result.parameter_style:
+            builder.parameter_style(parse_result.parameter_style)
+
+        if parse_result.parameter_count > 0:
+            builder.parameter_count(parse_result.parameter_count)
+
+        return builder.build()
+
+    @staticmethod
+    def _build_delete_plan(parse_result: "DeleteParseResult") -> "DeleteExecutionPlan":
+        """Build a DELETE execution plan from DELETE parsing."""
+        _logger.debug(
+            f"Building DELETE plan with collection: {parse_result.collection}, "
+            f"filters: {parse_result.filter_conditions}"
+        )
+        builder = BuilderFactory.create_delete_builder().collection(parse_result.collection)
+
+        if parse_result.filter_conditions:
+            builder.filter_conditions(parse_result.filter_conditions)
+
+        return builder.build()
+
+    @staticmethod
+    def _build_update_plan(parse_result: "UpdateParseResult") -> "UpdateExecutionPlan":
+        """Build an UPDATE execution plan from UPDATE parsing."""
+        _logger.debug(
+            f"Building UPDATE plan with collection: {parse_result.collection}, "
+            f"update_fields: {parse_result.update_fields}, "
+            f"filters: {parse_result.filter_conditions}"
+        )
+        builder = BuilderFactory.create_update_builder().collection(parse_result.collection)
+
+        if parse_result.update_fields:
+            builder.update_fields(parse_result.update_fields)
+
+        if parse_result.filter_conditions:
+            builder.filter_conditions(parse_result.filter_conditions)
+
+        return builder.build()
+
+
 __all__ = [
     "ExecutionPlan",
     "BuilderFactory",
+    "ExecutionPlanBuilder",
 ]

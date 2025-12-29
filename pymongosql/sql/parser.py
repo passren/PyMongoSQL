@@ -8,6 +8,7 @@ from antlr4.error.ErrorListener import ErrorListener
 
 from ..error import SqlSyntaxError
 from .ast import MongoSQLLexer, MongoSQLParser, MongoSQLParserVisitor
+from .builder import ExecutionPlanBuilder
 from .delete_builder import DeleteExecutionPlan
 from .insert_builder import InsertExecutionPlan
 from .query_builder import QueryExecutionPlan
@@ -139,7 +140,11 @@ class SQLParser(metaclass=ABCMeta):
         try:
             self._visitor = MongoSQLParserVisitor()
             self._visitor.visit(self._ast)
-            execution_plan = self._visitor.parse_to_execution_plan()
+
+            # Use ExecutionPlanBuilder to create the plan from parse result
+            execution_plan = ExecutionPlanBuilder.build_from_parse_result(
+                self._visitor.parse_result, self._visitor.current_operation
+            )
 
             if not execution_plan.validate():
                 raise SqlSyntaxError("Generated execution plan is invalid")

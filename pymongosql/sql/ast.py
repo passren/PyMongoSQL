@@ -3,18 +3,13 @@ import logging
 from typing import Any, Dict, Union
 
 from ..error import SqlSyntaxError
-from .builder import BuilderFactory
-from .delete_builder import DeleteExecutionPlan
 from .delete_handler import DeleteParseResult
 from .handler import BaseHandler, HandlerFactory
-from .insert_builder import InsertExecutionPlan
 from .insert_handler import InsertParseResult
 from .partiql.PartiQLLexer import PartiQLLexer
 from .partiql.PartiQLParser import PartiQLParser
 from .partiql.PartiQLParserVisitor import PartiQLParserVisitor
-from .query_builder import QueryExecutionPlan
 from .query_handler import QueryParseResult
-from .update_builder import UpdateExecutionPlan
 from .update_handler import UpdateParseResult
 
 _logger = logging.getLogger(__name__)
@@ -37,7 +32,7 @@ class MongoSQLParserVisitor(PartiQLParserVisitor):
 
     def __init__(self) -> None:
         super().__init__()
-        self._parse_result = QueryParseResult.for_visitor()
+        self._query_parse_result = QueryParseResult.for_visitor()
         self._insert_parse_result = InsertParseResult.for_visitor()
         self._delete_parse_result = DeleteParseResult.for_visitor()
         self._update_parse_result = UpdateParseResult.for_visitor()
@@ -58,86 +53,27 @@ class MongoSQLParserVisitor(PartiQLParserVisitor):
         }
 
     @property
-    def parse_result(self) -> QueryParseResult:
-        """Get the current parse result"""
-        return self._parse_result
-
-    def parse_to_execution_plan(
-        self,
-    ) -> Union[QueryExecutionPlan, InsertExecutionPlan, DeleteExecutionPlan, UpdateExecutionPlan]:
-        """Convert the parse result to an execution plan using BuilderFactory."""
+    def parse_result(self) -> Union[QueryParseResult, InsertParseResult, DeleteParseResult, UpdateParseResult]:
+        """Get the current parse result based on the current operation"""
         if self._current_operation == "insert":
-            return self._build_insert_plan()
+            return self._insert_parse_result
         elif self._current_operation == "delete":
-            return self._build_delete_plan()
+            return self._delete_parse_result
         elif self._current_operation == "update":
-            return self._build_update_plan()
+            return self._update_parse_result
+        else:
+            return self._query_parse_result
 
-        return self._build_query_plan()
-
-    def _build_query_plan(self) -> QueryExecutionPlan:
-        """Build a query execution plan from SELECT parsing."""
-        builder = BuilderFactory.create_query_builder().collection(self._parse_result.collection)
-
-        builder.filter(self._parse_result.filter_conditions).project(self._parse_result.projection).column_aliases(
-            self._parse_result.column_aliases
-        ).sort(self._parse_result.sort_fields).limit(self._parse_result.limit_value).skip(
-            self._parse_result.offset_value
-        )
-
-        return builder.build()
-
-    def _build_insert_plan(self) -> InsertExecutionPlan:
-        """Build an INSERT execution plan from INSERT parsing."""
-        if self._insert_parse_result.has_errors:
-            raise SqlSyntaxError(self._insert_parse_result.error_message or "INSERT parsing failed")
-
-        builder = BuilderFactory.create_insert_builder().collection(self._insert_parse_result.collection)
-
-        documents = self._insert_parse_result.insert_documents or []
-        builder.insert_documents(documents)
-
-        if self._insert_parse_result.parameter_style:
-            builder.parameter_style(self._insert_parse_result.parameter_style)
-
-        if self._insert_parse_result.parameter_count > 0:
-            builder.parameter_count(self._insert_parse_result.parameter_count)
-
-        return builder.build()
-
-    def _build_delete_plan(self) -> DeleteExecutionPlan:
-        """Build a DELETE execution plan from DELETE parsing."""
-        _logger.debug(
-            f"Building DELETE plan with collection: {self._delete_parse_result.collection}, "
-            f"filters: {self._delete_parse_result.filter_conditions}"
-        )
-        builder = BuilderFactory.create_delete_builder().collection(self._delete_parse_result.collection)
-
-        if self._delete_parse_result.filter_conditions:
-            builder.filter_conditions(self._delete_parse_result.filter_conditions)
-
-        return builder.build()
-
-    def _build_update_plan(self) -> UpdateExecutionPlan:
-        """Build an UPDATE execution plan from UPDATE parsing."""
-        _logger.debug(
-            f"Building UPDATE plan with collection: {self._update_parse_result.collection}, "
-            f"update_fields: {self._update_parse_result.update_fields}, "
-            f"filters: {self._update_parse_result.filter_conditions}"
-        )
-        builder = BuilderFactory.create_update_builder().collection(self._update_parse_result.collection)
-
-        if self._update_parse_result.update_fields:
-            builder.update_fields(self._update_parse_result.update_fields)
-
-        if self._update_parse_result.filter_conditions:
-            builder.filter_conditions(self._update_parse_result.filter_conditions)
-
-        return builder.build()
+    @property
+    def current_operation(self) -> str:
+        """Get the current operation type (select, insert, delete, or update)"""
+        return self._current_operation
 
     def visitRoot(self, ctx: PartiQLParser.RootContext) -> Any:
         """Visit root node and process child nodes"""
         _logger.debug("Starting to parse SQL query")
+        # Reset to default SELECT operation at the start of each query
+        self._current_operation = "select"
         try:
             result = self.visitChildren(ctx)
             return result
@@ -149,7 +85,7 @@ class MongoSQLParserVisitor(PartiQLParserVisitor):
         """Handle SELECT * statements"""
         _logger.debug("Processing SELECT ALL statement")
         # SELECT * means no projection filter (return all fields)
-        self._parse_result.projection = {}
+        self._query_parse_result.projection = {}
         return self.visitChildren(ctx)
 
     def visitSelectItems(self, ctx: PartiQLParser.SelectItemsContext) -> Any:
@@ -158,7 +94,7 @@ class MongoSQLParserVisitor(PartiQLParserVisitor):
         try:
             handler = self._handlers["select"]
             if handler:
-                result = handler.handle_visitor(ctx, self._parse_result)
+                result = handler.handle_visitor(ctx, self._query_parse_result)
                 return result
             return self.visitChildren(ctx)
         except Exception as e:
@@ -171,7 +107,7 @@ class MongoSQLParserVisitor(PartiQLParserVisitor):
         try:
             handler = self._handlers["from"]
             if handler:
-                result = handler.handle_visitor(ctx, self._parse_result)
+                result = handler.handle_visitor(ctx, self._query_parse_result)
                 _logger.debug(f"Extracted collection: {result}")
                 return result
             return self.visitChildren(ctx)
@@ -185,7 +121,7 @@ class MongoSQLParserVisitor(PartiQLParserVisitor):
         try:
             handler = self._handlers["where"]
             if handler:
-                result = handler.handle_visitor(ctx, self._parse_result)
+                result = handler.handle_visitor(ctx, self._query_parse_result)
                 _logger.debug(f"Extracted filter conditions: {result}")
                 return result
             return self.visitChildren(ctx)
@@ -197,6 +133,8 @@ class MongoSQLParserVisitor(PartiQLParserVisitor):
         """Handle INSERT statements via the insert handler."""
         _logger.debug("Processing INSERT statement")
         self._current_operation = "insert"
+        # Reset insert parse result for this statement
+        self._insert_parse_result = InsertParseResult.for_visitor()
         handler = self._handlers.get("insert")
         if handler:
             return handler.handle_visitor(ctx, self._insert_parse_result)
@@ -206,6 +144,8 @@ class MongoSQLParserVisitor(PartiQLParserVisitor):
         """Handle legacy INSERT statements."""
         _logger.debug("Processing INSERT legacy statement")
         self._current_operation = "insert"
+        # Reset insert parse result for this statement
+        self._insert_parse_result = InsertParseResult.for_visitor()
         handler = self._handlers.get("insert")
         if handler:
             return handler.handle_visitor(ctx, self._insert_parse_result)
@@ -247,7 +187,7 @@ class MongoSQLParserVisitor(PartiQLParserVisitor):
                 # For other operations, use the where handler
                 handler = self._handlers["where"]
                 if handler:
-                    result = handler.handle_visitor(ctx, self._parse_result)
+                    result = handler.handle_visitor(ctx, self._query_parse_result)
                     _logger.debug(f"Extracted filter conditions: {result}")
                     return result
             return {}
@@ -284,7 +224,7 @@ class MongoSQLParserVisitor(PartiQLParserVisitor):
                     # Convert to the expected format: List[Dict[str, int]]
                     sort_specs.append({field_name: direction})
 
-            self._parse_result.sort_fields = sort_specs
+            self._query_parse_result.sort_fields = sort_specs
             _logger.debug(f"Extracted sort specifications: {sort_specs}")
             return self.visitChildren(ctx)
         except Exception as e:
@@ -299,7 +239,7 @@ class MongoSQLParserVisitor(PartiQLParserVisitor):
                 limit_text = ctx.exprSelect().getText()
                 try:
                     limit_value = int(limit_text)
-                    self._parse_result.limit_value = limit_value
+                    self._query_parse_result.limit_value = limit_value
                     _logger.debug(f"Extracted limit value: {limit_value}")
                 except ValueError as e:
                     _logger.warning(f"Invalid LIMIT value '{limit_text}': {e}")
@@ -316,7 +256,7 @@ class MongoSQLParserVisitor(PartiQLParserVisitor):
                 offset_text = ctx.exprSelect().getText()
                 try:
                     offset_value = int(offset_text)
-                    self._parse_result.offset_value = offset_value
+                    self._query_parse_result.offset_value = offset_value
                     _logger.debug(f"Extracted offset value: {offset_value}")
                 except ValueError as e:
                     _logger.warning(f"Invalid OFFSET value '{offset_text}': {e}")
