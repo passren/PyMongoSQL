@@ -4,6 +4,8 @@ from typing import Any, Dict, Union
 
 from ..error import SqlSyntaxError
 from .builder import BuilderFactory
+from .delete_builder import DeleteExecutionPlan
+from .delete_handler import DeleteParseResult
 from .handler import BaseHandler, HandlerFactory
 from .insert_builder import InsertExecutionPlan
 from .insert_handler import InsertParseResult
@@ -34,7 +36,8 @@ class MongoSQLParserVisitor(PartiQLParserVisitor):
     def __init__(self) -> None:
         super().__init__()
         self._parse_result = QueryParseResult.for_visitor()
-        self._insert_parse_result = InsertParseResult.for_insert_visitor()
+        self._insert_parse_result = InsertParseResult.for_visitor()
+        self._delete_parse_result = DeleteParseResult.for_visitor()
         # Track current statement kind generically so UPDATE/DELETE can reuse this
         self._current_operation: str = "select"  # expected values: select | insert | update | delete
         self._handlers = self._initialize_handlers()
@@ -47,6 +50,7 @@ class MongoSQLParserVisitor(PartiQLParserVisitor):
             "from": HandlerFactory.get_visitor_handler("from"),
             "where": HandlerFactory.get_visitor_handler("where"),
             "insert": HandlerFactory.get_visitor_handler("insert"),
+            "delete": HandlerFactory.get_visitor_handler("delete"),
         }
 
     @property
@@ -54,10 +58,12 @@ class MongoSQLParserVisitor(PartiQLParserVisitor):
         """Get the current parse result"""
         return self._parse_result
 
-    def parse_to_execution_plan(self) -> Union[QueryExecutionPlan, InsertExecutionPlan]:
+    def parse_to_execution_plan(self) -> Union[QueryExecutionPlan, InsertExecutionPlan, DeleteExecutionPlan]:
         """Convert the parse result to an execution plan using BuilderFactory."""
         if self._current_operation == "insert":
             return self._build_insert_plan()
+        elif self._current_operation == "delete":
+            return self._build_delete_plan()
 
         return self._build_query_plan()
 
@@ -88,6 +94,19 @@ class MongoSQLParserVisitor(PartiQLParserVisitor):
 
         if self._insert_parse_result.parameter_count > 0:
             builder.parameter_count(self._insert_parse_result.parameter_count)
+
+        return builder.build()
+
+    def _build_delete_plan(self) -> DeleteExecutionPlan:
+        """Build a DELETE execution plan from DELETE parsing."""
+        _logger.debug(
+            f"Building DELETE plan with collection: {self._delete_parse_result.collection}, "
+            f"filters: {self._delete_parse_result.filter_conditions}"
+        )
+        builder = BuilderFactory.create_delete_builder().collection(self._delete_parse_result.collection)
+
+        if self._delete_parse_result.filter_conditions:
+            builder.filter_conditions(self._delete_parse_result.filter_conditions)
 
         return builder.build()
 
@@ -165,6 +184,57 @@ class MongoSQLParserVisitor(PartiQLParserVisitor):
         handler = self._handlers.get("insert")
         if handler:
             return handler.handle_visitor(ctx, self._insert_parse_result)
+        return self.visitChildren(ctx)
+
+    def visitFromClauseSimpleExplicit(self, ctx: PartiQLParser.FromClauseSimpleExplicitContext) -> Any:
+        """Handle FROM clause (explicit form) in DELETE statements."""
+        if self._current_operation == "delete":
+            handler = self._handlers.get("delete")
+            if handler:
+                return handler.handle_from_clause_explicit(ctx, self._delete_parse_result)
+        return self.visitChildren(ctx)
+
+    def visitFromClauseSimpleImplicit(self, ctx: PartiQLParser.FromClauseSimpleImplicitContext) -> Any:
+        """Handle FROM clause (implicit form) in DELETE statements."""
+        if self._current_operation == "delete":
+            handler = self._handlers.get("delete")
+            if handler:
+                return handler.handle_from_clause_implicit(ctx, self._delete_parse_result)
+        return self.visitChildren(ctx)
+
+    def visitWhereClause(self, ctx: PartiQLParser.WhereClauseContext) -> Any:
+        """Handle WHERE clause (generic form used in DELETE, UPDATE)."""
+        _logger.debug("Processing WHERE clause (generic)")
+        try:
+            # For DELETE, use the delete handler
+            if self._current_operation == "delete":
+                handler = self._handlers.get("delete")
+                if handler:
+                    return handler.handle_where_clause(ctx, self._delete_parse_result)
+                return {}
+            else:
+                # For other operations, use the where handler
+                handler = self._handlers["where"]
+                if handler:
+                    result = handler.handle_visitor(ctx, self._parse_result)
+                    _logger.debug(f"Extracted filter conditions: {result}")
+                    return result
+            return {}
+        except Exception as e:
+            _logger.warning(f"Error processing WHERE clause: {e}")
+            return {}
+
+    def visitDeleteCommand(self, ctx: PartiQLParser.DeleteCommandContext) -> Any:
+        """Handle DELETE statements."""
+        _logger.debug("Processing DELETE statement")
+        self._current_operation = "delete"
+        # Reset delete parse result for this statement
+        self._delete_parse_result = DeleteParseResult.for_visitor()
+        # Use delete handler if available
+        handler = self._handlers.get("delete")
+        if handler:
+            handler.handle_visitor(ctx, self._delete_parse_result)
+        # Visit children to process FROM and WHERE clauses
         return self.visitChildren(ctx)
 
     def visitOrderByClause(self, ctx: PartiQLParser.OrderByClauseContext) -> Any:

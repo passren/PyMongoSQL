@@ -8,6 +8,7 @@ from antlr4.error.ErrorListener import ErrorListener
 
 from ..error import SqlSyntaxError
 from .ast import MongoSQLLexer, MongoSQLParser, MongoSQLParserVisitor
+from .delete_builder import DeleteExecutionPlan
 from .insert_builder import InsertExecutionPlan
 from .query_builder import QueryExecutionPlan
 
@@ -127,8 +128,8 @@ class SQLParser(metaclass=ABCMeta):
 
         _logger.debug("AST validation successful")
 
-    def get_execution_plan(self) -> Union[QueryExecutionPlan, InsertExecutionPlan]:
-        """Parse SQL and return an execution plan (SELECT or INSERT)."""
+    def get_execution_plan(self) -> Union[QueryExecutionPlan, InsertExecutionPlan, DeleteExecutionPlan]:
+        """Parse SQL and return an execution plan (SELECT, INSERT, or DELETE)."""
         if self._ast is None:
             raise SqlSyntaxError("No AST available - parsing may have failed")
 

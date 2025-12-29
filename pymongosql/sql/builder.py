@@ -49,6 +49,14 @@ class BuilderFactory:
 
         return MongoInsertBuilder()
 
+    @staticmethod
+    def create_delete_builder():
+        """Create a builder for DELETE queries"""
+        # Local import to avoid circular dependency during module import
+        from .delete_builder import MongoDeleteBuilder
+
+        return MongoDeleteBuilder()
+
 
 __all__ = [
     "ExecutionPlan",

@@ -542,9 +542,13 @@ class LogicalExpressionHandler(BaseHandler, ContextUtilsMixin, LoggingMixin, Ope
         """Check if the expression text contains logical operators"""
         try:
             text = self.get_context_text(ctx).upper()
-            comparison_count = sum(1 for op in COMPARISON_OPERATORS if op in text)
+
+            # Count comparison operator occurrences, not just distinct operator types
+            # so that "a = 1 OR b = 2" counts as 2 comparisons and is treated
+            # as a logical expression instead of a single comparison.
+            comparison_count = len(re.findall(r"(>=|<=|!=|<>|=|<|>)", text))
             has_logical_ops = any(op in text for op in ["AND", "OR"])
-            return has_logical_ops and comparison_count > 1
+            return has_logical_ops and comparison_count >= 2
         except Exception:
             return False
 
@@ -802,6 +806,7 @@ class HandlerFactory:
     def _initialize_visitor_handlers(cls):
         """Lazy initialization of visitor handlers"""
         if cls._visitor_handlers is None:
+            from .delete_handler import DeleteHandler
             from .insert_handler import InsertHandler
             from .query_handler import FromHandler, SelectHandler, WhereHandler
 
@@ -810,6 +815,7 @@ class HandlerFactory:
                 "from": FromHandler(),
                 "where": WhereHandler(),
                 "insert": InsertHandler(),
+                "delete": DeleteHandler(),
             }
         return cls._visitor_handlers
 

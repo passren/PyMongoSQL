@@ -260,10 +260,90 @@ class InsertExecution(ExecutionStrategy):
         return self._execute_execution_plan(self._execution_plan, connection.database, parameters)
 
 
+class DeleteExecution(ExecutionStrategy):
+    """Strategy for executing DELETE statements."""
+
+    def __init__(self) -> None:
+        """Initialize DELETE execution strategy."""
+        self._execution_plan: Optional[Any] = None
+
+    @property
+    def execution_plan(self) -> Any:
+        return self._execution_plan
+
+    def supports(self, context: ExecutionContext) -> bool:
+        return context.query.lstrip().upper().startswith("DELETE")
+
+    def _parse_sql(self, sql: str) -> Any:
+        from .sql.delete_builder import DeleteExecutionPlan
+
+        try:
+            parser = SQLParser(sql)
+            plan = parser.get_execution_plan()
+
+            if not isinstance(plan, DeleteExecutionPlan):
+                raise SqlSyntaxError("Expected DELETE execution plan")
+
+            if not plan.validate():
+                raise SqlSyntaxError("Generated delete plan is invalid")
+
+            return plan
+        except SqlSyntaxError:
+            raise
+        except Exception as e:
+            _logger.error(f"SQL parsing failed: {e}")
+            raise SqlSyntaxError(f"Failed to parse SQL: {e}")
+
+    def _execute_execution_plan(
+        self,
+        execution_plan: Any,
+        db: Any,
+        parameters: Optional[Union[Sequence[Any], Dict[str, Any]]] = None,
+    ) -> Optional[Dict[str, Any]]:
+        try:
+            if not execution_plan.collection:
+                raise ProgrammingError("No collection specified in delete")
+
+            filter_conditions = execution_plan.filter_conditions or {}
+
+            # Replace placeholders in filter if parameters provided
+            if parameters and filter_conditions:
+                filter_conditions = SQLHelper.replace_placeholders_generic(
+                    filter_conditions, parameters, execution_plan.parameter_style
+                )
+
+            command = {"delete": execution_plan.collection, "deletes": [{"q": filter_conditions, "limit": 0}]}
+
+            _logger.debug(f"Executing MongoDB delete command: {command}")
+
+            return db.command(command)
+        except PyMongoError as e:
+            _logger.error(f"MongoDB delete failed: {e}")
+            raise DatabaseError(f"Delete execution failed: {e}")
+        except (ProgrammingError, DatabaseError, OperationalError):
+            # Re-raise our own errors without wrapping
+            raise
+        except Exception as e:
+            _logger.error(f"Unexpected error during delete execution: {e}")
+            raise OperationalError(f"Delete execution error: {e}")
+
+    def execute(
+        self,
+        context: ExecutionContext,
+        connection: Any,
+        parameters: Optional[Union[Sequence[Any], Dict[str, Any]]] = None,
+    ) -> Optional[Dict[str, Any]]:
+        _logger.debug(f"Using delete execution for query: {context.query[:100]}")
+
+        self._execution_plan = self._parse_sql(context.query)
+
+        return self._execute_execution_plan(self._execution_plan, connection.database, parameters)
+
+
 class ExecutionPlanFactory:
     """Factory for creating appropriate execution strategy based on query context"""
 
-    _strategies = [InsertExecution(), StandardQueryExecution()]
+    _strategies = [DeleteExecution(), InsertExecution(), StandardQueryExecution()]
 
     @classmethod
     def get_strategy(cls, context: ExecutionContext) -> ExecutionStrategy:

@@ -1,6 +1,4 @@
 # -*- coding: utf-8 -*-
-"""INSERT parsing primitives kept separate for maintainability."""
-
 import ast
 import logging
 import re
@@ -27,7 +25,7 @@ class InsertParseResult:
     error_message: Optional[str] = None
 
     @classmethod
-    def for_insert_visitor(cls) -> "InsertParseResult":
+    def for_visitor(cls) -> "InsertParseResult":
         """Factory for a fresh insert parse result."""
         return cls()
 
