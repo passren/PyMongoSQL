@@ -29,7 +29,7 @@ class Cursor(BaseCursor, CursorIterator):
         self._kwargs = kwargs
         self._result_set: Optional[ResultSet] = None
         self._result_set_class = ResultSet
-        self._current_execution_plan: Optional[QueryExecutionPlan] = None
+        self._current_execution_plan: Optional[Any] = None
         self._is_closed = False
 
     @property
@@ -103,12 +103,32 @@ class Cursor(BaseCursor, CursorIterator):
             self._current_execution_plan = strategy.execution_plan
 
             # Create result set from command result
-            self._result_set = self._result_set_class(
-                command_result=result,
-                execution_plan=self._current_execution_plan,
-                database=self.connection.database,
-                **self._kwargs,
-            )
+            # For SELECT/QUERY operations, use the execution plan directly
+            if isinstance(self._current_execution_plan, QueryExecutionPlan):
+                execution_plan_for_rs = self._current_execution_plan
+                self._result_set = self._result_set_class(
+                    command_result=result,
+                    execution_plan=execution_plan_for_rs,
+                    database=self.connection.database,
+                    **self._kwargs,
+                )
+            else:
+                # For INSERT and other non-query operations, create a minimal synthetic result
+                # since INSERT commands don't return a cursor structure
+                stub_plan = QueryExecutionPlan(collection=self._current_execution_plan.collection)
+                self._result_set = self._result_set_class(
+                    command_result={
+                        "cursor": {
+                            "id": 0,
+                            "firstBatch": [],
+                        }
+                    },
+                    execution_plan=stub_plan,
+                    database=self.connection.database,
+                    **self._kwargs,
+                )
+                # Store the actual insert result for reference
+                self._result_set._insert_result = result
 
             return self
 

@@ -2,7 +2,7 @@
 import logging
 from typing import Any, Dict, List, Optional
 
-from ..executor import ExecutionContext, StandardExecution
+from ..executor import ExecutionContext, StandardQueryExecution
 from ..result_set import ResultSet
 from ..sql.query_builder import QueryExecutionPlan
 from .detector import SubqueryDetector
@@ -11,7 +11,7 @@ from .query_db_sqlite import QueryDBSQLite
 _logger = logging.getLogger(__name__)
 
 
-class SupersetExecution(StandardExecution):
+class SupersetExecution(StandardQueryExecution):
     """Two-stage execution strategy for subquery-based queries using intermediate RDBMS.
 
     Uses a QueryDatabase backend (SQLite3 by default) to handle complex

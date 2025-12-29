@@ -7,6 +7,8 @@ from typing import Any, Dict, Optional, Sequence, Union
 from pymongo.errors import PyMongoError
 
 from .error import DatabaseError, OperationalError, ProgrammingError, SqlSyntaxError
+from .helper import SQLHelper
+from .sql.insert_builder import InsertExecutionPlan
 from .sql.parser import SQLParser
 from .sql.query_builder import QueryExecutionPlan
 
@@ -30,7 +32,7 @@ class ExecutionStrategy(ABC):
 
     @property
     @abstractmethod
-    def execution_plan(self) -> QueryExecutionPlan:
+    def execution_plan(self) -> Union[QueryExecutionPlan, InsertExecutionPlan]:
         """Name of the execution plan"""
         pass
 
@@ -60,7 +62,7 @@ class ExecutionStrategy(ABC):
         pass
 
 
-class StandardExecution(ExecutionStrategy):
+class StandardQueryExecution(ExecutionStrategy):
     """Standard execution strategy for simple SELECT queries without subqueries"""
 
     @property
@@ -70,7 +72,8 @@ class StandardExecution(ExecutionStrategy):
 
     def supports(self, context: ExecutionContext) -> bool:
         """Support simple queries without subqueries"""
-        return "standard" in context.execution_mode.lower()
+        normalized = context.query.lstrip().upper()
+        return "standard" in context.execution_mode.lower() and normalized.startswith("SELECT")
 
     def _parse_sql(self, sql: str) -> QueryExecutionPlan:
         """Parse SQL statement and return QueryExecutionPlan"""
@@ -91,29 +94,7 @@ class StandardExecution(ExecutionStrategy):
 
     def _replace_placeholders(self, obj: Any, parameters: Sequence[Any]) -> Any:
         """Recursively replace ? placeholders with parameter values in filter/projection dicts"""
-        param_index = [0]  # Use list to allow modification in nested function
-
-        def replace_recursive(value: Any) -> Any:
-            if isinstance(value, str):
-                # Replace ? with the next parameter value
-                if value == "?":
-                    if param_index[0] < len(parameters):
-                        result = parameters[param_index[0]]
-                        param_index[0] += 1
-                        return result
-                    else:
-                        raise ProgrammingError(
-                            f"Not enough parameters provided: expected at least {param_index[0] + 1}"
-                        )
-                return value
-            elif isinstance(value, dict):
-                return {k: replace_recursive(v) for k, v in value.items()}
-            elif isinstance(value, list):
-                return [replace_recursive(item) for item in value]
-            else:
-                return value
-
-        return replace_recursive(obj)
+        return SQLHelper.replace_placeholders_generic(obj, parameters, "qmark")
 
     def _execute_execution_plan(
         self,
@@ -202,10 +183,87 @@ class StandardExecution(ExecutionStrategy):
         return self._execute_execution_plan(self._execution_plan, connection.database, processed_params)
 
 
+class InsertExecution(ExecutionStrategy):
+    """Execution strategy for INSERT statements."""
+
+    @property
+    def execution_plan(self) -> InsertExecutionPlan:
+        return self._execution_plan
+
+    def supports(self, context: ExecutionContext) -> bool:
+        return context.query.lstrip().upper().startswith("INSERT")
+
+    def _parse_sql(self, sql: str) -> InsertExecutionPlan:
+        try:
+            parser = SQLParser(sql)
+            plan = parser.get_execution_plan()
+
+            if not isinstance(plan, InsertExecutionPlan):
+                raise SqlSyntaxError("Expected INSERT execution plan")
+
+            if not plan.validate():
+                raise SqlSyntaxError("Generated insert plan is invalid")
+
+            return plan
+        except SqlSyntaxError:
+            raise
+        except Exception as e:
+            _logger.error(f"SQL parsing failed: {e}")
+            raise SqlSyntaxError(f"Failed to parse SQL: {e}")
+
+    def _replace_placeholders(
+        self,
+        documents: Sequence[Dict[str, Any]],
+        parameters: Optional[Union[Sequence[Any], Dict[str, Any]]],
+        style: Optional[str],
+    ) -> Sequence[Dict[str, Any]]:
+        return SQLHelper.replace_placeholders_generic(documents, parameters, style)
+
+    def _execute_execution_plan(
+        self,
+        execution_plan: InsertExecutionPlan,
+        db: Any,
+        parameters: Optional[Union[Sequence[Any], Dict[str, Any]]] = None,
+    ) -> Optional[Dict[str, Any]]:
+        try:
+            if not execution_plan.collection:
+                raise ProgrammingError("No collection specified in insert")
+
+            docs = execution_plan.insert_documents or []
+            docs = self._replace_placeholders(docs, parameters, execution_plan.parameter_style)
+
+            command = {"insert": execution_plan.collection, "documents": docs}
+
+            _logger.debug(f"Executing MongoDB insert command: {command}")
+
+            return db.command(command)
+        except PyMongoError as e:
+            _logger.error(f"MongoDB insert failed: {e}")
+            raise DatabaseError(f"Insert execution failed: {e}")
+        except (ProgrammingError, DatabaseError, OperationalError):
+            # Re-raise our own errors without wrapping
+            raise
+        except Exception as e:
+            _logger.error(f"Unexpected error during insert execution: {e}")
+            raise OperationalError(f"Insert execution error: {e}")
+
+    def execute(
+        self,
+        context: ExecutionContext,
+        connection: Any,
+        parameters: Optional[Union[Sequence[Any], Dict[str, Any]]] = None,
+    ) -> Optional[Dict[str, Any]]:
+        _logger.debug(f"Using insert execution for query: {context.query[:100]}")
+
+        self._execution_plan = self._parse_sql(context.query)
+
+        return self._execute_execution_plan(self._execution_plan, connection.database, parameters)
+
+
 class ExecutionPlanFactory:
     """Factory for creating appropriate execution strategy based on query context"""
 
-    _strategies = [StandardExecution()]
+    _strategies = [InsertExecution(), StandardQueryExecution()]
 
     @classmethod
     def get_strategy(cls, context: ExecutionContext) -> ExecutionStrategy:
@@ -216,7 +274,7 @@ class ExecutionPlanFactory:
                 return strategy
 
         # Fallback to standard execution
-        return StandardExecution()
+        return StandardQueryExecution()
 
     @classmethod
     def register_strategy(cls, strategy: ExecutionStrategy) -> None:

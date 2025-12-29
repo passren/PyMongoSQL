@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 import pytest
 
-from pymongosql.executor import StandardExecution
+from pymongosql.executor import StandardQueryExecution
 
 
 class TestPositionalParameters:
@@ -9,7 +9,7 @@ class TestPositionalParameters:
 
     def test_simple_positional_replacement(self):
         """Test basic positional parameter replacement in filter"""
-        execution = StandardExecution()
+        execution = StandardQueryExecution()
 
         test_filter = {"age": "?", "status": "?"}
         params = [25, "active"]
@@ -19,7 +19,7 @@ class TestPositionalParameters:
 
     def test_nested_positional_replacement(self):
         """Test positional parameter replacement in nested filter"""
-        execution = StandardExecution()
+        execution = StandardQueryExecution()
 
         test_filter = {"profile": {"age": "?"}, "status": "?"}
         params = [30, "inactive"]
@@ -29,7 +29,7 @@ class TestPositionalParameters:
 
     def test_list_positional_replacement(self):
         """Test positional parameter replacement in list"""
-        execution = StandardExecution()
+        execution = StandardQueryExecution()
 
         test_filter = {"items": ["?", "?"], "name": "?"}
         params = [1, 2, "test"]
@@ -39,7 +39,7 @@ class TestPositionalParameters:
 
     def test_mixed_positional_replacement(self):
         """Test positional parameter replacement with mixed data types"""
-        execution = StandardExecution()
+        execution = StandardQueryExecution()
 
         test_filter = {"$gt": "?", "$lt": "?", "status": "?"}
         params = [18, 65, "active"]
@@ -51,7 +51,7 @@ class TestPositionalParameters:
         """Test error when not enough positional parameters provided"""
         from pymongosql.error import ProgrammingError
 
-        execution = StandardExecution()
+        execution = StandardQueryExecution()
 
         test_filter = {"age": "?", "status": "?"}
         params = [25]  # Only one parameter provided
@@ -63,7 +63,7 @@ class TestPositionalParameters:
 
     def test_complex_nested_positional_replacement(self):
         """Test positional parameters in complex nested structures"""
-        execution = StandardExecution()
+        execution = StandardQueryExecution()
 
         test_filter = {"$and": [{"age": {"$gt": "?"}}, {"profile": {"status": "?"}}, {"items": ["?", "?"]}]}
         params = [25, "active", 1, 2]
@@ -77,7 +77,7 @@ class TestParameterTypes:
 
     def test_positional_with_numeric_types(self):
         """Test positional parameters with int and float"""
-        execution = StandardExecution()
+        execution = StandardQueryExecution()
 
         test_filter = {"age": "?", "salary": "?"}
         params = [25, 50000.50]
@@ -87,7 +87,7 @@ class TestParameterTypes:
 
     def test_positional_with_boolean(self):
         """Test positional parameters with boolean values"""
-        execution = StandardExecution()
+        execution = StandardQueryExecution()
 
         test_filter = {"active": "?", "verified": "?"}
         params = [True, False]
@@ -97,7 +97,7 @@ class TestParameterTypes:
 
     def test_positional_with_null(self):
         """Test positional parameters with None value"""
-        execution = StandardExecution()
+        execution = StandardQueryExecution()
 
         test_filter = {"deleted_at": "?"}
         params = [None]
@@ -107,7 +107,7 @@ class TestParameterTypes:
 
     def test_positional_with_list_value(self):
         """Test positional parameter with list as value"""
-        execution = StandardExecution()
+        execution = StandardQueryExecution()
 
         test_filter = {"tags": "?"}
         params = [["python", "mongodb"]]
@@ -117,7 +117,7 @@ class TestParameterTypes:
 
     def test_positional_with_dict_value(self):
         """Test positional parameter with dict as value"""
-        execution = StandardExecution()
+        execution = StandardQueryExecution()
 
         test_filter = {"metadata": "?"}
         params = [{"key": "value"}]
@@ -131,14 +131,14 @@ class TestEdgeCases:
 
     def test_empty_filter_with_parameters(self):
         """Test parameters with empty filter"""
-        execution = StandardExecution()
+        execution = StandardQueryExecution()
 
         result = execution._replace_placeholders({}, [])
         assert result == {}
 
     def test_non_placeholder_strings_untouched(self):
         """Test that non-placeholder strings are not modified"""
-        execution = StandardExecution()
+        execution = StandardQueryExecution()
 
         test_filter = {"status": "active", "query": "search"}
         params = [25, "test"]

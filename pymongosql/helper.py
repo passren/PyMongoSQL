@@ -6,8 +6,10 @@ Handles connection string parsing and mode detection.
 """
 
 import logging
-from typing import Optional, Tuple
+from typing import Any, Optional, Sequence, Tuple
 from urllib.parse import parse_qs, urlparse
+
+from .error import ProgrammingError
 
 _logger = logging.getLogger(__name__)
 
@@ -95,3 +97,54 @@ class ConnectionHelper:
         except Exception as e:
             _logger.error(f"Failed to parse connection string: {e}")
             raise ValueError(f"Invalid connection string format: {e}")
+
+
+class SQLHelper:
+    """SQL-related helper utilities."""
+
+    @staticmethod
+    def replace_placeholders_generic(value: Any, parameters: Any, style: Optional[str]) -> Any:
+        """Recursively replace placeholders in nested structures for qmark or named styles."""
+        if style is None or parameters is None:
+            return value
+
+        if style == "qmark":
+            if not isinstance(parameters, Sequence) or isinstance(parameters, (str, bytes, dict)):
+                raise ProgrammingError("Positional parameters must be provided as a sequence")
+
+            idx = [0]
+
+            def replace(val: Any) -> Any:
+                if isinstance(val, str) and val == "?":
+                    if idx[0] >= len(parameters):
+                        raise ProgrammingError("Not enough parameters provided")
+                    out = parameters[idx[0]]
+                    idx[0] += 1
+                    return out
+                if isinstance(val, dict):
+                    return {k: replace(v) for k, v in val.items()}
+                if isinstance(val, list):
+                    return [replace(v) for v in val]
+                return val
+
+            return replace(value)
+
+        if style == "named":
+            if not isinstance(parameters, dict):
+                raise ProgrammingError("Named parameters must be provided as a mapping")
+
+            def replace(val: Any) -> Any:
+                if isinstance(val, str) and val.startswith(":"):
+                    key = val[1:]
+                    if key not in parameters:
+                        raise ProgrammingError(f"Missing named parameter: {key}")
+                    return parameters[key]
+                if isinstance(val, dict):
+                    return {k: replace(v) for k, v in val.items()}
+                if isinstance(val, list):
+                    return [replace(v) for v in val]
+                return val
+
+            return replace(value)
+
+        return value

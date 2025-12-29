@@ -1,13 +1,14 @@
 # -*- coding: utf-8 -*-
 import logging
 from abc import ABCMeta
-from typing import Any, Optional
+from typing import Any, Optional, Union
 
 from antlr4 import CommonTokenStream, InputStream
 from antlr4.error.ErrorListener import ErrorListener
 
 from ..error import SqlSyntaxError
 from .ast import MongoSQLLexer, MongoSQLParser, MongoSQLParserVisitor
+from .insert_builder import InsertExecutionPlan
 from .query_builder import QueryExecutionPlan
 
 _logger = logging.getLogger(__name__)
@@ -126,22 +127,20 @@ class SQLParser(metaclass=ABCMeta):
 
         _logger.debug("AST validation successful")
 
-    def get_execution_plan(self) -> QueryExecutionPlan:
-        """Parse SQL and return QueryExecutionPlan directly"""
+    def get_execution_plan(self) -> Union[QueryExecutionPlan, InsertExecutionPlan]:
+        """Parse SQL and return an execution plan (SELECT or INSERT)."""
         if self._ast is None:
             raise SqlSyntaxError("No AST available - parsing may have failed")
 
         try:
-            # Create and use visitor to generate execution plan
             self._visitor = MongoSQLParserVisitor()
             self._visitor.visit(self._ast)
             execution_plan = self._visitor.parse_to_execution_plan()
 
-            # Validate execution plan
             if not execution_plan.validate():
                 raise SqlSyntaxError("Generated execution plan is invalid")
 
-            _logger.debug(f"Generated QueryExecutionPlan for collection: {execution_plan.collection}")
+            _logger.debug(f"Generated execution plan for collection: {execution_plan.collection}")
             return execution_plan
 
         except Exception as e:

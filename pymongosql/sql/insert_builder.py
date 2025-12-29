@@ -80,7 +80,7 @@ class MongoInsertBuilder:
 
     def parameter_style(self, style: Optional[str]) -> "MongoInsertBuilder":
         """Set parameter binding style for tracking."""
-        if style and style not in ["qmark"]:
+        if style and style not in ["qmark", "named"]:
             self._add_error(f"Invalid parameter style: {style}")
             return self
 

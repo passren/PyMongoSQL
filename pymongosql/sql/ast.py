@@ -46,6 +46,7 @@ class MongoSQLParserVisitor(PartiQLParserVisitor):
             "select": HandlerFactory.get_visitor_handler("select"),
             "from": HandlerFactory.get_visitor_handler("from"),
             "where": HandlerFactory.get_visitor_handler("where"),
+            "insert": HandlerFactory.get_visitor_handler("insert"),
         }
 
     @property
@@ -74,6 +75,9 @@ class MongoSQLParserVisitor(PartiQLParserVisitor):
 
     def _build_insert_plan(self) -> InsertExecutionPlan:
         """Build an INSERT execution plan from INSERT parsing."""
+        if self._insert_parse_result.has_errors:
+            raise SqlSyntaxError(self._insert_parse_result.error_message or "INSERT parsing failed")
+
         builder = BuilderFactory.create_insert_builder().collection(self._insert_parse_result.collection)
 
         documents = self._insert_parse_result.insert_documents or []
@@ -144,6 +148,24 @@ class MongoSQLParserVisitor(PartiQLParserVisitor):
         except Exception as e:
             _logger.warning(f"Error processing WHERE clause: {e}")
             return self.visitChildren(ctx)
+
+    def visitInsertStatement(self, ctx: PartiQLParser.InsertStatementContext) -> Any:
+        """Handle INSERT statements via the insert handler."""
+        _logger.debug("Processing INSERT statement")
+        self._current_operation = "insert"
+        handler = self._handlers.get("insert")
+        if handler:
+            return handler.handle_visitor(ctx, self._insert_parse_result)
+        return self.visitChildren(ctx)
+
+    def visitInsertStatementLegacy(self, ctx: PartiQLParser.InsertStatementLegacyContext) -> Any:
+        """Handle legacy INSERT statements."""
+        _logger.debug("Processing INSERT legacy statement")
+        self._current_operation = "insert"
+        handler = self._handlers.get("insert")
+        if handler:
+            return handler.handle_visitor(ctx, self._insert_parse_result)
+        return self.visitChildren(ctx)
 
     def visitOrderByClause(self, ctx: PartiQLParser.OrderByClauseContext) -> Any:
         """Handle ORDER BY clause for sorting"""
