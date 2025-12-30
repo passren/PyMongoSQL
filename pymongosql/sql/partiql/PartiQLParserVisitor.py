@@ -214,6 +214,11 @@ class PartiQLParserVisitor(ParseTreeVisitor):
         return self.visitChildren(ctx)
 
 
+    # Visit a parse tree produced by PartiQLParser#columnList.
+    def visitColumnList(self, ctx:PartiQLParser.ColumnListContext):
+        return self.visitChildren(ctx)
+
+
     # Visit a parse tree produced by PartiQLParser#onConflict.
     def visitOnConflict(self, ctx:PartiQLParser.OnConflictContext):
         return self.visitChildren(ctx)

@@ -377,6 +377,15 @@ class PartiQLParserListener(ParseTreeListener):
         pass
 
 
+    # Enter a parse tree produced by PartiQLParser#columnList.
+    def enterColumnList(self, ctx:PartiQLParser.ColumnListContext):
+        pass
+
+    # Exit a parse tree produced by PartiQLParser#columnList.
+    def exitColumnList(self, ctx:PartiQLParser.ColumnListContext):
+        pass
+
+
     # Enter a parse tree produced by PartiQLParser#onConflict.
     def enterOnConflict(self, ctx:PartiQLParser.OnConflictContext):
         pass
