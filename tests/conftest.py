@@ -77,3 +77,79 @@ def superset_conn():
 def make_connection():
     """Provide the helper make_conn function to tests that need to create connections with custom args."""
     return make_conn
+
+
+# SQLAlchemy version compatibility
+try:
+    import sqlalchemy
+    from sqlalchemy import create_engine
+    from sqlalchemy.orm import sessionmaker
+
+    SQLALCHEMY_VERSION = tuple(map(int, sqlalchemy.__version__.split(".")[:2]))
+    SQLALCHEMY_2X = SQLALCHEMY_VERSION >= (2, 0)
+    HAS_SQLALCHEMY = True
+
+    # Handle declarative base differences
+    if SQLALCHEMY_2X:
+        try:
+            from sqlalchemy.orm import DeclarativeBase, Session
+
+            class Base(DeclarativeBase):
+                pass
+
+        except ImportError:
+            from sqlalchemy.ext.declarative import declarative_base
+
+            Base = declarative_base()
+            from sqlalchemy.orm import Session
+    else:
+        from sqlalchemy.ext.declarative import declarative_base
+        from sqlalchemy.orm import Session
+
+        Base = declarative_base()
+
+except ImportError:
+    SQLALCHEMY_VERSION = None
+    SQLALCHEMY_2X = False
+    HAS_SQLALCHEMY = False
+    Base = None
+    Session = None
+
+# SQLAlchemy fixtures for dialect testing
+if HAS_SQLALCHEMY:
+
+    @pytest.fixture
+    def sqlalchemy_engine():
+        """Provide a SQLAlchemy engine connected to MongoDB. The URI is taken from environment variables
+        (PYMONGOSQL_TEST_URI or MONGODB_URI) or falls back to a sensible local default.
+        """
+        uri = os.environ.get("PYMONGOSQL_TEST_URI") or os.environ.get("MONGODB_URI") or TEST_URI
+        db = os.environ.get("PYMONGOSQL_TEST_DB") or TEST_DB
+
+        def _ensure_uri_has_db(uri_value: str, database: str) -> str:
+            if not database:
+                return uri_value
+            idx = uri_value.find("://")
+            if idx == -1:
+                return uri_value
+            rest = uri_value[idx + 3 :]
+            if "/" in rest:
+                after = rest.split("/", 1)[1]
+                if after == "" or after.startswith("?"):
+                    return uri_value.rstrip("/") + "/" + database
+                return uri_value
+            return uri_value.rstrip("/") + "/" + database
+
+        if uri:
+            uri_to_use = _ensure_uri_has_db(uri, db)
+        else:
+            uri_to_use = "mongodb://testuser:testpass@localhost:27017/test_db"
+
+        engine = create_engine(uri_to_use)
+        yield engine
+        engine.dispose()
+
+    @pytest.fixture
+    def session_maker(sqlalchemy_engine):
+        """Provide a SQLAlchemy session maker."""
+        return sessionmaker(bind=sqlalchemy_engine)

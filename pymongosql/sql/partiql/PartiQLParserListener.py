@@ -1,4 +1,4 @@
-# Generated from PartiQLParser.g4 by ANTLR 4.13.2
+# Generated from PartiQLParser.g4 by ANTLR 4.13.0
 from antlr4 import *
 if "." in __name__:
     from .PartiQLParser import PartiQLParser
@@ -374,6 +374,15 @@ class PartiQLParserListener(ParseTreeListener):
 
     # Exit a parse tree produced by PartiQLParser#insertStatement.
     def exitInsertStatement(self, ctx:PartiQLParser.InsertStatementContext):
+        pass
+
+
+    # Enter a parse tree produced by PartiQLParser#columnList.
+    def enterColumnList(self, ctx:PartiQLParser.ColumnListContext):
+        pass
+
+    # Exit a parse tree produced by PartiQLParser#columnList.
+    def exitColumnList(self, ctx:PartiQLParser.ColumnListContext):
         pass
 
 

@@ -39,8 +39,17 @@ class InsertHandler(BaseHandler):
     def handle_visitor(self, ctx: Any, parse_result: InsertParseResult) -> InsertParseResult:
         try:
             collection = self._extract_collection(ctx)
-            value_text = self._extract_value_text(ctx)
 
+            # Check if this is a VALUES clause INSERT (new syntax)
+            if hasattr(ctx, "values") and ctx.values():
+                _logger.debug("Processing INSERT with VALUES clause")
+                parse_result.collection = collection
+                parse_result.insert_type = "values"
+                # Return parse_result - visitor will call handle_column_list and handle_values
+                return parse_result
+
+            # Otherwise, handle legacy value expression INSERT
+            value_text = self._extract_value_text(ctx)
             documents = self._parse_value_expr(value_text)
             param_style, param_count = self._detect_parameter_style(documents)
 
@@ -57,6 +66,137 @@ class InsertHandler(BaseHandler):
             parse_result.has_errors = True
             parse_result.error_message = str(exc)
             return parse_result
+
+    def handle_column_list(self, ctx: Any, parse_result: InsertParseResult) -> Optional[List[str]]:
+        """Extract column names from columnList context."""
+        _logger.debug("InsertHandler processing column list")
+        try:
+            columns = []
+            column_names = ctx.columnName()
+            if column_names:
+                if not isinstance(column_names, list):
+                    column_names = [column_names]
+                for col_name_ctx in column_names:
+                    # columnName contains a symbolPrimitive
+                    symbol = col_name_ctx.symbolPrimitive()
+                    if symbol:
+                        columns.append(symbol.getText())
+            parse_result.insert_columns = columns
+            _logger.debug(f"Extracted columns for INSERT: {columns}")
+            return columns
+        except Exception as e:
+            _logger.warning(f"Error processing column list: {e}")
+            parse_result.has_errors = True
+            parse_result.error_message = str(e)
+        return None
+
+    def handle_values(self, ctx: Any, parse_result: InsertParseResult) -> Optional[List[List[Any]]]:
+        """Extract value rows from VALUES clause."""
+        _logger.debug("InsertHandler processing VALUES clause")
+        try:
+            rows = []
+            value_rows = ctx.valueRow()
+            if value_rows:
+                if not isinstance(value_rows, list):
+                    value_rows = [value_rows]
+                for value_row_ctx in value_rows:
+                    row_values = self._extract_value_row(value_row_ctx)
+                    rows.append(row_values)
+
+            parse_result.insert_values = rows
+
+            # Convert rows to documents
+            columns = parse_result.insert_columns
+            documents = self._convert_rows_to_documents(columns, rows)
+            parse_result.insert_documents = documents
+
+            # Detect parameter style
+            param_style, param_count = self._detect_parameter_style(documents)
+            parse_result.parameter_style = param_style
+            parse_result.parameter_count = param_count
+            parse_result.has_errors = False
+            parse_result.error_message = None
+
+            _logger.debug(f"Extracted {len(rows)} value rows for INSERT")
+            return rows
+        except Exception as e:
+            _logger.warning(f"Error processing VALUES clause: {e}")
+            parse_result.has_errors = True
+            parse_result.error_message = str(e)
+        return None
+
+    def _extract_value_row(self, value_row_ctx: Any) -> List[Any]:
+        """Extract values from a single valueRow."""
+        row_values = []
+        exprs = value_row_ctx.expr()
+        if exprs:
+            if not isinstance(exprs, list):
+                exprs = [exprs]
+            for expr_ctx in exprs:
+                value = self._parse_expression_value(expr_ctx)
+                row_values.append(value)
+        return row_values
+
+    def _parse_expression_value(self, expr_ctx: Any) -> Any:
+        """Parse a single expression value from the parse tree."""
+        if not expr_ctx:
+            return None
+
+        text = expr_ctx.getText()
+
+        # Handle NULL
+        if text.upper() == "NULL":
+            return None
+
+        # Handle boolean literals
+        if text.upper() == "TRUE":
+            return True
+        if text.upper() == "FALSE":
+            return False
+
+        # Handle string literals (quoted)
+        if (text.startswith("'") and text.endswith("'")) or (text.startswith('"') and text.endswith('"')):
+            return text[1:-1]
+
+        # Handle numeric literals
+        try:
+            if "." in text:
+                return float(text)
+            return int(text)
+        except ValueError:
+            pass
+
+        # Handle parameters (? or :name)
+        if text == "?":
+            return "?"
+        if text.startswith(":"):
+            return text
+
+        # For complex expressions, return as-is
+        return text
+
+    def _convert_rows_to_documents(self, columns: Optional[List[str]], rows: List[List[Any]]) -> List[Dict[str, Any]]:
+        """Convert rows to MongoDB documents."""
+        documents = []
+
+        for row in rows:
+            doc = {}
+
+            if columns:
+                # Use explicit column names
+                if len(row) != len(columns):
+                    raise ValueError(f"Column count ({len(columns)}) does not match value count ({len(row)})")
+
+                for col, val in zip(columns, row):
+                    doc[col] = val
+            else:
+                # Generate automatic column names (col0, col1, ...)
+                for idx, val in enumerate(row):
+                    doc[f"col{idx}"] = val
+
+            documents.append(doc)
+
+        return documents
 
     def _extract_collection(self, ctx: Any) -> str:
         if hasattr(ctx, "symbolPrimitive") and ctx.symbolPrimitive():

@@ -1,4 +1,4 @@
-# Generated from PartiQLParser.g4 by ANTLR 4.13.2
+# Generated from PartiQLParser.g4 by ANTLR 4.13.0
 from antlr4 import *
 if "." in __name__:
     from .PartiQLParser import PartiQLParser
@@ -211,6 +211,11 @@ class PartiQLParserVisitor(ParseTreeVisitor):
 
     # Visit a parse tree produced by PartiQLParser#insertStatement.
     def visitInsertStatement(self, ctx:PartiQLParser.InsertStatementContext):
+        return self.visitChildren(ctx)
+
+
+    # Visit a parse tree produced by PartiQLParser#columnList.
+    def visitColumnList(self, ctx:PartiQLParser.ColumnListContext):
         return self.visitChildren(ctx)
 
 
