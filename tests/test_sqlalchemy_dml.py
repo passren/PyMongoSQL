@@ -43,18 +43,16 @@ class TestSQLAlchemyDML:
 
     def test_insert_single_row_explicit_columns(self, sqlalchemy_engine, conn):
         """Test INSERT with single row and explicit columns via SQLAlchemy."""
-        with sqlalchemy_engine.connect() as connection:
+        with sqlalchemy_engine.begin() as connection:
             # Clean up test data first
             try:
                 connection.execute(text("DELETE FROM test_insert_values"))
-                connection.commit()
             except Exception:
                 pass
 
             # Insert single row with VALUES clause
             sql = "INSERT INTO test_insert_values (id, name, age) VALUES (1, 'Alice', 30)"
             connection.execute(text(sql))
-            connection.commit()
 
             # Verify the insert
             result = connection.execute(text("SELECT id, name, age FROM test_insert_values WHERE id = 1"))
@@ -72,22 +70,19 @@ class TestSQLAlchemyDML:
 
             # Clean up
             connection.execute(text("DELETE FROM test_insert_values"))
-            connection.commit()
 
     def test_insert_multiple_rows_explicit_columns(self, sqlalchemy_engine, conn):
         """Test INSERT with multiple rows and explicit columns via SQLAlchemy."""
-        with sqlalchemy_engine.connect() as connection:
+        with sqlalchemy_engine.begin() as connection:
             # Clean up test data first
             try:
                 connection.execute(text("DELETE FROM test_insert_values"))
-                connection.commit()
             except Exception:
                 pass
 
             # Insert multiple rows with VALUES clause
             sql = "INSERT INTO test_insert_values (id, name, age) VALUES (1, 'Alice', 30), (2, 'Bob', 25)"
             connection.execute(text(sql))
-            connection.commit()
 
             # Verify the inserts
             result = connection.execute(text("SELECT id, name, age FROM test_insert_values ORDER BY id"))
@@ -113,22 +108,19 @@ class TestSQLAlchemyDML:
 
             # Clean up
             connection.execute(text("DELETE FROM test_insert_values"))
-            connection.commit()
 
     def test_insert_single_row_implicit_columns(self, sqlalchemy_engine, conn):
         """Test INSERT with single row without column list via SQLAlchemy."""
-        with sqlalchemy_engine.connect() as connection:
+        with sqlalchemy_engine.begin() as connection:
             # Clean up test data first
             try:
                 connection.execute(text("DELETE FROM test_insert_implicit"))
-                connection.commit()
             except Exception:
                 pass
 
             # Insert single row with VALUES clause (implicit columns)
             sql = "INSERT INTO test_insert_implicit VALUES (1, 'Alice', 30)"
             connection.execute(text(sql))
-            connection.commit()
 
             # Verify the insert (auto-named columns: col0, col1, col2)
             result = connection.execute(text("SELECT col0, col1, col2 FROM test_insert_implicit WHERE col0 = 1"))
@@ -146,22 +138,19 @@ class TestSQLAlchemyDML:
 
             # Clean up
             connection.execute(text("DELETE FROM test_insert_implicit"))
-            connection.commit()
 
     def test_insert_with_null_values(self, sqlalchemy_engine, conn):
         """Test INSERT with NULL values via SQLAlchemy."""
-        with sqlalchemy_engine.connect() as connection:
+        with sqlalchemy_engine.begin() as connection:
             # Clean up test data first
             try:
                 connection.execute(text("DELETE FROM test_insert_null"))
-                connection.commit()
             except Exception:
                 pass
 
             # Insert with NULL value
             sql = "INSERT INTO test_insert_null (id, name, email) VALUES (1, 'Alice', NULL)"
             connection.execute(text(sql))
-            connection.commit()
 
             # Verify the insert
             result = connection.execute(text("SELECT id, name, email FROM test_insert_null WHERE id = 1"))
@@ -179,22 +168,19 @@ class TestSQLAlchemyDML:
 
             # Clean up
             connection.execute(text("DELETE FROM test_insert_null"))
-            connection.commit()
 
     def test_insert_with_boolean_values(self, sqlalchemy_engine, conn):
         """Test INSERT with boolean values via SQLAlchemy."""
-        with sqlalchemy_engine.connect() as connection:
+        with sqlalchemy_engine.begin() as connection:
             # Clean up test data first
             try:
                 connection.execute(text("DELETE FROM test_insert_bool"))
-                connection.commit()
             except Exception:
                 pass
 
             # Insert with boolean values
             sql = "INSERT INTO test_insert_bool (id, is_active, is_deleted) VALUES (1, TRUE, FALSE)"
             connection.execute(text(sql))
-            connection.commit()
 
             # Verify the insert
             result = connection.execute(text("SELECT id, is_active, is_deleted FROM test_insert_bool WHERE id = 1"))
@@ -212,7 +198,6 @@ class TestSQLAlchemyDML:
 
             # Clean up
             connection.execute(text("DELETE FROM test_insert_bool"))
-            connection.commit()
 
     def test_orm_table_insert_single_row(self, session_maker, conn):
         """Test INSERT VALUES with ORM table using raw SQL."""

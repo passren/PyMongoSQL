@@ -5,9 +5,6 @@ import pytest
 
 from pymongosql.connection import Connection
 
-# Silence SQLAlchemy 1.4 deprecation warnings in tests
-os.environ.setdefault("SQLALCHEMY_SILENCE_UBER_WARNING", "1")
-
 # Centralized test configuration sourced from environment to allow running tests
 # against remote MongoDB (e.g. Atlas) or local test instance.
 TEST_URI = os.environ.get("PYMONGOSQL_TEST_URI") or os.environ.get("MONGODB_URI")

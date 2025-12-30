@@ -216,7 +216,9 @@ Parameters are substituted into the MongoDB filter during execution, providing p
 
 ### INSERT Statements
 
-PyMongoSQL supports inserting documents into MongoDB collections using PartiQL-style object and bag literals.
+PyMongoSQL supports inserting documents into MongoDB collections using both PartiQL-style object literals and standard SQL INSERT VALUES syntax.
+
+#### PartiQL-Style Object Literals
 
 **Single Document**
 
@@ -239,12 +241,44 @@ cursor.execute(
 ```python
 # Positional parameters using ? placeholders
 cursor.execute(
-    "INSERT INTO Music {'title': ?, 'artist': ?, 'year': ?}",
+    "INSERT INTO Music {'title': '?', 'artist': '?', 'year': '?'}",
     ["Song D", "Diana", 2020]
 )
 ```
 
-> **Note**: For parameterized INSERT, use positional parameters (`?`). Named placeholders (`:name`) are supported for SELECT, UPDATE, and DELETE queries.
+#### Standard SQL INSERT VALUES
+
+**Single Row with Column List**
+
+```python
+cursor.execute(
+    "INSERT INTO Music (title, artist, year) VALUES ('Song E', 'Eve', 2022)"
+)
+```
+
+**Multiple Rows**
+
+```python
+cursor.execute(
+    "INSERT INTO Music (title, artist, year) VALUES ('Song F', 'Frank', 2023), ('Song G', 'Grace', 2024)"
+)
+```
+
+**Parameterized INSERT VALUES**
+
+```python
+# Positional parameters (?)
+cursor.execute(
+    "INSERT INTO Music (title, artist, year) VALUES (?, ?, ?)",
+    ["Song H", "Henry", 2025]
+)
+
+# Named parameters (:name)
+cursor.execute(
+    "INSERT INTO Music (title, artist) VALUES (:title, :artist)",
+    {"title": "Song I", "artist": "Iris"}
+)
+```
 
 ### UPDATE Statements
 
