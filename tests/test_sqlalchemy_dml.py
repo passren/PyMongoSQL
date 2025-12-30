@@ -15,8 +15,8 @@ pytestmark = pytest.mark.skipif(not HAS_SQLALCHEMY, reason="SQLAlchemy not avail
 # ORM Models for testing
 if HAS_SQLALCHEMY:
 
-    class TestUser(Base):
-        """Test user model for DML operations."""
+    class User(Base):
+        """User model for DML operations testing."""
 
         __tablename__ = "test_users_orm"
 
@@ -26,8 +26,8 @@ if HAS_SQLALCHEMY:
         age = Column(Integer)
         is_active = Column(Boolean, default=True)
 
-    class TestProduct(Base):
-        """Test product model for DML operations."""
+    class Product(Base):
+        """Product model for DML operations testing."""
 
         __tablename__ = "test_products_orm"
 
@@ -478,7 +478,7 @@ class TestSQLAlchemyDML:
             session.commit()
 
             # Create and insert a user using pure ORM
-            user = TestUser()
+            user = User()
             user.id = 100
             user.name = "John Doe"
             user.email = "john@example.com"
@@ -523,7 +523,7 @@ class TestSQLAlchemyDML:
             session.commit()
 
             # Create and insert products using pure ORM - add individually
-            product1 = TestProduct()
+            product1 = Product()
             product1.id = 200
             product1.name = "Laptop"
             product1.price = 999.99
@@ -532,7 +532,7 @@ class TestSQLAlchemyDML:
             session.add(product1)
             session.commit()
 
-            product2 = TestProduct()
+            product2 = Product()
             product2.id = 201
             product2.name = "Mouse"
             product2.price = 25.50
@@ -541,7 +541,7 @@ class TestSQLAlchemyDML:
             session.add(product2)
             session.commit()
 
-            product3 = TestProduct()
+            product3 = Product()
             product3.id = 202
             product3.name = "Keyboard"
             product3.price = 75.00
@@ -589,7 +589,7 @@ class TestSQLAlchemyDML:
             session.commit()
 
             # Create and insert initial user using ORM
-            user = TestUser()
+            user = User()
             user.id = 300
             user.name = "Jane Smith"
             user.email = "jane@example.com"
@@ -638,7 +638,7 @@ class TestSQLAlchemyDML:
             session.commit()
 
             # Create and insert products using ORM
-            product1 = TestProduct()
+            product1 = Product()
             product1.id = 400
             product1.name = "Monitor"
             product1.price = 299.99
@@ -647,7 +647,7 @@ class TestSQLAlchemyDML:
             session.add(product1)
             session.commit()
 
-            product2 = TestProduct()
+            product2 = Product()
             product2.id = 401
             product2.name = "Speaker"
             product2.price = 49.99
