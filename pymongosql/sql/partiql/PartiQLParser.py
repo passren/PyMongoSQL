@@ -1,4 +1,4 @@
-# Generated from PartiQLParser.g4 by ANTLR 4.13.2
+# Generated from PartiQLParser.g4 by ANTLR 4.13.0
 # encoding: utf-8
 from antlr4 import *
 from io import StringIO
@@ -303,21 +303,21 @@ def serializedATN():
         513,511,1,0,0,0,513,514,1,0,0,0,514,516,1,0,0,0,515,517,3,66,33,
         0,516,515,1,0,0,0,516,517,1,0,0,0,517,519,1,0,0,0,518,520,3,86,43,
         0,519,518,1,0,0,0,519,520,1,0,0,0,520,57,1,0,0,0,521,522,5,112,0,
-        0,522,523,5,117,0,0,523,525,3,12,6,0,524,526,3,6,3,0,525,524,1,0,
-        0,0,525,526,1,0,0,0,526,527,1,0,0,0,527,529,3,188,94,0,528,530,3,
-        62,31,0,529,528,1,0,0,0,529,530,1,0,0,0,530,542,1,0,0,0,531,532,
-        5,112,0,0,532,533,5,117,0,0,533,535,3,12,6,0,534,536,3,60,30,0,535,
-        534,1,0,0,0,535,536,1,0,0,0,536,537,1,0,0,0,537,539,3,220,110,0,
-        538,540,3,62,31,0,539,538,1,0,0,0,539,540,1,0,0,0,540,542,1,0,0,
-        0,541,521,1,0,0,0,541,531,1,0,0,0,542,59,1,0,0,0,543,544,5,294,0,
-        0,544,549,3,24,12,0,545,546,5,270,0,0,546,548,3,24,12,0,547,545,
-        1,0,0,0,548,551,1,0,0,0,549,547,1,0,0,0,549,550,1,0,0,0,550,552,
-        1,0,0,0,551,549,1,0,0,0,552,553,5,295,0,0,553,61,1,0,0,0,554,555,
-        5,147,0,0,555,557,5,244,0,0,556,558,3,68,34,0,557,556,1,0,0,0,557,
-        558,1,0,0,0,558,559,1,0,0,0,559,560,3,72,36,0,560,63,1,0,0,0,561,
-        562,5,112,0,0,562,563,5,117,0,0,563,564,3,46,23,0,564,565,5,218,
-        0,0,565,568,3,188,94,0,566,567,5,13,0,0,567,569,3,188,94,0,568,566,
-        1,0,0,0,568,569,1,0,0,0,569,571,1,0,0,0,570,572,3,66,33,0,571,570,
+        0,522,523,5,117,0,0,523,525,3,12,6,0,524,526,3,60,30,0,525,524,1,
+        0,0,0,525,526,1,0,0,0,526,527,1,0,0,0,527,529,3,220,110,0,528,530,
+        3,62,31,0,529,528,1,0,0,0,529,530,1,0,0,0,530,542,1,0,0,0,531,532,
+        5,112,0,0,532,533,5,117,0,0,533,535,3,12,6,0,534,536,3,6,3,0,535,
+        534,1,0,0,0,535,536,1,0,0,0,536,537,1,0,0,0,537,539,3,188,94,0,538,
+        540,3,62,31,0,539,538,1,0,0,0,539,540,1,0,0,0,540,542,1,0,0,0,541,
+        521,1,0,0,0,541,531,1,0,0,0,542,59,1,0,0,0,543,544,5,294,0,0,544,
+        549,3,24,12,0,545,546,5,270,0,0,546,548,3,24,12,0,547,545,1,0,0,
+        0,548,551,1,0,0,0,549,547,1,0,0,0,549,550,1,0,0,0,550,552,1,0,0,
+        0,551,549,1,0,0,0,552,553,5,295,0,0,553,61,1,0,0,0,554,555,5,147,
+        0,0,555,557,5,244,0,0,556,558,3,68,34,0,557,556,1,0,0,0,557,558,
+        1,0,0,0,558,559,1,0,0,0,559,560,3,72,36,0,560,63,1,0,0,0,561,562,
+        5,112,0,0,562,563,5,117,0,0,563,564,3,46,23,0,564,565,5,218,0,0,
+        565,568,3,188,94,0,566,567,5,13,0,0,567,569,3,188,94,0,568,566,1,
+        0,0,0,568,569,1,0,0,0,569,571,1,0,0,0,570,572,3,66,33,0,571,570,
         1,0,0,0,571,572,1,0,0,0,572,65,1,0,0,0,573,574,5,147,0,0,574,575,
         5,244,0,0,575,576,5,225,0,0,576,577,3,188,94,0,577,578,5,245,0,0,
         578,579,5,250,0,0,579,67,1,0,0,0,580,581,5,294,0,0,581,586,3,12,
@@ -1384,7 +1384,7 @@ class PartiQLParser ( Parser ):
 
     def __init__(self, input:TokenStream, output:TextIO = sys.stdout):
         super().__init__(input, output)
-        self.checkVersion("4.13.2")
+        self.checkVersion("4.13.0")
         self._interp = ParserATNSimulator(self, self.atn, self.decisionsToDFA, self.sharedContextCache)
         self._predicates = None
 
@@ -3969,24 +3969,24 @@ class PartiQLParser ( Parser ):
             return self.getTypedRuleContext(PartiQLParser.SymbolPrimitiveContext,0)
 
 
-        def expr(self):
-            return self.getTypedRuleContext(PartiQLParser.ExprContext,0)
-
-
-        def asIdent(self):
-            return self.getTypedRuleContext(PartiQLParser.AsIdentContext,0)
-
-
-        def onConflict(self):
-            return self.getTypedRuleContext(PartiQLParser.OnConflictContext,0)
-
-
         def values(self):
             return self.getTypedRuleContext(PartiQLParser.ValuesContext,0)
 
 
         def columnList(self):
             return self.getTypedRuleContext(PartiQLParser.ColumnListContext,0)
+
+
+        def onConflict(self):
+            return self.getTypedRuleContext(PartiQLParser.OnConflictContext,0)
+
+
+        def expr(self):
+            return self.getTypedRuleContext(PartiQLParser.ExprContext,0)
+
+
+        def asIdent(self):
+            return self.getTypedRuleContext(PartiQLParser.AsIdentContext,0)
 
 
         def getRuleIndex(self):
@@ -4029,13 +4029,13 @@ class PartiQLParser ( Parser ):
                 self.state = 525
                 self._errHandler.sync(self)
                 _la = self._input.LA(1)
-                if _la==10:
+                if _la==294:
                     self.state = 524
-                    self.asIdent()
+                    self.columnList()
 
 
                 self.state = 527
-                localctx.value = self.expr()
+                self.values()
                 self.state = 529
                 self._errHandler.sync(self)
                 _la = self._input.LA(1)
@@ -4057,13 +4057,13 @@ class PartiQLParser ( Parser ):
                 self.state = 535
                 self._errHandler.sync(self)
                 _la = self._input.LA(1)
-                if _la==294:
+                if _la==10:
                     self.state = 534
-                    self.columnList()
+                    self.asIdent()
 
 
                 self.state = 537
-                self.values()
+                localctx.value = self.expr()
                 self.state = 539
                 self._errHandler.sync(self)
                 _la = self._input.LA(1)

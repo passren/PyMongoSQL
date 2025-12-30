@@ -78,54 +78,6 @@ class TestSQLParserInsert:
             }
         ]
 
-    # Not supported in PartiQL Grammar yet
-    #
-    # def test_insert_values_single_row(self):
-    #     sql = (
-    #           "INSERT INTO Films (code, title, did, date_prod, kind) "
-    #           "VALUES ('B6717', 'Tampopo', 110, '1985-02-10', 'Comedy')"
-    #     )
-    #     plan = SQLParser("".join(sql)).get_execution_plan()
-
-    #     assert isinstance(plan, InsertExecutionPlan)
-    #     assert plan.collection == "Films"
-    #     assert plan.insert_documents == [
-    #         {
-    #             "code": "B6717",
-    #             "title": "Tampopo",
-    #             "did": 110,
-    #             "date_prod": "1985-02-10",
-    #             "kind": "Comedy",
-    #         }
-    #     ]
-
-    # def test_insert_values_multiple_rows(self):
-    #     sql = (
-    #         "INSERT INTO Films (code, title, did, date_prod, kind) "
-    #         "VALUES ('B6717', 'Tampopo', 110, '1985-02-10', 'Comedy'),"
-    #         "       ('HG120', 'The Dinner Game', 140, DEFAULT, 'Comedy')"
-    #     )
-    #     plan = SQLParser("".join(sql)).get_execution_plan()
-
-    #     assert isinstance(plan, InsertExecutionPlan)
-    #     assert plan.collection == "Films"
-    #     assert plan.insert_documents == [
-    #         {
-    #             "code": "B6717",
-    #             "title": "Tampopo",
-    #             "did": 110,
-    #             "date_prod": "1985-02-10",
-    #             "kind": "Comedy",
-    #         },
-    #         {
-    #             "code": "HG120",
-    #             "title": "The Dinner Game",
-    #             "did": 140,
-    #             "date_prod": None,
-    #             "kind": "Comedy",
-    #         },
-    #     ]
-
     def test_insert_invalid_expression_raises(self):
         sql = "INSERT INTO users 123"
         with pytest.raises(SqlSyntaxError):

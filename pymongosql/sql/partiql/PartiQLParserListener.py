@@ -1,4 +1,4 @@
-# Generated from PartiQLParser.g4 by ANTLR 4.13.2
+# Generated from PartiQLParser.g4 by ANTLR 4.13.0
 from antlr4 import *
 if "." in __name__:
     from .PartiQLParser import PartiQLParser

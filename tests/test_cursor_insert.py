@@ -150,6 +150,22 @@ class TestCursorInsert:
         assert "Iris" in doc_by_name
         assert doc_by_name["Iris"]["age"] == 29
 
+    def test_insert_with_column_list_and_values(self, conn):
+        """Test INSERT with explicit column list and VALUES clause."""
+        sql = f"INSERT INTO {self.TEST_COLLECTION} (name, age, city) VALUES ('Kevin', 40, 'Kansas City')"
+        cursor = conn.cursor()
+        result = cursor.execute(sql)
+
+        assert result == cursor  # execute returns self
+
+        # Verify the document was inserted with correct fields
+        db = conn.database
+        docs = list(db[self.TEST_COLLECTION].find())
+        assert len(docs) == 1
+        assert docs[0]["name"] == "Kevin"
+        assert docs[0]["age"] == 40
+        assert docs[0]["city"] == "Kansas City"
+
     def test_insert_insufficient_parameters_raises_error(self, conn):
         """Test that insufficient parameters raises ProgrammingError."""
         sql = f"INSERT INTO {self.TEST_COLLECTION} {{'name': '?', 'age': '?'}}"

@@ -137,7 +137,10 @@ class MongoSQLParserVisitor(PartiQLParserVisitor):
         self._insert_parse_result = InsertParseResult.for_visitor()
         handler = self._handlers.get("insert")
         if handler:
-            return handler.handle_visitor(ctx, self._insert_parse_result)
+            handler.handle_visitor(ctx, self._insert_parse_result)
+            # Continue visiting children to process columnList and values
+            self.visitChildren(ctx)
+            return self._insert_parse_result
         return self.visitChildren(ctx)
 
     def visitInsertStatementLegacy(self, ctx: PartiQLParser.InsertStatementLegacyContext) -> Any:
@@ -149,6 +152,22 @@ class MongoSQLParserVisitor(PartiQLParserVisitor):
         handler = self._handlers.get("insert")
         if handler:
             return handler.handle_visitor(ctx, self._insert_parse_result)
+        return self.visitChildren(ctx)
+
+    def visitColumnList(self, ctx: PartiQLParser.ColumnListContext) -> Any:
+        """Handle column list in INSERT statements."""
+        if self._current_operation == "insert":
+            handler = self._handlers.get("insert")
+            if handler:
+                return handler.handle_column_list(ctx, self._insert_parse_result)
+        return self.visitChildren(ctx)
+
+    def visitValues(self, ctx: PartiQLParser.ValuesContext) -> Any:
+        """Handle VALUES clause in INSERT statements."""
+        if self._current_operation == "insert":
+            handler = self._handlers.get("insert")
+            if handler:
+                return handler.handle_values(ctx, self._insert_parse_result)
         return self.visitChildren(ctx)
 
     def visitFromClauseSimpleExplicit(self, ctx: PartiQLParser.FromClauseSimpleExplicitContext) -> Any:

@@ -1,45 +1,12 @@
 #!/usr/bin/env python3
-import os
-
 import pytest
 
-from tests.conftest import TEST_DB, TEST_URI
+from tests.conftest import HAS_SQLALCHEMY, Base
 
-# SQLAlchemy version compatibility
 try:
-    import sqlalchemy
-    from sqlalchemy import JSON, Boolean, Column, Float, Integer, String, create_engine
-    from sqlalchemy.orm import sessionmaker
-
-    SQLALCHEMY_VERSION = tuple(map(int, sqlalchemy.__version__.split(".")[:2]))
-    SQLALCHEMY_2X = SQLALCHEMY_VERSION >= (2, 0)
-    HAS_SQLALCHEMY = True
-
-    # Handle declarative base differences
-    if SQLALCHEMY_2X:
-        try:
-            from sqlalchemy.orm import DeclarativeBase, Session
-
-            class Base(DeclarativeBase):
-                pass
-
-        except ImportError:
-            from sqlalchemy.ext.declarative import declarative_base
-
-            Base = declarative_base()
-            from sqlalchemy.orm import Session
-    else:
-        from sqlalchemy.ext.declarative import declarative_base
-        from sqlalchemy.orm import Session
-
-        Base = declarative_base()
-
+    from sqlalchemy import JSON, Boolean, Column, Float, Integer, String, text
 except ImportError:
-    SQLALCHEMY_VERSION = None
-    SQLALCHEMY_2X = False
-    HAS_SQLALCHEMY = False
-    Base = None
-    Session = None
+    pass
 
 # Skip all tests if SQLAlchemy is not available
 pytestmark = pytest.mark.skipif(not HAS_SQLALCHEMY, reason="SQLAlchemy not available")
@@ -98,46 +65,8 @@ class Order(Base):
         return f"<Order(id='{self.id}', user_id='{self.user_id}', total={self.total})>"
 
 
-# Pytest fixtures
-@pytest.fixture
-def sqlalchemy_engine():
-    """Provide a SQLAlchemy engine connected to MongoDB. The URI is taken from environment variables
-    (PYMONGOSQL_TEST_URI or MONGODB_URI) or falls back to a sensible local default.
-    """
-    uri = os.environ.get("PYMONGOSQL_TEST_URI") or os.environ.get("MONGODB_URI") or TEST_URI
-    db = os.environ.get("PYMONGOSQL_TEST_DB") or TEST_DB
-
-    def _ensure_uri_has_db(uri_value: str, database: str) -> str:
-        if not database:
-            return uri_value
-        idx = uri_value.find("://")
-        if idx == -1:
-            return uri_value
-        rest = uri_value[idx + 3 :]
-        if "/" in rest:
-            after = rest.split("/", 1)[1]
-            if after == "" or after.startswith("?"):
-                return uri_value.rstrip("/") + "/" + database
-            return uri_value
-        return uri_value.rstrip("/") + "/" + database
-
-    if uri:
-        uri_to_use = _ensure_uri_has_db(uri, db)
-    else:
-        uri_to_use = "mongodb://testuser:testpass@localhost:27017/test_db"
-
-    engine = create_engine(uri_to_use)
-    yield engine
-
-
-@pytest.fixture
-def session_maker(sqlalchemy_engine):
-    """Provide a SQLAlchemy session maker."""
-    return sessionmaker(bind=sqlalchemy_engine)
-
-
-class TestSQLAlchemyIntegration:
-    """Test class for SQLAlchemy dialect integration with real MongoDB data."""
+class TestSQLAlchemyQuery:
+    """Test class for SQLAlchemy dialect query operations with real MongoDB data."""
 
     def test_engine_creation(self, sqlalchemy_engine):
         """Test that SQLAlchemy engine works with real MongoDB."""
@@ -152,9 +81,7 @@ class TestSQLAlchemyIntegration:
         """Test reading users data and creating User objects."""
         with sqlalchemy_engine.connect() as connection:
             # Query real users data
-            result = connection.execute(
-                sqlalchemy.text("SELECT _id, name, email, age, city, active, balance FROM users LIMIT 5")
-            )
+            result = connection.execute(text("SELECT _id, name, email, age, city, active, balance FROM users LIMIT 5"))
             rows = result.fetchall()
 
             assert len(rows) > 0, "Should have user data in test database"
@@ -204,7 +131,7 @@ class TestSQLAlchemyIntegration:
         with sqlalchemy_engine.connect() as connection:
             # Query real products data
             result = connection.execute(
-                sqlalchemy.text("SELECT _id, name, price, category, in_stock, quantity FROM products LIMIT 5")
+                text("SELECT _id, name, price, category, in_stock, quantity FROM products LIMIT 5")
             )
         rows = result.fetchall()
 
@@ -255,7 +182,7 @@ class TestSQLAlchemyIntegration:
 
         try:
             # Test session-based query execution
-            result = session.execute(sqlalchemy.text("SELECT _id, name, email FROM users LIMIT 3"))
+            result = session.execute(text("SELECT _id, name, email FROM users LIMIT 3"))
             rows = result.fetchall()
 
             assert len(rows) > 0, "Should have user data available"
@@ -295,7 +222,7 @@ class TestSQLAlchemyIntegration:
         """Test more complex SQL queries with WHERE conditions."""
         with sqlalchemy_engine.connect() as connection:
             # Test filtering queries
-            result = connection.execute(sqlalchemy.text("SELECT _id, name, age FROM users WHERE age > 25 LIMIT 5"))
+            result = connection.execute(text("SELECT _id, name, age FROM users WHERE age > 25 LIMIT 5"))
             rows = result.fetchall()
 
             if len(rows) > 0:  # Only test if we have data
@@ -336,8 +263,8 @@ class TestSQLAlchemyIntegration:
         """Test querying multiple collections (tables)."""
         with sqlalchemy_engine.connect() as connection:
             # Test querying different collections
-            users_result = connection.execute(sqlalchemy.text("SELECT _id, name FROM users LIMIT 2"))
-            products_result = connection.execute(sqlalchemy.text("SELECT _id, name, price FROM products LIMIT 2"))
+            users_result = connection.execute(text("SELECT _id, name FROM users LIMIT 2"))
+            products_result = connection.execute(text("SELECT _id, name, price FROM products LIMIT 2"))
 
             users_rows = users_result.fetchall()
             products_rows = products_result.fetchall()

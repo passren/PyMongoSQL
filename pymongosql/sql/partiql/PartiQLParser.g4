@@ -166,8 +166,8 @@ insertCommandReturning
 
 // See the Grammar at https://github.com/partiql/partiql-docs/blob/main/RFCs/0011-partiql-insert.md#2-proposed-grammar-and-semantics
 insertStatement
-    : INSERT INTO symbolPrimitive asIdent? value=expr onConflict?
-    | INSERT INTO symbolPrimitive columnList? values onConflict?
+    : INSERT INTO symbolPrimitive columnList? values onConflict?
+    | INSERT INTO symbolPrimitive asIdent? value=expr onConflict?
     ;
 
 columnList
