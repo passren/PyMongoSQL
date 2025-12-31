@@ -89,6 +89,9 @@ testpaths = ["tests"]
 python_files = ["test_*.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]
+markers = [
+    "transactional: marks tests that require MongoDB transaction support (requires replica set or sharded cluster)",
+]
 
 [tool.coverage.run]
 source = ["pymongosql"]
