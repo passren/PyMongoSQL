@@ -75,7 +75,7 @@ pip install -e .
 - [Using DictCursor for Dictionary Results](#using-dictcursor-for-dictionary-results)
 - [Cursor vs DictCursor](#cursor-vs-dictcursor)
 - [Query with Parameters](#query-with-parameters)
-- [Supported SQL Features](#supported-query-features)
+- [Supported SQL Features](#supported-sql-features)
   - [SELECT Statements](#select-statements)
   - [WHERE Clauses](#where-clauses)
   - [Nested Field Support](#nested-field-support)
@@ -451,14 +451,8 @@ This allows seamless integration between MongoDB data and Superset's BI capabili
 
 **Note**: PyMongoSQL currently supports DQL (Data Query Language) and DML (Data Manipulation Language) operations. The following SQL features are **not yet supported** but are planned for future releases:
 
-- **DDL Operations** (Data Definition Language)  
-  - `CREATE TABLE/COLLECTION`, `DROP TABLE/COLLECTION`
-  - `CREATE INDEX`, `DROP INDEX`
-  - `LIST TABLES/COLLECTIONS`
-  - `ALTER TABLE/COLLECTION`
 - **Advanced DML Operations**
-  - `MERGE`, `UPSERT`
-  - Transactions and multi-document operations
+  - `REPLACE`, `MERGE`, `UPSERT`
 
 These features are on our development roadmap and contributions are welcome!
 
