@@ -180,3 +180,24 @@ class TestCursorDelete:
         assert len(list(db[self.TEST_COLLECTION].find())) == 1
         doc = list(db[self.TEST_COLLECTION].find())[0]
         assert doc["title"] == "New Song"
+
+    def test_delete_executemany_with_parameters(self, conn):
+        """Test executemany for bulk delete operations with parameters."""
+        cursor = conn.cursor()
+        sql = f"DELETE FROM {self.TEST_COLLECTION} WHERE artist = '?'"
+
+        # Delete multiple artists using executemany
+        params = [["Alice"], ["Charlie"], ["Eve"]]
+
+        cursor.executemany(sql, params)
+
+        # Verify specified artists were deleted
+        db = conn.database
+        remaining = list(db[self.TEST_COLLECTION].find())
+        assert len(remaining) == 2  # Only Bob and Diana remain
+
+        remaining_artists = {doc["artist"] for doc in remaining}
+        assert remaining_artists == {"Bob", "Diana"}
+        assert "Alice" not in remaining_artists
+        assert "Charlie" not in remaining_artists
+        assert "Eve" not in remaining_artists

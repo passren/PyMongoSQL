@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 import pytest
 
 from tests.conftest import HAS_SQLALCHEMY, Base

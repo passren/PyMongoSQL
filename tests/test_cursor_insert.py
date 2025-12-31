@@ -1,6 +1,4 @@
 # -*- coding: utf-8 -*-
-"""Test suite for INSERT statement execution via Cursor."""
-
 import pytest
 
 from pymongosql.error import ProgrammingError, SqlSyntaxError
@@ -212,3 +210,26 @@ class TestCursorInsert:
             col_names = [desc[0] for desc in cursor.result_set.description]
             assert "name" in col_names
             assert "score" in col_names
+
+    def test_insert_executemany_with_parameters(self, conn):
+        """Test executemany for bulk insert operations with parameters."""
+        sql = f"INSERT INTO {self.TEST_COLLECTION} {{'name': '?', 'age': '?', 'instrument': '?'}}"
+        cursor = conn.cursor()
+
+        # Multiple parameter sets for bulk insert
+        params = [["Frank", 28, "Guitar"], ["Grace", 32, "Piano"], ["Henry", 27, "Drums"], ["Iris", 30, "Violin"]]
+
+        cursor.executemany(sql, params)
+
+        # Verify all documents were inserted
+        db = conn.database
+        docs = list(db[self.TEST_COLLECTION].find())
+        assert len(docs) == 4
+
+        names = {doc["name"] for doc in docs}
+        assert names == {"Frank", "Grace", "Henry", "Iris"}
+
+        # Verify specific document
+        frank = db[self.TEST_COLLECTION].find_one({"name": "Frank"})
+        assert frank["age"] == 28
+        assert frank["instrument"] == "Guitar"
