@@ -142,25 +142,57 @@ class Cursor(BaseCursor, CursorIterator):
     def executemany(
         self,
         operation: str,
-        seq_of_parameters: List[Optional[Dict[str, Any]]],
+        seq_of_parameters: List[Optional[Any]],
     ) -> None:
         """Execute a SQL statement multiple times with different parameters
 
-        Note: This is not yet fully implemented for MongoDB operations
+        This method executes the operation once for each parameter set in
+        seq_of_parameters. It's particularly useful for bulk INSERT, UPDATE,
+        or DELETE operations.
+
+        Args:
+            operation: SQL statement to execute
+            seq_of_parameters: Sequence of parameter sets. Each element should be
+                a sequence (list/tuple) for positional parameters with ? placeholders,
+                or a dict for named parameters with :name placeholders.
+
+        Returns:
+            None (executemany does not produce a result set)
+
+        Note: The rowcount property will reflect the total number of rows affected
+        across all executions.
         """
         self._check_closed()
 
-        # For now, just execute once and ignore parameters
-        _logger.warning("executemany not fully implemented, executing once without parameters")
-        self.execute(operation)
+        if not seq_of_parameters:
+            return
+
+        total_rowcount = 0
+
+        try:
+            # Execute the operation for each parameter set
+            for params in seq_of_parameters:
+                self.execute(operation, params)
+                # Accumulate rowcount from each execution
+                if self.rowcount > 0:
+                    total_rowcount += self.rowcount
+
+            # Update the final result set with accumulated rowcount
+            if self._result_set:
+                self._result_set._rowcount = total_rowcount
+
+        except (SqlSyntaxError, DatabaseError, OperationalError, ProgrammingError):
+            # Re-raise known errors
+            raise
+        except Exception as e:
+            _logger.error(f"Unexpected error during executemany: {e}")
+            raise DatabaseError(f"executemany failed: {e}")
 
     def execute_transaction(self) -> None:
-        """Execute transaction (MongoDB has limited transaction support)"""
+        """Execute transaction - not yet implemented"""
         self._check_closed()
 
-        # MongoDB transactions are complex and require specific setup
-        # For now, this is a placeholder
-        raise NotImplementedError("Transaction support not yet implemented")
+        raise NotImplementedError("Transaction using this function not yet implemented")
 
     def flush(self) -> None:
         """Flush any pending operations"""

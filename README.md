@@ -412,8 +412,8 @@ try:
     connection.begin()  # Start transaction
     
     cursor = connection.cursor()
-    cursor.execute('UPDATE accounts SET balance = balance - 100 WHERE id = ?', [1])
-    cursor.execute('UPDATE accounts SET balance = balance + 100 WHERE id = ?', [2])
+    cursor.execute('UPDATE accounts SET balance = 100 WHERE id = ?', [1])
+    cursor.execute('UPDATE accounts SET balance = 200 WHERE id = ?', [2])
     
     connection.commit()  # Commit all changes
     print("Transaction committed successfully")

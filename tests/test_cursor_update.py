@@ -210,3 +210,27 @@ class TestCursorUpdate:
         book_b = db[self.TEST_COLLECTION].find_one({"title": "Book B"})
         assert book_b is not None
         assert book_b["stock"] is None
+
+    def test_update_executemany_with_parameters(self, conn):
+        """Test executemany for bulk update operations with parameters."""
+        cursor = conn.cursor()
+        sql = f"UPDATE {self.TEST_COLLECTION} SET price = '?' WHERE title = '?'"
+
+        # Update prices for multiple books using executemany
+        params = [[25.99, "Book A"], [35.99, "Book B"], [45.99, "Book D"]]
+
+        cursor.executemany(sql, params)
+
+        # Verify all specified books were updated
+        db = conn.database
+        book_a = db[self.TEST_COLLECTION].find_one({"title": "Book A"})
+        book_b = db[self.TEST_COLLECTION].find_one({"title": "Book B"})
+        book_d = db[self.TEST_COLLECTION].find_one({"title": "Book D"})
+
+        assert book_a["price"] == 25.99
+        assert book_b["price"] == 35.99
+        assert book_d["price"] == 45.99
+
+        # Verify other books remain unchanged
+        book_c = db[self.TEST_COLLECTION].find_one({"title": "Book C"})
+        assert book_c["price"] == 19.99  # Original price unchanged

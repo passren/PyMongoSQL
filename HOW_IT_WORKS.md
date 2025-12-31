@@ -523,8 +523,3 @@ PyMongoSQL provides specialized support for Apache Superset with a **two-stage e
 
 - **Benefits**: Native MongoDB support in Superset dashboards with full SQL capability
 - **Limitations**: Single collection queries, session-scoped caching, performance depends on result set size
-
----
-
-Generated: 2024
-Architecture Version: 2.0 (Post-INSERT VALUES implementation with Superset integration)
