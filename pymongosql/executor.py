@@ -101,11 +101,23 @@ class StandardQueryExecution(ExecutionStrategy):
     def _execute_execution_plan(
         self,
         execution_plan: QueryExecutionPlan,
-        db: Any,
+        connection: Any = None,
         parameters: Optional[Sequence[Any]] = None,
     ) -> Optional[Dict[str, Any]]:
-        """Execute a QueryExecutionPlan against MongoDB using db.command"""
+        """Execute a QueryExecutionPlan against MongoDB using db.command
+
+        Args:
+            execution_plan: QueryExecutionPlan to execute
+            connection: Connection object (for session and database access)
+            parameters: Parameters for placeholder replacement
+        """
         try:
+            # Get database from connection
+            if not connection:
+                raise OperationalError("No connection provided")
+
+            db = connection.database
+
             # Get database
             if not execution_plan.collection:
                 raise ProgrammingError("No collection specified in query")
@@ -144,8 +156,11 @@ class StandardQueryExecution(ExecutionStrategy):
 
             _logger.debug(f"Executing MongoDB command: {find_command}")
 
-            # Execute find command directly
-            result = db.command(find_command)
+            # Execute find command with session if in transaction
+            if connection and connection.session and connection.session.in_transaction:
+                result = db.command(find_command, session=connection.session)
+            else:
+                result = db.command(find_command)
 
             # Create command result
             return result
@@ -182,7 +197,7 @@ class StandardQueryExecution(ExecutionStrategy):
         # Parse the query
         self._execution_plan = self._parse_sql(processed_query)
 
-        return self._execute_execution_plan(self._execution_plan, connection.database, processed_params)
+        return self._execute_execution_plan(self._execution_plan, connection, processed_params)
 
 
 class InsertExecution(ExecutionStrategy):
@@ -224,10 +239,16 @@ class InsertExecution(ExecutionStrategy):
     def _execute_execution_plan(
         self,
         execution_plan: InsertExecutionPlan,
-        db: Any,
+        connection: Any = None,
         parameters: Optional[Union[Sequence[Any], Dict[str, Any]]] = None,
     ) -> Optional[Dict[str, Any]]:
         try:
+            # Get database from connection
+            if not connection:
+                raise OperationalError("No connection provided")
+
+            db = connection.database
+
             if not execution_plan.collection:
                 raise ProgrammingError("No collection specified in insert")
 
@@ -238,7 +259,11 @@ class InsertExecution(ExecutionStrategy):
 
             _logger.debug(f"Executing MongoDB insert command: {command}")
 
-            return db.command(command)
+            # Execute with session if in transaction
+            if connection and connection.session and connection.session.in_transaction:
+                return db.command(command, session=connection.session)
+            else:
+                return db.command(command)
         except PyMongoError as e:
             _logger.error(f"MongoDB insert failed: {e}")
             raise DatabaseError(f"Insert execution failed: {e}")
@@ -259,7 +284,7 @@ class InsertExecution(ExecutionStrategy):
 
         self._execution_plan = self._parse_sql(context.query)
 
-        return self._execute_execution_plan(self._execution_plan, connection.database, parameters)
+        return self._execute_execution_plan(self._execution_plan, connection, parameters)
 
 
 class DeleteExecution(ExecutionStrategy):
@@ -293,10 +318,16 @@ class DeleteExecution(ExecutionStrategy):
     def _execute_execution_plan(
         self,
         execution_plan: Any,
-        db: Any,
+        connection: Any = None,
         parameters: Optional[Union[Sequence[Any], Dict[str, Any]]] = None,
     ) -> Optional[Dict[str, Any]]:
         try:
+            # Get database from connection
+            if not connection:
+                raise OperationalError("No connection provided")
+
+            db = connection.database
+
             if not execution_plan.collection:
                 raise ProgrammingError("No collection specified in delete")
 
@@ -312,7 +343,11 @@ class DeleteExecution(ExecutionStrategy):
 
             _logger.debug(f"Executing MongoDB delete command: {command}")
 
-            return db.command(command)
+            # Execute with session if in transaction
+            if connection and connection.session and connection.session.in_transaction:
+                return db.command(command, session=connection.session)
+            else:
+                return db.command(command)
         except PyMongoError as e:
             _logger.error(f"MongoDB delete failed: {e}")
             raise DatabaseError(f"Delete execution failed: {e}")
@@ -333,7 +368,7 @@ class DeleteExecution(ExecutionStrategy):
 
         self._execution_plan = self._parse_sql(context.query)
 
-        return self._execute_execution_plan(self._execution_plan, connection.database, parameters)
+        return self._execute_execution_plan(self._execution_plan, connection, parameters)
 
 
 class UpdateExecution(ExecutionStrategy):
@@ -367,10 +402,16 @@ class UpdateExecution(ExecutionStrategy):
     def _execute_execution_plan(
         self,
         execution_plan: Any,
-        db: Any,
+        connection: Any = None,
         parameters: Optional[Union[Sequence[Any], Dict[str, Any]]] = None,
     ) -> Optional[Dict[str, Any]]:
         try:
+            # Get database from connection
+            if not connection:
+                raise OperationalError("No connection provided")
+
+            db = connection.database
+
             if not execution_plan.collection:
                 raise ProgrammingError("No collection specified in update")
 
@@ -406,7 +447,11 @@ class UpdateExecution(ExecutionStrategy):
 
             _logger.debug(f"Executing MongoDB update command: {command}")
 
-            return db.command(command)
+            # Execute with session if in transaction
+            if connection and connection.session and connection.session.in_transaction:
+                return db.command(command, session=connection.session)
+            else:
+                return db.command(command)
         except PyMongoError as e:
             _logger.error(f"MongoDB update failed: {e}")
             raise DatabaseError(f"Update execution failed: {e}")
@@ -427,7 +472,7 @@ class UpdateExecution(ExecutionStrategy):
 
         self._execution_plan = self._parse_sql(context.query)
 
-        return self._execute_execution_plan(self._execution_plan, connection.database, parameters)
+        return self._execute_execution_plan(self._execution_plan, connection, parameters)
 
 
 class ExecutionPlanFactory:

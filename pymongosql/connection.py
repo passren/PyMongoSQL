@@ -11,7 +11,7 @@ from pymongo.errors import ConnectionFailure
 
 from .common import BaseCursor
 from .cursor import Cursor
-from .error import DatabaseError, NotSupportedError, OperationalError
+from .error import DatabaseError, OperationalError
 from .helper import ConnectionHelper
 
 _logger = logging.getLogger(__name__)
@@ -212,8 +212,8 @@ class Connection:
         return self._in_transaction
 
     @in_transaction.setter
-    def in_transaction(self, value: bool) -> bool:
-        self._in_transaction = False
+    def in_transaction(self, value: bool) -> None:
+        self._in_transaction = value
 
     @property
     def host(self) -> str:
@@ -407,24 +407,54 @@ class Connection:
         return self._session.with_transaction(callback, **kwargs)
 
     def begin(self) -> None:
-        """Begin transaction (DB-API 2.0 standard method)"""
+        """Begin transaction (DB-API 2.0 standard method)
+
+        Starts an explicit transaction. After calling begin(), operations
+        are executed within the transaction context until commit() or
+        rollback() is called. Requires MongoDB 4.0+ for multi-document
+        transactions on replica sets or sharded clusters.
+
+        Example:
+            conn.begin()
+            try:
+                cursor.execute("INSERT INTO users VALUES (...)")
+                cursor.execute("UPDATE accounts SET balance = balance - 100")
+                conn.commit()
+            except Exception:
+                conn.rollback()
+
+        Raises:
+            OperationalError: If unable to start transaction
+        """
         self._start_transaction()
 
     def commit(self) -> None:
-        """Commit transaction (DB-API 2.0 standard method)"""
+        """Commit transaction (DB-API 2.0 standard method)
+
+        Commits the current transaction to the database. All operations
+        executed since begin() will be atomically persisted. If no
+        transaction is active, this is a no-op (DB-API 2.0 compliant).
+
+        Raises:
+            OperationalError: If commit fails
+        """
         if self._session and self._session.in_transaction:
             self._commit_transaction()
-        else:
-            # Fallback for non-session based operations
-            self._in_transaction = False
-            self._autocommit = True
+        # If no transaction, this is a no-op (DB-API 2.0 compliant)
 
     def rollback(self) -> None:
-        """Rollback transaction (DB-API 2.0 standard method)"""
+        """Rollback transaction (DB-API 2.0 standard method)
+
+        Rolls back (aborts) the current transaction, undoing all operations
+        executed since begin(). If no transaction is active, this is a no-op
+        (DB-API 2.0 compliant).
+
+        Raises:
+            OperationalError: If rollback fails
+        """
         if self._session and self._session.in_transaction:
             self._abort_transaction()
-        else:
-            raise NotSupportedError("MongoDB doesn't support rollback without an active transaction")
+        # If no transaction, this is a no-op (DB-API 2.0 compliant)
 
     def test_connection(self) -> bool:
         """Test if the connection is alive"""

@@ -68,6 +68,27 @@ pip install -e .
 
 ## Quick Start
 
+**Table of Contents:**
+- [Basic Usage](#basic-usage)
+- [Using Connection String](#using-connection-string)
+- [Context Manager Support](#context-manager-support)
+- [Using DictCursor for Dictionary Results](#using-dictcursor-for-dictionary-results)
+- [Cursor vs DictCursor](#cursor-vs-dictcursor)
+- [Query with Parameters](#query-with-parameters)
+- [Supported SQL Features](#supported-sql-features)
+  - [SELECT Statements](#select-statements)
+  - [WHERE Clauses](#where-clauses)
+  - [Nested Field Support](#nested-field-support)
+  - [Sorting and Limiting](#sorting-and-limiting)
+  - [INSERT Statements](#insert-statements)
+  - [UPDATE Statements](#update-statements)
+  - [DELETE Statements](#delete-statements)
+  - [Transaction Support](#transaction-support)
+- [Apache Superset Integration](#apache-superset-integration)
+- [Limitations & Roadmap](#limitations--roadmap)
+- [Contributing](#contributing)
+- [License](#license)
+
 ### Basic Usage
 
 ```python
@@ -378,6 +399,33 @@ cursor.execute("DELETE FROM Music WHERE available = false")
 print(f"Deleted {cursor.rowcount} documents")
 ```
 
+### Transaction Support
+
+PyMongoSQL supports DB API 2.0 transactions for ACID-compliant database operations. Use the `begin()`, `commit()`, and `rollback()` methods to manage transactions:
+
+```python
+from pymongosql import connect
+
+connection = connect(host="mongodb://localhost:27017/database")
+
+try:
+    connection.begin()  # Start transaction
+    
+    cursor = connection.cursor()
+    cursor.execute('UPDATE accounts SET balance = balance - 100 WHERE id = ?', [1])
+    cursor.execute('UPDATE accounts SET balance = balance + 100 WHERE id = ?', [2])
+    
+    connection.commit()  # Commit all changes
+    print("Transaction committed successfully")
+except Exception as e:
+    connection.rollback()  # Rollback on error
+    print(f"Transaction failed: {e}")
+finally:
+    connection.close()
+```
+
+**Note:** MongoDB requires a replica set or sharded cluster for transaction support. Standalone MongoDB servers do not support ACID transactions at the server level.
+
 ## Apache Superset Integration
 
 PyMongoSQL can be used as a database driver in Apache Superset for querying and visualizing MongoDB data:
@@ -403,14 +451,8 @@ This allows seamless integration between MongoDB data and Superset's BI capabili
 
 **Note**: PyMongoSQL currently supports DQL (Data Query Language) and DML (Data Manipulation Language) operations. The following SQL features are **not yet supported** but are planned for future releases:
 
-- **DDL Operations** (Data Definition Language)  
-  - `CREATE TABLE/COLLECTION`, `DROP TABLE/COLLECTION`
-  - `CREATE INDEX`, `DROP INDEX`
-  - `LIST TABLES/COLLECTIONS`
-  - `ALTER TABLE/COLLECTION`
 - **Advanced DML Operations**
-  - `MERGE`, `UPSERT`
-  - Transactions and multi-document operations
+  - `REPLACE`, `MERGE`, `UPSERT`
 
 These features are on our development roadmap and contributions are welcome!
 
