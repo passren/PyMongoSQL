@@ -118,7 +118,15 @@ class ExecutionPlanBuilder:
             parse_result.column_aliases
         ).sort(parse_result.sort_fields).limit(parse_result.limit_value).skip(parse_result.offset_value)
 
-        return builder.build()
+        # Set aggregate flags BEFORE building (needed for validation)
+        if hasattr(parse_result, "is_aggregate_query") and parse_result.is_aggregate_query:
+            builder._execution_plan.is_aggregate_query = True
+            builder._execution_plan.aggregate_pipeline = parse_result.aggregate_pipeline
+            builder._execution_plan.aggregate_options = parse_result.aggregate_options
+
+        # Now build and validate
+        plan = builder.build()
+        return plan
 
     @staticmethod
     def _build_insert_plan(parse_result: "InsertParseResult") -> "InsertExecutionPlan":

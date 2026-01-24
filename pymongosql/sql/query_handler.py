@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import logging
+import re
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -25,6 +26,11 @@ class QueryParseResult:
     sort_fields: List[Dict[str, int]] = field(default_factory=list)
     limit_value: Optional[int] = None
     offset_value: Optional[int] = None
+
+    # Aggregate pipeline support
+    is_aggregate_query: bool = False  # Flag indicating this is an aggregate() call
+    aggregate_pipeline: Optional[str] = None  # JSON string representation of pipeline
+    aggregate_options: Optional[str] = None  # JSON string representation of options
 
     # Subquery info (for wrapped subqueries, e.g., Superset outering)
     subquery_plan: Optional[Any] = None
@@ -156,18 +162,93 @@ class SelectHandler(BaseHandler, ContextUtilsMixin):
 
 
 class FromHandler(BaseHandler):
-    """Handles FROM clause parsing"""
+    """Handles FROM clause parsing with support for regular collections and aggregate() function calls"""
 
     def can_handle(self, ctx: Any) -> bool:
         """Check if this is a from context"""
         return hasattr(ctx, "tableReference")
 
+    def _parse_function_call(self, ctx: Any) -> Optional[Dict[str, Any]]:
+        """
+        Detect and parse aggregate() function calls in FROM clause.
+
+        Supports:
+        - collection.aggregate('pipeline_json', 'options_json')
+        - aggregate('pipeline_json', 'options_json')
+
+        Returns dict with:
+        - function_name: 'aggregate'
+        - collection: collection name (or None if unqualified)
+        - pipeline: JSON string for pipeline
+        - options: JSON string for options
+        """
+        try:
+            # Get the tableReference from FROM clause
+            if not hasattr(ctx, "tableReference"):
+                return None
+
+            table_ref = ctx.tableReference()
+            if not table_ref:
+                return None
+
+            # Get the text to analyze
+            text = table_ref.getText() if hasattr(table_ref, "getText") else str(table_ref)
+
+            # Pattern: [qualifier.]functionName(arg1, arg2)
+            # We need to match: (optional_collection.)aggregate('...', '...')
+            pattern = r"^(?:(\w+)\.)?aggregate\s*\(\s*'([^']*)'\s*,\s*'([^']*)'\s*\)$"
+            match = re.match(pattern, text, re.IGNORECASE | re.DOTALL)
+
+            if not match:
+                return None
+
+            collection = match.group(1)  # Can be None for unqualified aggregate()
+            pipeline = match.group(2)
+            options = match.group(3)
+
+            _logger.debug(
+                f"Detected aggregate call: collection={collection}, pipeline={pipeline[:50]}..., options={options}"
+            )
+
+            return {
+                "function_name": "aggregate",
+                "collection": collection,
+                "pipeline": pipeline,
+                "options": options,
+            }
+        except Exception as e:
+            _logger.debug(f"Error parsing function call: {e}")
+            return None
+
     def handle_visitor(self, ctx: PartiQLParser.FromClauseContext, parse_result: "QueryParseResult") -> Any:
+        """Handle FROM clause - detect aggregate calls or regular collections"""
         if hasattr(ctx, "tableReference") and ctx.tableReference():
+            # Try to detect aggregate function call
+            func_info = self._parse_function_call(ctx)
+
+            if func_info and func_info["function_name"] == "aggregate":
+                # Mark as aggregate query
+                if hasattr(parse_result, "is_aggregate_query"):
+                    parse_result.is_aggregate_query = True
+                if hasattr(parse_result, "aggregate_pipeline"):
+                    parse_result.aggregate_pipeline = func_info["pipeline"]
+                if hasattr(parse_result, "aggregate_options"):
+                    parse_result.aggregate_options = func_info["options"]
+
+                # Set collection name if qualified, otherwise it's collection-agnostic
+                if func_info["collection"]:
+                    parse_result.collection = func_info["collection"]
+
+                _logger.info(f"Parsed aggregate call: collection={func_info['collection']}")
+                return func_info
+
+            # Regular collection reference
             table_text = ctx.tableReference().getText()
             collection_name = table_text
             parse_result.collection = collection_name
+            _logger.debug(f"Parsed regular collection: {collection_name}")
             return collection_name
+
         return None
 
 
