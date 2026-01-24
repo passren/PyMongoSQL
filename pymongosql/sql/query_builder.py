@@ -18,10 +18,14 @@ class QueryExecutionPlan(ExecutionPlan):
     sort_stage: List[Dict[str, int]] = field(default_factory=list)
     limit_stage: Optional[int] = None
     skip_stage: Optional[int] = None
+    # Aggregate pipeline support
+    aggregate_pipeline: Optional[str] = None  # JSON string representation of pipeline
+    aggregate_options: Optional[str] = None  # JSON string representation of options
+    is_aggregate_query: bool = False  # Flag indicating this is an aggregate() call
 
     def to_dict(self) -> Dict[str, Any]:
         """Convert query plan to dictionary representation"""
-        return {
+        result = {
             "collection": self.collection,
             "filter": self.filter_stage,
             "projection": self.projection_stage,
@@ -30,9 +34,22 @@ class QueryExecutionPlan(ExecutionPlan):
             "skip": self.skip_stage,
         }
 
+        # Add aggregate-specific fields if present
+        if self.is_aggregate_query:
+            result["is_aggregate_query"] = True
+            result["aggregate_pipeline"] = self.aggregate_pipeline
+            result["aggregate_options"] = self.aggregate_options
+
+        return result
+
     def validate(self) -> bool:
         """Validate the query plan"""
-        errors = self.validate_base()
+        # For aggregate queries, collection is optional (unqualified aggregate syntax)
+        # For regular queries, collection is required
+        if self.is_aggregate_query:
+            errors = []
+        else:
+            errors = self.validate_base()
 
         if self.limit_stage is not None and (not isinstance(self.limit_stage, int) or self.limit_stage < 0):
             errors.append("Limit must be a non-negative integer")
@@ -56,6 +73,9 @@ class QueryExecutionPlan(ExecutionPlan):
             sort_stage=self.sort_stage.copy(),
             limit_stage=self.limit_stage,
             skip_stage=self.skip_stage,
+            aggregate_pipeline=self.aggregate_pipeline,
+            aggregate_options=self.aggregate_options,
+            is_aggregate_query=self.is_aggregate_query,
         )
 
 
@@ -217,7 +237,9 @@ class MongoQueryBuilder:
         """Validate the current query plan"""
         self._validation_errors.clear()
 
-        if not self._execution_plan.collection:
+        # For aggregate queries, collection is optional (unqualified aggregate syntax)
+        # For regular queries, collection is required
+        if not self._execution_plan.is_aggregate_query and not self._execution_plan.collection:
             self._add_error("Collection name is required")
 
         # Add more validation rules as needed

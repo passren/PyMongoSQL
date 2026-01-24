@@ -26,6 +26,7 @@ PyMongoSQL implements the DB API 2.0 interfaces to provide SQL-like access to Mo
 - **DB API 2.0 Compliant**: Full compatibility with Python Database API 2.0 specification
 - **PartiQL-based SQL Syntax**: Built on [PartiQL](https://partiql.org/tutorial.html) (SQL for semi-structured data), enabling seamless SQL querying of nested and hierarchical MongoDB documents
 - **Nested Structure Support**: Query and filter deeply nested fields and arrays within MongoDB documents using standard SQL syntax
+- **MongoDB Aggregate Pipeline Support**: Execute native MongoDB aggregation pipelines using SQL-like syntax with `aggregate()` function
 - **SQLAlchemy Integration**: Complete ORM and Core support with dedicated MongoDB dialect
 - **SQL Query Support**: SELECT statements with WHERE conditions, field selection, and aliases
 - **DML Support**: Full support for INSERT, UPDATE, and DELETE operations using PartiQL syntax
@@ -80,6 +81,7 @@ pip install -e .
   - [WHERE Clauses](#where-clauses)
   - [Nested Field Support](#nested-field-support)
   - [Sorting and Limiting](#sorting-and-limiting)
+  - [MongoDB Aggregate Function](#mongodb-aggregate-function)
   - [INSERT Statements](#insert-statements)
   - [UPDATE Statements](#update-statements)
   - [DELETE Statements](#delete-statements)
@@ -234,6 +236,61 @@ Parameters are substituted into the MongoDB filter during execution, providing p
 - **ORDER BY**: `ORDER BY name ASC, age DESC`
 - **LIMIT**: `LIMIT 10`
 - **Combined**: `ORDER BY created_at DESC LIMIT 5`
+
+### MongoDB Aggregate Function
+
+PyMongoSQL supports executing native MongoDB aggregation pipelines using SQL-like syntax with the `aggregate()` function. This allows you to leverage MongoDB's powerful aggregation framework while maintaining SQL-style query patterns.
+
+**Syntax**
+
+The `aggregate()` function accepts two parameters:
+- **pipeline**: JSON string representing the MongoDB aggregation pipeline
+- **options**: JSON string for aggregation options (optional, use '{}' for defaults)
+
+**Qualified Aggregate (Collection-Specific)**
+
+```python
+cursor.execute(
+    "SELECT * FROM users.aggregate('[{\"$match\": {\"age\": {\"$gt\": 25}}}, {\"$group\": {\"_id\": \"$city\", \"count\": {\"$sum\": 1}}}]', '{}')"
+)
+results = cursor.fetchall()
+```
+
+**Unqualified Aggregate (Database-Level)**
+
+```python
+cursor.execute(
+    "SELECT * FROM aggregate('[{\"$match\": {\"status\": \"active\"}}]', '{\"allowDiskUse\": true}')"
+)
+results = cursor.fetchall()
+```
+
+**Post-Aggregation Filtering and Sorting**
+
+You can apply WHERE, ORDER BY, and LIMIT clauses after aggregation:
+
+```python
+# Filter aggregation results
+cursor.execute(
+    "SELECT * FROM users.aggregate('[{\"$group\": {\"_id\": \"$city\", \"total\": {\"$sum\": 1}}}]', '{}') WHERE total > 100"
+)
+
+# Sort and limit aggregation results
+cursor.execute(
+    "SELECT * FROM products.aggregate('[{\"$match\": {\"category\": \"Electronics\"}}]', '{}') ORDER BY price DESC LIMIT 10"
+)
+```
+
+**Projection Support**
+
+```python
+# Select specific fields from aggregation results
+cursor.execute(
+    "SELECT _id, total FROM users.aggregate('[{\"$group\": {\"_id\": \"$city\", \"total\": {\"$sum\": 1}}}]', '{}')"
+)
+```
+
+**Note**: The pipeline and options must be valid JSON strings enclosed in single quotes. Post-aggregation filtering (WHERE), sorting (ORDER BY), and limiting (LIMIT) are applied in Python after the aggregation executes on MongoDB.
 
 ### INSERT Statements
 

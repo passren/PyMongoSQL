@@ -63,7 +63,7 @@ class SupersetExecution(StandardQueryExecution):
         _logger.debug(f"Stage 1: Executing MongoDB subquery: {mongo_query}")
 
         mongo_execution_plan = self._parse_sql(mongo_query)
-        mongo_result = self._execute_execution_plan(mongo_execution_plan, connection)
+        mongo_result = self._execute_find_plan(mongo_execution_plan, connection)
 
         # Extract result set from MongoDB
         mongo_result_set = ResultSet(

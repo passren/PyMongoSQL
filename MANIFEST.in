@@ -14,6 +14,7 @@ global-exclude *.pyc
 global-exclude *.pyo
 global-exclude __pycache__
 global-exclude .git*
+global-exclude .github
 global-exclude .pytest_cache
 global-exclude .coverage
 global-exclude htmlcov
