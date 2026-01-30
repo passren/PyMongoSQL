@@ -12,6 +12,7 @@ import sys
 import time
 
 import pymongo
+from bson import json_util
 from pymongo.errors import ServerSelectionTimeoutError
 
 
@@ -208,7 +209,7 @@ def create_database_user():
 
 
 def load_test_data():
-    """Load test data from JSON files"""
+    """Load test data from JSON files with Extended JSON support"""
     script_dir = os.path.dirname(os.path.abspath(__file__))
     test_data = {}
 
@@ -217,7 +218,8 @@ def load_test_data():
         test_data_path = os.path.join(script_dir, TEST_DATA_FILES["legacy"])
         try:
             with open(test_data_path, "r", encoding="utf-8") as f:
-                return json.load(f)
+                # Use json_util to properly parse Extended JSON formats like $timestamp, $date, etc.
+                return json_util.loads(f.read())
         except FileNotFoundError:
             print(f"[ERROR] Test data file not found: {test_data_path}")
             return None
@@ -230,7 +232,8 @@ def load_test_data():
         full_path = os.path.join(script_dir, file_path)
         try:
             with open(full_path, "r", encoding="utf-8") as f:
-                test_data[collection_name] = json.load(f)
+                # Use json_util to properly parse Extended JSON formats like $timestamp, $date, etc.
+                test_data[collection_name] = json_util.loads(f.read())
                 print(f"  Loaded {len(test_data[collection_name])} {collection_name}")
         except FileNotFoundError:
             print(f"[ERROR] Test data file not found: {full_path}")

@@ -48,7 +48,13 @@
       "p2"
     ],
     "owned_products": [],
-    "department_id": "dept1"
+    "department_id": "dept1",
+    "date": {
+      "$timestamp": {
+        "t": 1735776000,
+        "i": 0
+      }
+    }
   },
   {
     "_id": "2",
@@ -108,7 +114,13 @@
     "owned_products": [
       "p3"
     ],
-    "department_id": "dept2"
+    "department_id": "dept2",
+    "date": {
+      "$timestamp": {
+        "t": 1748736000,
+        "i": 0
+      }
+    }
   },
   {
     "_id": "3",
@@ -157,7 +169,13 @@
       "p1",
       "p2"
     ],
-    "department_id": "dept3"
+    "department_id": "dept3",
+    "date": {
+      "$timestamp": {
+        "t": 1767225600,
+        "i": 0
+      }
+    }
   },
   {
     "_id": "4",
@@ -221,7 +239,13 @@
     "owned_products": [
       "p4"
     ],
-    "department_id": "dept2"
+    "department_id": "dept2",
+    "date": {
+      "$timestamp": {
+        "t": 1631700945,
+        "i": 0
+      }
+    }
   },
   {
     "_id": "5",
@@ -276,7 +300,13 @@
       "p3"
     ],
     "owned_products": [],
-    "department_id": "dept4"
+    "department_id": "dept4",
+    "date": {
+      "$timestamp": {
+        "t": 1675252800,
+        "i": 0
+      }
+    }
   },
   {
     "_id": "6",
@@ -333,7 +363,13 @@
       "p4"
     ],
     "owned_products": [],
-    "department_id": "dept5"
+    "department_id": "dept5",
+    "date": {
+      "$timestamp": {
+        "t": 1636966800,
+        "i": 0
+      }
+    }
   },
   {
     "_id": "7",
@@ -381,7 +417,13 @@
       "p3"
     ],
     "owned_products": [],
-    "department_id": null
+    "department_id": null,
+    "date": {
+      "$timestamp": {
+        "t": 1558369800,
+        "i": 0
+      }
+    }
   },
   {
     "_id": "8",
@@ -438,7 +480,13 @@
       "p2"
     ],
     "owned_products": [],
-    "department_id": "dept6"
+    "department_id": "dept6",
+    "date": {
+      "$timestamp": {
+        "t": 1660131900,
+        "i": 0
+      }
+    }
   },
   {
     "_id": "9",
@@ -496,7 +544,13 @@
       "p4"
     ],
     "owned_products": [],
-    "department_id": "dept7"
+    "department_id": "dept7",
+    "date": {
+      "$timestamp": {
+        "t": 1583051400,
+        "i": 0
+      }
+    }
   },
   {
     "_id": "10",
@@ -551,7 +605,13 @@
       "p3"
     ],
     "owned_products": [],
-    "department_id": "dept8"
+    "department_id": "dept8",
+    "date": {
+      "$timestamp": {
+        "t": 1610704800,
+        "i": 0
+      }
+    }
   },
   {
     "_id": "11",
@@ -606,7 +666,13 @@
       "p2"
     ],
     "owned_products": [],
-    "department_id": "dept9"
+    "department_id": "dept9",
+    "date": {
+      "$timestamp": {
+        "t": 1651396500,
+        "i": 0
+      }
+    }
   },
   {
     "_id": "12",
@@ -663,7 +729,13 @@
       "p1"
     ],
     "owned_products": [],
-    "department_id": "dept10"
+    "department_id": "dept10",
+    "date": {
+      "$timestamp": {
+        "t": 1598947200,
+        "i": 0
+      }
+    }
   },
   {
     "_id": "13",
@@ -715,7 +787,13 @@
     ],
     "purchased_products": [],
     "owned_products": [],
-    "department_id": "dept11"
+    "department_id": "dept11",
+    "date": {
+      "$timestamp": {
+        "t": 1685610000,
+        "i": 0
+      }
+    }
   },
   {
     "_id": "14",
@@ -771,7 +849,13 @@
       "p3"
     ],
     "owned_products": [],
-    "department_id": "dept12"
+    "department_id": "dept12",
+    "date": {
+      "$timestamp": {
+        "t": 1572604200,
+        "i": 0
+      }
+    }
   },
   {
     "_id": "15",
@@ -816,7 +900,13 @@
       "p1"
     ],
     "owned_products": [],
-    "department_id": null
+    "department_id": null,
+    "date": {
+      "$timestamp": {
+        "t": 1521122400,
+        "i": 0
+      }
+    }
   },
   {
     "_id": "16",
@@ -873,7 +963,13 @@
       "p3"
     ],
     "owned_products": [],
-    "department_id": "dept13"
+    "department_id": "dept13",
+    "date": {
+      "$timestamp": {
+        "t": 1593593100,
+        "i": 0
+      }
+    }
   },
   {
     "_id": "17",
@@ -929,7 +1025,13 @@
       "p4"
     ],
     "owned_products": [],
-    "department_id": "dept14"
+    "department_id": "dept14",
+    "date": {
+      "$timestamp": {
+        "t": 1638353700,
+        "i": 0
+      }
+    }
   },
   {
     "_id": "18",
@@ -992,7 +1094,13 @@
       "p3",
       "p4"
     ],
-    "department_id": "dept15"
+    "department_id": "dept15",
+    "date": {
+      "$timestamp": {
+        "t": 1514764800,
+        "i": 0
+      }
+    }
   },
   {
     "_id": "19",
@@ -1049,7 +1157,13 @@
       "p1"
     ],
     "owned_products": [],
-    "department_id": "dept16"
+    "department_id": "dept16",
+    "date": {
+      "$timestamp": {
+        "t": 1641807000,
+        "i": 0
+      }
+    }
   },
   {
     "_id": "20",
@@ -1104,7 +1218,13 @@
       "p3"
     ],
     "owned_products": [],
-    "department_id": "dept17"
+    "department_id": "dept17",
+    "date": {
+      "$timestamp": {
+        "t": 1618484400,
+        "i": 0
+      }
+    }
   },
   {
     "_id": "21",
@@ -1156,7 +1276,13 @@
     "owned_products": [
       "p44"
     ],
-    "department_id": "dept99"
+    "department_id": "dept99",
+    "date": {
+      "$timestamp": {
+        "t": 1672531200,
+        "i": 0
+      }
+    }
   },
   {
     "_id": "22",
@@ -1191,6 +1317,12 @@
     "owned_products": [
       "pZZZ"
     ],
-    "department_id": "deptXYZ"
+    "department_id": "deptXYZ",
+    "date": {
+      "$timestamp": {
+        "t": 1577836800,
+        "i": 0
+      }
+    }
   }
 ]

@@ -62,6 +62,8 @@ class ContextUtilsMixin:
         s = re.sub(r"\[\s*['\"]([^'\"]+)['\"]\s*\]", r".\1", s)
         # Convert numeric bracket indexes [0] -> .0
         s = re.sub(r"\[\s*(\d+)\s*\]", r".\1", s)
+        # Unquote quoted identifiers in dot notation (e.g., "date" -> date)
+        s = re.sub(r'"([^"]+)"', r"\1", s)
         # Collapse multiple dots and strip leading/trailing dots
         s = re.sub(r"\.{2,}", ".", s).strip(".")
         return s

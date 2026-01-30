@@ -1,5 +1,8 @@
 # -*- coding: utf-8 -*-
+from datetime import datetime, timezone
+
 import pytest
+from bson.timestamp import Timestamp
 
 from pymongosql.error import DatabaseError, ProgrammingError, SqlSyntaxError
 from pymongosql.result_set import ResultSet
@@ -424,3 +427,44 @@ class TestCursor:
         rows = cursor.result_set.fetchall()
         assert len(rows) > 0  # Should have results matching the filter
         assert len(rows[0]) == 2  # Should have name and email columns
+
+    def test_execute_with_reserved_keyword_field(self, conn):
+        """Test executing SELECT with reserved keyword field name (quoted)"""
+        # "date" is a reserved keyword in PartiQL, but can be used as a field name when quoted
+        sql = 'SELECT name, "date" FROM users WHERE age > 25 LIMIT 5'
+        cursor = conn.cursor()
+        result = cursor.execute(sql)
+
+        assert result == cursor  # execute returns self
+        assert isinstance(cursor.result_set, ResultSet)
+
+        # Check that "date" appears in cursor description
+        assert cursor.result_set.description is not None
+        col_names = [desc[0] for desc in cursor.result_set.description]
+
+        # The quoted field name should appear in results
+        assert "name" in col_names
+        assert '"date"' in col_names or "date" in col_names
+
+        rows = cursor.result_set.fetchall()
+        assert len(rows) == 5
+        assert len(rows[0]) == 2  # Should have name and date columns
+
+        date_idx = col_names.index('"date"') if '"date"' in col_names else col_names.index("date")
+        for row in rows:
+            date_value = row[date_idx]
+            assert date_value is not None
+
+    def test_execute_with_reserved_keyword_field_in_where(self, conn):
+        """Test executing WHERE clause with reserved keyword field name (quoted)"""
+        sql = 'SELECT name FROM users WHERE "date" > ?'
+        cursor = conn.cursor()
+        cutoff = datetime(2025, 1, 1, tzinfo=timezone.utc)
+        result = cursor.execute(sql, [Timestamp(int(cutoff.timestamp()), 0)])
+
+        assert result == cursor  # execute returns self
+        assert isinstance(cursor.result_set, ResultSet)
+
+        rows = cursor.result_set.fetchall()
+        assert len(rows) == 3
+        assert len(rows[0]) == 1
