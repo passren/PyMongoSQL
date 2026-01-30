@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 
 import pytest
 from bson.timestamp import Timestamp
@@ -160,6 +160,51 @@ class TestCursor:
 
         # Verify the first record matched the highest salary
         assert "Patricia Johnson" == rows[0][0]
+
+    def test_execute_projection_function(self, conn):
+        """Test end-to-end execution of projection functions in SELECT"""
+        sql = (
+            "SELECT DATE(created_at) AS created_date, "
+            "DATETIME(created_at) AS created_dt, "
+            "TIMESTAMP(created_at) AS created_ts, "
+            "SUBSTR(email, 1, 4) AS email_prefix, "
+            "UPPER(name) AS upper_name "
+            "FROM users WHERE name = 'John Doe'"
+        )
+        cursor = conn.cursor()
+        result = cursor.execute(sql)
+
+        assert result == cursor
+        assert isinstance(cursor.result_set, ResultSet)
+
+        rows = cursor.result_set.fetchall()
+        assert len(rows) == 1
+
+        # Validate column names and projected function output
+        col_names = [desc[0] for desc in cursor.result_set.description]
+        assert "created_date" in col_names
+        assert "created_dt" in col_names
+        assert "created_ts" in col_names
+        assert "email_prefix" in col_names
+        assert "upper_name" in col_names
+
+        created_date_idx = col_names.index("created_date")
+        created_dt_idx = col_names.index("created_dt")
+        created_ts_idx = col_names.index("created_ts")
+        email_prefix_idx = col_names.index("email_prefix")
+        upper_name_idx = col_names.index("upper_name")
+
+        created_date_val = rows[0][created_date_idx]
+        created_dt_val = rows[0][created_dt_idx]
+        created_ts_val = rows[0][created_ts_idx]
+        email_prefix_val = rows[0][email_prefix_idx]
+        upper_name_val = rows[0][upper_name_idx]
+
+        assert isinstance(created_date_val, date) and not isinstance(created_date_val, datetime)
+        assert isinstance(created_dt_val, datetime)
+        assert isinstance(created_ts_val, Timestamp)
+        assert email_prefix_val == "john"
+        assert upper_name_val == "JOHN DOE"
 
     def test_execute_parser_error(self, conn):
         """Test executing query with parser errors"""

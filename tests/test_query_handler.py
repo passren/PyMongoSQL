@@ -93,9 +93,10 @@ class TestSelectHandler:
         class MockItem:
             children = [MockChild()]
 
-        field_name, alias = handler._extract_field_and_alias(MockItem())
+        field_name, alias, func_info = handler._extract_field_and_alias(MockItem())
         assert field_name == "field_name"
         assert alias is None
+        assert func_info is None
 
     def test_extract_field_and_alias_with_as_keyword(self):
         """Test _extract_field_and_alias with AS keyword."""
@@ -116,9 +117,10 @@ class TestSelectHandler:
         class MockItem:
             children = [MockField(), MockAS(), MockAlias()]
 
-        field_name, alias = handler._extract_field_and_alias(MockItem())
+        field_name, alias, func_info = handler._extract_field_and_alias(MockItem())
         assert field_name == "field_name"
         assert alias == "field_alias"
+        assert func_info is None
 
     def test_extract_field_and_alias_without_as_keyword(self):
         """Test _extract_field_and_alias without AS keyword."""
@@ -135,9 +137,10 @@ class TestSelectHandler:
         class MockItem:
             children = [MockField(), MockAlias()]
 
-        field_name, alias = handler._extract_field_and_alias(MockItem())
+        field_name, alias, func_info = handler._extract_field_and_alias(MockItem())
         assert field_name == "field_name"
         assert alias == "alias_name"
+        assert func_info is None
 
     def test_extract_field_and_alias_no_children(self):
         """Test _extract_field_and_alias when no children."""
@@ -147,8 +150,9 @@ class TestSelectHandler:
             def __str__(self):
                 return "simple_item"
 
-        field_name, alias = handler._extract_field_and_alias(MockItem())
+        field_name, alias, func_info = handler._extract_field_and_alias(MockItem())
         assert alias is None
+        assert func_info is None
 
 
 class TestFromHandler:

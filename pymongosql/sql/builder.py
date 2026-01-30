@@ -124,6 +124,14 @@ class ExecutionPlanBuilder:
             builder._execution_plan.aggregate_pipeline = parse_result.aggregate_pipeline
             builder._execution_plan.aggregate_options = parse_result.aggregate_options
 
+        # Set projection functions if present
+        if hasattr(parse_result, "projection_functions"):
+            builder._execution_plan.projection_functions = parse_result.projection_functions
+
+        # Set ordered projection outputs if present
+        if hasattr(parse_result, "projection_output"):
+            builder._execution_plan.projection_output = parse_result.projection_output
+
         # Now build and validate
         plan = builder.build()
         return plan

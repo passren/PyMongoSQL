@@ -15,6 +15,8 @@ class QueryExecutionPlan(ExecutionPlan):
     filter_stage: Dict[str, Any] = field(default_factory=dict)
     projection_stage: Dict[str, Any] = field(default_factory=dict)
     column_aliases: Dict[str, str] = field(default_factory=dict)  # Maps field_name -> alias
+    projection_functions: Dict[str, Any] = field(default_factory=dict)  # Maps field_name -> [function_name, params...]
+    projection_output: List[Dict[str, Any]] = field(default_factory=list)  # Ordered projection outputs
     sort_stage: List[Dict[str, int]] = field(default_factory=list)
     limit_stage: Optional[int] = None
     skip_stage: Optional[int] = None

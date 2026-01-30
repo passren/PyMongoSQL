@@ -433,3 +433,88 @@ class TestSQLParserGeneral:
             "age": "user_age",
         }
         assert execution_plan.filter_stage == {"status": "active"}
+
+    def test_select_with_projection_functions(self):
+        """Test SELECT with projection functions like DATE, UPPER, SUBSTR, etc."""
+        sql = "SELECT DATE(created_at), UPPER(name), SUBSTR(email, 1, 5) FROM users"
+        parser = SQLParser(sql)
+
+        assert not parser.has_errors, f"Parser errors: {parser.errors}"
+
+        execution_plan = parser.get_execution_plan()
+        assert execution_plan.collection == "users"
+        # All three fields should be in projection
+        assert execution_plan.projection_stage == {"created_at": 1, "name": 1, "email": 1}
+
+        # Assert projection functions are correctly tracked
+        # Each field should map to [function_name, parameters...]
+        assert "created_at" in execution_plan.projection_functions
+        created_at_func = execution_plan.projection_functions["created_at"]
+        assert created_at_func["name"] == "DATE"
+        assert created_at_func["args"][0] == "created_at"
+
+        assert "name" in execution_plan.projection_functions
+        name_func = execution_plan.projection_functions["name"]
+        assert name_func["name"] == "UPPER"
+        assert name_func["args"][0] == "name"
+
+        assert "email" in execution_plan.projection_functions
+        email_func = execution_plan.projection_functions["email"]
+        assert email_func["name"] == "SUBSTR"
+        assert email_func["args"][0] == "email"
+        assert email_func["args"][1] == 1  # start position
+        assert email_func["args"][2] == 5  # length
+
+    def test_select_with_projection_functions_and_aliases(self):
+        """Test SELECT with projection functions and aliases"""
+        sql = "SELECT DATE(created_at) AS creation_date, UPPER(name) AS upper_name FROM users"
+        parser = SQLParser(sql)
+
+        assert not parser.has_errors, f"Parser errors: {parser.errors}"
+
+        execution_plan = parser.get_execution_plan()
+        assert execution_plan.collection == "users"
+        assert execution_plan.projection_stage == {"created_at": 1, "name": 1}
+        # Verify aliases are mapped to original field names
+        assert execution_plan.column_aliases == {
+            "created_at": "creation_date",
+            "name": "upper_name",
+        }
+
+        # Assert projection functions are correctly tracked with their parameters
+        assert "creation_date" in execution_plan.projection_functions
+        created_at_func = execution_plan.projection_functions["creation_date"]
+        assert created_at_func["name"] == "DATE"
+        assert created_at_func["args"][0] == "created_at"
+
+        assert "upper_name" in execution_plan.projection_functions
+        name_func = execution_plan.projection_functions["upper_name"]
+        assert name_func["name"] == "UPPER"
+        assert name_func["args"][0] == "name"
+
+    def test_select_with_projection_functions_and_where(self):
+        """Test SELECT with projection functions and WHERE clause"""
+        sql = "SELECT DATETIME(timestamp_field), TRIM(description) FROM products WHERE category = 'electronics'"
+        parser = SQLParser(sql)
+
+        assert not parser.has_errors, f"Parser errors: {parser.errors}"
+
+        execution_plan = parser.get_execution_plan()
+        assert execution_plan.collection == "products"
+        assert execution_plan.projection_stage == {"timestamp_field": 1, "description": 1}
+        assert execution_plan.filter_stage == {"category": "electronics"}
+
+        # Assert projection functions are correctly tracked with their parameters
+        assert "timestamp_field" in execution_plan.projection_functions
+        timestamp_func = execution_plan.projection_functions["timestamp_field"]
+        assert timestamp_func["name"] == "DATETIME"
+        assert timestamp_func["args"][0] == "timestamp_field"
+
+        assert "description" in execution_plan.projection_functions
+        description_func = execution_plan.projection_functions["description"]
+        assert description_func["name"] == "TRIM"
+        assert description_func["args"][0] == "description"
+
+        # Verify WHERE clause is independent of function parameters
+        # Functions are applied in result processing, filter is applied before projection
+        assert execution_plan.filter_stage == {"category": "electronics"}

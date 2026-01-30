@@ -75,16 +75,63 @@ class ResultSet(CursorIterator):
                 self._description = None
             return
 
-        # Build description from projection (now in MongoDB format {field: 1})
+        # Build description from projection output if available
         description = []
         column_aliases = getattr(self._execution_plan, "column_aliases", {})
+        projection_functions = getattr(self._execution_plan, "projection_functions", {})
+        projection_output = getattr(self._execution_plan, "projection_output", None)
+
+        if projection_output:
+            for item in projection_output:
+                output_name = item.get("output_name")
+                func_info = item.get("function")
+
+                display_name = output_name
+                type_code = str
+
+                if func_info:
+                    func_name = func_info.get("name")
+                    if func_name:
+                        from .sql.projection_functions import ProjectionFunctionRegistry
+
+                        registry = ProjectionFunctionRegistry()
+                        for func in registry.get_all_functions():
+                            if func.function_name.upper() == str(func_name).upper():
+                                type_code = func.get_type_code()
+                                break
+
+                description.append((display_name, type_code, None, None, None, None, None))
+
+            self._description = description
+            return
 
         for field_name, include_flag in self._execution_plan.projection_stage.items():
             # SQL cursor description format: (name, type_code, display_size, internal_size, precision, scale, null_ok)
             if include_flag == 1:  # Field is included in projection
                 # Use alias if available, otherwise use field name
                 display_name = column_aliases.get(field_name, field_name)
-                description.append((display_name, str, None, None, None, None, None))
+
+                # Determine type code based on projection function if present
+                type_code = str
+                if field_name in projection_functions:
+                    func_info = projection_functions[field_name]
+                    func_name = None
+                    if isinstance(func_info, dict):
+                        func_name = func_info.get("name")
+                    elif isinstance(func_info, (list, tuple)) and len(func_info) > 0:
+                        func_name = func_info[0]
+
+                    if func_name:
+                        from .sql.projection_functions import ProjectionFunctionRegistry
+
+                        registry = ProjectionFunctionRegistry()
+                        # Find function by name
+                        for func in registry.get_all_functions():
+                            if func.function_name.upper() == str(func_name).upper():
+                                type_code = func.get_type_code()
+                                break
+
+                description.append((display_name, type_code, None, None, None, None, None))
 
         self._description = description
 
@@ -129,17 +176,73 @@ class ResultSet(CursorIterator):
             self._cache_exhausted = True
 
     def _process_document(self, doc: Dict[str, Any]) -> Dict[str, Any]:
-        """Process a MongoDB document according to projection mapping"""
+        """Process a MongoDB document according to projection mapping and apply projection functions"""
         if not self._execution_plan.projection_stage:
             # No projection, return document as-is (including _id)
             return dict(doc)
 
         # Apply projection mapping (now using MongoDB format {field: 1})
         processed = {}
+        projection_functions = getattr(self._execution_plan, "projection_functions", {})
+        projection_output = getattr(self._execution_plan, "projection_output", None)
+
+        from .sql.projection_functions import ProjectionFunctionRegistry
+
+        registry = ProjectionFunctionRegistry()
+
+        if projection_output:
+            for item in projection_output:
+                output_name = item.get("output_name")
+                source_field = item.get("source_field")
+                func_info = item.get("function")
+
+                value = self._get_nested_value(doc, source_field)
+
+                if func_info:
+                    func_name = func_info.get("name") if isinstance(func_info, dict) else None
+                    format_param = func_info.get("format_param") if isinstance(func_info, dict) else None
+                    if func_name:
+                        func_handler = registry.find_function(f"{func_name}(x)")
+                        if func_handler:
+                            value = func_handler.convert_value(value, format_param)
+
+                if output_name == source_field:
+                    display_key = self._mongo_to_bracket_key(source_field)
+                else:
+                    display_key = output_name
+
+                processed[display_key] = value
+
+            return processed
+
         for field_name, include_flag in self._execution_plan.projection_stage.items():
             if include_flag == 1:  # Field is included in projection
                 # Extract value using jmespath-compatible field path (convert numeric dot indexes to bracket form)
                 value = self._get_nested_value(doc, field_name)
+
+                # Apply projection function if present
+                if field_name in projection_functions:
+                    func_info = projection_functions[field_name]
+                    func_name = None
+                    format_param = None
+                    if isinstance(func_info, dict):
+                        func_name = func_info.get("name")
+                        format_param = func_info.get("format_param")
+                    elif isinstance(func_info, (list, tuple)):
+                        if len(func_info) >= 2:
+                            func_name = func_info[0]
+                            if len(func_info) == 2:
+                                format_param = func_info[1]
+                            elif len(func_info) > 2:
+                                extra_params = func_info[2:]
+                                if extra_params:
+                                    format_param = ",".join([str(p) for p in extra_params])
+
+                    if func_name:
+                        func_handler = registry.find_function(f"{func_name}(x)")
+                        if func_handler:
+                            value = func_handler.convert_value(value, format_param)
+
                 # Convert the projection key back to bracket notation for client-facing results
                 display_key = self._mongo_to_bracket_key(field_name)
                 processed[display_key] = value

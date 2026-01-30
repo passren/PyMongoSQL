@@ -23,6 +23,10 @@ class QueryParseResult:
     collection: Optional[str] = None
     projection: Dict[str, Any] = field(default_factory=dict)
     column_aliases: Dict[str, str] = field(default_factory=dict)  # Maps field_name -> alias
+    projection_functions: Dict[str, Dict[str, Any]] = field(
+        default_factory=dict
+    )  # Maps output_name -> {name, args, format_param}
+    projection_output: List[Dict[str, Any]] = field(default_factory=list)
     sort_fields: List[Dict[str, int]] = field(default_factory=list)
     limit_value: Optional[int] = None
     offset_value: Optional[int] = None
@@ -118,33 +122,113 @@ class SelectHandler(BaseHandler, ContextUtilsMixin):
     def handle_visitor(self, ctx: PartiQLParser.SelectItemsContext, parse_result: "QueryParseResult") -> Any:
         projection = {}
         column_aliases = {}
+        projection_functions = {}
+        projection_output = []
 
         if hasattr(ctx, "projectionItems") and ctx.projectionItems():
             for item in ctx.projectionItems().projectionItem():
-                field_name, alias = self._extract_field_and_alias(item)
+                field_name, alias, func_info = self._extract_field_and_alias(item)
                 # Use MongoDB standard projection format: {field: 1} to include field
                 projection[field_name] = 1
                 # Store alias if present
                 if alias:
                     column_aliases[field_name] = alias
+                # Store function info if present
+                if func_info:
+                    output_name = alias or field_name
+                    projection_functions[output_name] = func_info
+
+                output_name = alias or field_name
+                projection_output.append(
+                    {
+                        "output_name": output_name,
+                        "source_field": field_name,
+                        "function": func_info,
+                    }
+                )
 
         parse_result.projection = projection
         parse_result.column_aliases = column_aliases
+        parse_result.projection_functions = projection_functions
+        parse_result.projection_output = projection_output
         return projection
 
-    def _extract_field_and_alias(self, item) -> Tuple[str, Optional[str]]:
-        """Extract field name and alias from projection item context with nested field support"""
+    def _extract_field_and_alias(self, item) -> Tuple[str, Optional[str], Optional[Dict[str, Any]]]:
+        """Extract field name, alias, and projection function from projection item context"""
         if not hasattr(item, "children") or not item.children:
-            return str(item), None
+            return str(item), None, None
 
         # According to grammar: projectionItem : expr ( AS? symbolPrimitive )? ;
         # children[0] is always the expression
         # If there's an alias, children[1] might be AS and children[2] symbolPrimitive
         # OR children[1] might be just symbolPrimitive (without AS)
 
-        field_name = item.children[0].getText()
-        # Normalize bracket notation (jmspath) to Mongo dot notation
-        field_name = self.normalize_field_path(field_name)
+        expr_text = item.children[0].getText()
+
+        # Check if this is a projection function call
+        from .projection_functions import ProjectionFunctionRegistry
+
+        registry = ProjectionFunctionRegistry()
+        func_handler = registry.find_function(expr_text)
+
+        if func_handler:
+            # Extract column and format from function
+            column, format_param = func_handler.extract_column_and_format(expr_text)
+            field_name = self.normalize_field_path(column)
+
+            def _split_args(arg_str: str) -> List[str]:
+                args = []
+                current = []
+                in_single = False
+                in_double = False
+                for ch in arg_str:
+                    if ch == "'" and not in_double:
+                        in_single = not in_single
+                    elif ch == '"' and not in_single:
+                        in_double = not in_double
+                    if ch == "," and not in_single and not in_double:
+                        args.append("".join(current).strip())
+                        current = []
+                        continue
+                    current.append(ch)
+                if current:
+                    args.append("".join(current).strip())
+                return [a for a in args if a]
+
+            def _normalize_param(param: str) -> Any:
+                value = param.strip()
+                if (value.startswith("'") and value.endswith("'")) or (value.startswith('"') and value.endswith('"')):
+                    value = value[1:-1]
+                try:
+                    return int(value)
+                except ValueError:
+                    try:
+                        return float(value)
+                    except ValueError:
+                        return value
+
+            # Parse parameters from function call text
+            func_call_match = re.match(r"^\s*\w+\s*\((.*)\)\s*$", expr_text, re.IGNORECASE)
+            args_list: List[Any] = []
+            if func_call_match:
+                raw_args = _split_args(func_call_match.group(1))
+                args_list = [_normalize_param(arg) for arg in raw_args]
+
+            # Normalize first arg to the actual field name if present
+            if args_list:
+                args_list[0] = field_name
+            else:
+                args_list = [field_name]
+
+            func_info = {
+                "name": func_handler.function_name,
+                "args": args_list,
+                "format_param": format_param,
+            }
+        else:
+            # Regular field, not a function
+            field_name = self.normalize_field_path(expr_text)
+            func_info = None
 
         alias = None
 
@@ -158,7 +242,7 @@ class SelectHandler(BaseHandler, ContextUtilsMixin):
                 # Pattern: expr symbolPrimitive (without AS)
                 alias = item.children[1].getText()
 
-        return field_name, alias
+        return field_name, alias, func_info
 
 
 class FromHandler(BaseHandler):
