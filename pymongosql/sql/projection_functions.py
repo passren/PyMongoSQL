@@ -2,7 +2,7 @@
 import logging
 import re
 from abc import ABC, abstractmethod
-from datetime import date, datetime
+from datetime import date, datetime, timezone
 from typing import Any, List, Optional, Tuple
 
 from bson import Timestamp
@@ -115,7 +115,7 @@ class TimestampFunction(ProjectionFunction):
         return "", None
 
     def convert_value(self, value: Any, format_param: Optional[str] = None) -> Any:
-        """Convert to BSON Timestamp"""
+        """Convert to BSON Timestamp using UTC for consistency"""
         if value is None:
             return None
 
@@ -130,33 +130,39 @@ class TimestampFunction(ProjectionFunction):
             # Try ISO format first
             try:
                 dt = datetime.fromisoformat(value)
+                # Use UTC if no timezone info
+                if dt.tzinfo is None:
+                    dt = dt.replace(tzinfo=timezone.utc)
                 timestamp_int = int(dt.timestamp())
                 return Timestamp(timestamp_int, 0)
             except (ValueError, TypeError):
                 pass
 
-            # Try date-only format (YYYY-MM-DD)
+            # Try date-only format (YYYY-MM-DD) - treat as UTC
             if re.match(r"^\d{4}-\d{2}-\d{2}$", value):
                 try:
                     dt = datetime.strptime(value, "%Y-%m-%d")
+                    dt = dt.replace(tzinfo=timezone.utc)  # Treat as UTC
                     timestamp_int = int(dt.timestamp())
                     return Timestamp(timestamp_int, 0)
                 except ValueError:
                     pass
 
-            # Try custom format if provided
+            # Try custom format if provided - treat as UTC
             if format_param:
                 try:
                     dt = datetime.strptime(value, format_param)
+                    dt = dt.replace(tzinfo=timezone.utc)  # Treat as UTC
                     timestamp_int = int(dt.timestamp())
                     return Timestamp(timestamp_int, 0)
                 except ValueError:
                     pass
 
-            # Try common formats
+            # Try common formats - treat as UTC
             for fmt in ["%Y-%m-%dT%H:%M:%SZ", "%Y-%m-%d %H:%M:%S", "%Y-%m-%d", "%d-%m-%Y", "%m/%d/%Y"]:
                 try:
                     dt = datetime.strptime(value, fmt)
+                    dt = dt.replace(tzinfo=timezone.utc)  # Treat as UTC
                     timestamp_int = int(dt.timestamp())
                     return Timestamp(timestamp_int, 0)
                 except ValueError:

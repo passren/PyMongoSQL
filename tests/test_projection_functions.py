@@ -2,7 +2,7 @@
 """Tests for projection functions"""
 
 import re
-from datetime import date, datetime
+from datetime import date, datetime, timezone
 
 from bson import Timestamp
 
@@ -202,7 +202,14 @@ class TestTimestampFunction:
         func = TimestampFunction()
         result = func.convert_value("2025-01-15")
         assert isinstance(result, Timestamp)
-        assert result.time == 1736917200  # Unix timestamp for 2025-01-15 00:00:00 UTC
+        # Verify the timestamp represents 2025-01-15 00:00:00 UTC
+        # Use UTC explicitly for timezone-independent validation (Windows/Unix compatible)
+        dt = datetime.fromtimestamp(result.time, tz=timezone.utc)
+        assert dt.year == 2025
+        assert dt.month == 1
+        assert dt.day == 15
+        assert dt.hour == 0
+        assert dt.minute == 0
 
     def test_convert_iso_datetime_string(self):
         """Test conversion from ISO datetime strings"""
