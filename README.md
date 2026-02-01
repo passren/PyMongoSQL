@@ -223,6 +223,28 @@ Parameters are substituted into the MongoDB filter during execution, providing p
 - **Logical operators**: `WHERE age > 18 AND status = 'active'`, `WHERE age < 30 OR role = 'admin'`
 - **Nested field filtering**: `WHERE profile.status = 'active'`
 - **Array filtering**: `WHERE items[0].price > 100`
+- **Date/DateTime functions**: `WHERE created_at > date('2023-01-01')`, `WHERE updated_at > datetime('2023-06-01 00:00:00')`
+
+### SQL Functions
+
+PyMongoSQL supports SQL functions in two distinct contexts:
+
+**Projection Functions (SELECT clause)** - Convert MongoDB types to Python types for display:
+- **Date/Time**: `DATE()`, `DATETIME()`, `TIMESTAMP()` - Convert MongoDB dates to Python date/datetime objects
+  - Supports custom format: `DATE(created_at, '%Y-%m-%d')`, `DATETIME(updated_at, '%Y-%m-%d %H:%M:%S')`
+- **Type Conversion**: `NUMBER()`, `BOOL()` - Convert values to numeric or boolean types
+- **String Manipulation**: `SUBSTR()`, `REPLACE()`, `TRIM()`, `UPPER()`, `LOWER()` - Process string values
+
+Example: `SELECT DATE(created_at) AS date, DATE(created_at, '%d/%m/%Y') AS formatted_date, UPPER(name) AS name FROM users`
+
+**WHERE Clause Functions** - Convert string values to MongoDB types for filtering:
+- **Date/Time only**: `DATE()`, `DATETIME()`, `TIMESTAMP()` - Convert string filters to MongoDB date objects
+  - Supports custom format: `WHERE created_at > date('01/01/2023', '%d/%m/%Y')`
+- Returns datetime with UTC timezone for BSON compatibility
+
+Example: `SELECT * FROM users WHERE created_at > date('2023-01-01') AND updated_at > datetime('2023-06-01 00:00:00', '%Y-%m-%d %H:%M:%S')`
+
+Note: WHERE clause supports only date/datetime functions. String functions like UPPER() work differently in WHERE vs SELECT contexts.
 
 ### Nested Field Support
 - **Single-level**: `profile.name`, `settings.theme`
