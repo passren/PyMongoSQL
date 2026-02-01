@@ -92,7 +92,7 @@ class DateFunction(ProjectionFunction):
         return value
 
     def get_type_code(self) -> str:
-        return "date"
+        return "datetime"
 
 
 class TimestampFunction(ProjectionFunction):
@@ -171,7 +171,7 @@ class TimestampFunction(ProjectionFunction):
         return value
 
     def get_type_code(self) -> str:
-        return "timestamp"
+        return "datetime"
 
 
 class DatetimeFunction(ProjectionFunction):

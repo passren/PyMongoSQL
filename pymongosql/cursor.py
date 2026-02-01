@@ -106,7 +106,17 @@ class Cursor(BaseCursor, CursorIterator):
             # For SELECT/QUERY operations, use the execution plan directly
             if isinstance(self._current_execution_plan, QueryExecutionPlan):
                 execution_plan_for_rs = self._current_execution_plan
-                self._result_set = self._result_set_class(
+
+                # Use PreProcessedResultSet for rows from intermediate storage (SQLite)
+                # These rows are already formatted and don't need projection processing
+                if getattr(execution_plan_for_rs, "from_intermediate_storage", False):
+                    from .result_set import PreProcessedResultSet
+
+                    result_set_class = PreProcessedResultSet
+                else:
+                    result_set_class = self._result_set_class
+
+                self._result_set = result_set_class(
                     command_result=result,
                     execution_plan=execution_plan_for_rs,
                     database=self.connection.database,

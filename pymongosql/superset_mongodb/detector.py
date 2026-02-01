@@ -19,14 +19,49 @@ class QueryInfo:
 class SubqueryDetector:
     """Detects and analyzes SQL subqueries in query strings"""
 
-    # Pattern to detect wrapped subqueries: SELECT ... FROM (SELECT ...) AS alias
-    WRAPPED_SUBQUERY_PATTERN = re.compile(
-        r"SELECT\s+.*?\s+FROM\s*\(\s*(SELECT\s+.*?)\s*\)\s+(?:AS\s+)?(\w+)",
-        re.IGNORECASE | re.DOTALL,
-    )
-
     # Pattern to detect simple SELECT start
     SELECT_PATTERN = re.compile(r"^\s*SELECT\s+", re.IGNORECASE)
+
+    @classmethod
+    def _extract_balanced_subquery(cls, query: str) -> Optional[Tuple[str, str]]:
+        """
+        Extract subquery with balanced parentheses.
+
+        Returns:
+            Tuple of (subquery_text, alias) or None if not found
+        """
+        # Find FROM ( pattern
+        from_match = re.search(r"FROM\s*\(\s*", query, re.IGNORECASE)
+        if not from_match:
+            return None
+
+        start_pos = from_match.end()
+        paren_count = 1
+        pos = start_pos
+
+        # Balance parentheses to find the matching closing paren
+        while pos < len(query) and paren_count > 0:
+            if query[pos] == "(":
+                paren_count += 1
+            elif query[pos] == ")":
+                paren_count -= 1
+            pos += 1
+
+        if paren_count != 0:
+            return None  # Unbalanced parentheses
+
+        # Extract subquery text (between opening and closing parens)
+        subquery_text = query[start_pos : pos - 1].strip()
+
+        # Extract alias after the closing paren
+        rest_of_query = query[pos:].strip()
+        alias_match = re.match(r"(?:AS\s+)?(\w+)", rest_of_query, re.IGNORECASE)
+        if alias_match:
+            alias = alias_match.group(1)
+        else:
+            alias = "subquery_result"
+
+        return subquery_text, alias
 
     @classmethod
     def detect(cls, query: str) -> QueryInfo:
@@ -41,14 +76,10 @@ class SubqueryDetector:
         """
         query = query.strip()
 
-        # Check for wrapped subquery pattern (most common Superset case)
-        match = cls.WRAPPED_SUBQUERY_PATTERN.search(query)
-        if match:
-            subquery_text = match.group(1)
-            subquery_alias = match.group(2)
-
-            if subquery_alias is None or subquery_alias == "":
-                subquery_alias = "subquery_result"
+        # Check for wrapped subquery pattern using balanced parentheses
+        result = cls._extract_balanced_subquery(query)
+        if result:
+            subquery_text, subquery_alias = result
 
             return QueryInfo(
                 has_subquery=True,
@@ -91,48 +122,45 @@ class SubqueryDetector:
         if not info.is_wrapped:
             return None
 
-        # Pattern to capture: SELECT <columns> FROM ( <subquery> ) AS <alias> <rest>
-        # Matches both SELECT col1, col2 and SELECT col1 AS alias1, col2 AS alias2 formats
-        pattern = re.compile(
-            r"(SELECT\s+.+?)\s+FROM\s*\(\s*(?:select|SELECT)\s+.+?\s*\)\s+(?:AS\s+)?(\w+)(.*)",
-            re.IGNORECASE | re.DOTALL,
-        )
-
-        match = pattern.search(query)
-        if match:
-            select_clause = match.group(1).strip()
-            table_alias = match.group(2)
-            rest_of_query = match.group(3).strip()
-
-            if rest_of_query:
-                outer = f"{select_clause} FROM {table_alias} {rest_of_query}"
-            else:
-                outer = f"{select_clause} FROM {table_alias}"
-
-            return outer, table_alias
-
-        # If pattern doesn't match exactly, fall back to preserving SELECT clause
-        # Extract from SELECT to FROM keyword
-        select_match = re.search(r"(SELECT\s+.+?)\s+FROM", query, re.IGNORECASE | re.DOTALL)
-        if not select_match:
+        # Use balanced parenthesis extraction to find subquery boundaries
+        result = cls._extract_balanced_subquery(query)
+        if not result:
             return None
 
-        select_clause = select_match.group(1).strip()
+        _, table_alias = result
 
-        # Extract table alias and rest of query after the closing paren
-        rest_match = re.search(r"\)\s+(?:AS\s+)?(\w+)(.*)", query, re.IGNORECASE | re.DOTALL)
-        if rest_match:
-            table_alias = rest_match.group(1)
-            rest_of_query = rest_match.group(2).strip()
+        # Find the FROM ( pattern to locate where subquery starts
+        from_match = re.search(r"FROM\s*\(", query, re.IGNORECASE)
+        if not from_match:
+            return None
 
-            if rest_of_query:
-                outer = f"{select_clause} FROM {table_alias} {rest_of_query}"
-            else:
-                outer = f"{select_clause} FROM {table_alias}"
+        # Extract SELECT clause (everything before FROM ()
+        select_clause = query[: from_match.start()].strip()
 
-            return outer, table_alias
+        # Find where the subquery ends (matching closing paren)
+        start_pos = from_match.end()
+        paren_count = 1
+        pos = start_pos
 
-        return None
+        while pos < len(query) and paren_count > 0:
+            if query[pos] == "(":
+                paren_count += 1
+            elif query[pos] == ")":
+                paren_count -= 1
+            pos += 1
+
+        # Extract rest of query after the closing paren and alias
+        rest_of_query = query[pos:].strip()
+        # Remove the AS alias part if present
+        rest_of_query = re.sub(r"^(?:AS\s+)?\w+\s*", "", rest_of_query, flags=re.IGNORECASE).strip()
+
+        # Construct outer query with table alias replacing subquery
+        if rest_of_query:
+            outer = f"{select_clause} FROM {table_alias} {rest_of_query}"
+        else:
+            outer = f"{select_clause} FROM {table_alias}"
+
+        return outer, table_alias
 
     @classmethod
     def is_simple_select(cls, query: str) -> bool:

@@ -426,5 +426,26 @@ class DictResultSet(ResultSet):
         return doc
 
 
+class PreProcessedResultSet(ResultSet):
+    """Result set for pre-formatted rows that don't need projection processing.
+
+    Used when rows are already projected and formatted (e.g., from SQLite intermediate storage).
+    Skips the document projection step and goes directly to formatting as tuples.
+    """
+
+    def _process_and_cache_batch(self, batch: List[Dict[str, Any]]) -> None:
+        """Process and cache a batch of pre-processed documents.
+
+        Unlike the base ResultSet, this skips projection processing and directly formats results.
+        """
+        if not batch:
+            return
+        # Skip projection processing - rows are already in final form
+        # Just format to output format (tuple)
+        formatted_batch = [self._format_result(doc) for doc in batch]
+        self._cached_results.extend(formatted_batch)
+        self._total_fetched += len(batch)
+
+
 # For backward compatibility
 MongoResultSet = ResultSet

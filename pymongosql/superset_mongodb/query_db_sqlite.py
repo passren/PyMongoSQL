@@ -1,7 +1,10 @@
 # -*- coding: utf-8 -*-
+import datetime
 import logging
 import sqlite3
 from typing import Any, Dict, List, Optional
+
+from bson import Timestamp
 
 from .query_db import QueryDatabase
 
@@ -11,21 +14,73 @@ _logger = logging.getLogger(__name__)
 class SQLiteTypeMapper:
     """Maps Python/MongoDB data types to SQLite3 types"""
 
-    # Type mapping from Python types to SQLite3 types
+    # Type mapping from Python type codes (from cursor.description) to SQLite3 types
     TYPE_MAP = {
+        # Basic Python types
         str: "TEXT",
         int: "INTEGER",
         float: "REAL",
         bool: "INTEGER",  # SQLite3 uses 0/1 for boolean
         bytes: "BLOB",
+        bytearray: "BLOB",
         type(None): "NULL",
-        dict: "TEXT",  # Store as JSON string
-        list: "TEXT",  # Store as JSON string
+        # Collection types (stored as JSON)
+        dict: "TEXT",
+        list: "TEXT",
+        # Temporal types
+        datetime.datetime: "TEXT",  # SQLite stores datetime as TEXT or INTEGER
+        datetime.date: "TEXT",  # SQLite stores date as TEXT
+        # BSON types
+        Timestamp: "TEXT",  # BSON Timestamp stored as TEXT
+    }
+
+    # Mapping from string type codes (from projection functions) to Python types
+    STRING_TYPE_CODE_MAP = {
+        "str": str,
+        "string": str,
+        "text": str,
+        "int": int,
+        "integer": int,
+        "number": float,
+        "float": float,
+        "real": float,
+        "bool": bool,
+        "boolean": bool,
+        "date": datetime.date,
+        "datetime": datetime.datetime,
+        "timestamp": Timestamp,
+        "bytes": bytes,
+        "blob": bytes,
     }
 
     @classmethod
+    def get_sqlite_type_from_code(cls, type_code) -> str:
+        """
+        Map type code (from cursor description) to SQLite type.
+
+        Args:
+            type_code: Type from cursor description - can be:
+                      - Python type (str, int, float, datetime, etc.)
+                      - String type code ("str", "date", "number", etc.)
+
+        Returns:
+            SQLite type string
+        """
+        # If it's a string type code, convert to Python type first
+        if isinstance(type_code, str):
+            type_code = cls.STRING_TYPE_CODE_MAP.get(type_code.lower(), str)
+
+        # Direct mapping from TYPE_MAP
+        if type_code in cls.TYPE_MAP:
+            return cls.TYPE_MAP[type_code]
+
+        # Default to TEXT for unknown types
+        _logger.debug(f"Unknown type code {type_code}, defaulting to TEXT")
+        return "TEXT"
+
+    @classmethod
     def get_sqlite_type(cls, value: Any) -> str:
-        """Get SQLite type for a Python value"""
+        """Get SQLite type for a Python value (used for backward compatibility)"""
         if value is None:
             return "NULL"
 
@@ -64,6 +119,24 @@ class SQLiteTypeMapper:
         return schema
 
     @classmethod
+    def schema_from_description(cls, description: List[tuple]) -> Dict[str, str]:
+        """
+        Build SQLite schema from cursor description.
+
+        Args:
+            description: Cursor description with (name, type_code, ...) tuples
+
+        Returns:
+            Dictionary mapping column names to SQLite types
+        """
+        schema = {}
+        for col_desc in description:
+            col_name = col_desc[0]  # Column name
+            type_code = col_desc[1]  # Type code (Python type)
+            schema[col_name] = cls.get_sqlite_type_from_code(type_code)
+        return schema
+
+    @classmethod
     def convert_value(cls, value: Any, target_type: str) -> Any:
         """Convert value to appropriate SQLite type"""
         if value is None:
@@ -74,10 +147,12 @@ class SQLiteTypeMapper:
         elif target_type == "REAL":
             return float(value) if value is not None else None
         elif target_type == "TEXT":
+            # Don't convert if already the correct type - preserve original value type
             if isinstance(value, (dict, list)):
                 import json
 
                 return json.dumps(value)
+
             return str(value)
         elif target_type == "BLOB":
             if isinstance(value, bytes):
@@ -168,6 +243,54 @@ class QueryDBSQLite(QueryDatabase):
         insert_sql = f"INSERT INTO {table_name} ({', '.join(columns)}) VALUES ({placeholders})"
 
         # Convert values to appropriate types
+        schema = self._tables[table_name]
+        converted_records = []
+
+        for record in records:
+            converted_row = tuple(
+                SQLiteTypeMapper.convert_value(record.get(col), schema.get(col, "TEXT")) for col in columns
+            )
+            converted_records.append(converted_row)
+
+        try:
+            conn.executemany(insert_sql, converted_records)
+            conn.commit()
+            _logger.debug(f"Inserted {len(records)} records into {table_name}")
+            return len(records)
+        except sqlite3.Error as e:
+            _logger.error(f"Error inserting records into {table_name}: {e}")
+            raise
+
+    def insert_records_with_description(
+        self, table_name: str, records: List[Dict[str, Any]], description: List[tuple]
+    ) -> int:
+        """
+        Insert records into a SQLite3 table using cursor description for schema.
+
+        Args:
+            table_name: Name of the table
+            records: List of dictionaries to insert
+            description: Cursor description with (name, type_code, ...) tuples
+
+        Returns:
+            Number of records inserted
+        """
+        if not records:
+            return 0
+
+        conn = self._ensure_connection()
+
+        # Create table if not exists using schema from description
+        if table_name not in self._tables:
+            schema = SQLiteTypeMapper.schema_from_description(description)
+            self.create_table(table_name, schema)
+
+        # Build INSERT statement
+        columns = list(records[0].keys())
+        placeholders = ", ".join(["?" for _ in columns])
+        insert_sql = f"INSERT INTO {table_name} ({', '.join(columns)}) VALUES ({placeholders})"
+
+        # Convert values to appropriate types based on schema
         schema = self._tables[table_name]
         converted_records = []
 

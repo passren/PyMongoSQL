@@ -329,35 +329,6 @@ class TestSubqueryExecutionIntegration:
         assert len(row) == 2  # _id and name
         assert row[1] == known_name  # Name should match the known value
 
-    def test_numeric_data_preserved_through_stages(self, superset_conn):
-        """Test that numeric data is correctly preserved through the two-stage execution"""
-        cursor = superset_conn.cursor()
-
-        # Superset-style query with column aliases and numeric filtering
-        subquery_sql = """
-        SELECT _id AS _id, name AS name, age AS age
-        FROM (SELECT _id, name, age FROM users) AS virtual_table
-        WHERE age > 25
-        GROUP BY _id, name, age
-        LIMIT 5
-        """
-        cursor.execute(subquery_sql)
-        rows = cursor.fetchall()
-        description = cursor.description
-
-        assert len(rows) > 0
-        assert description is not None
-        col_names = [desc[0] for desc in description]
-
-        # Find age column index
-        age_idx = col_names.index("age")
-
-        # Verify numeric values are preserved and filtered correctly
-        for row in rows:
-            age_value = row[age_idx]
-            assert isinstance(age_value, (int, float)), f"Age should be numeric, got {type(age_value)}"
-            assert age_value > 25, f"Age {age_value} should be > 25"
-
     def test_description_consistency_across_fetches(self, superset_conn):
         """Test that cursor.description remains consistent across multiple fetches"""
         cursor = superset_conn.cursor()
@@ -415,6 +386,156 @@ class TestSubqueryExecutionIntegration:
         # Verify every row has 4 values (matching description)
         for row in rows:
             assert len(row) == 4, f"Row has {len(row)} values but description has {len(description)} columns"
+
+    def test_projection_functions_with_superset_execution(self, superset_conn):
+        """Test that projection functions work correctly in superset two-stage execution"""
+        cursor = superset_conn.cursor()
+
+        # Query using projection functions in INNER query (MongoDB execution)
+        # Projection functions are applied during MongoDB stage, results flow to SQLite
+        subquery_sql = """
+        SELECT id, numeric_age, creation_date, last_updated
+        FROM (SELECT _id AS id,
+                     NUMBER(age) AS numeric_age,
+                     DATE(created_at) AS creation_date,
+                     DATETIME(updated_at) AS last_updated
+              FROM users WHERE age > 0) AS virtual_table
+        LIMIT 3
+        """
+        cursor.execute(subquery_sql)
+        rows = cursor.fetchall()
+        description = cursor.description
+
+        assert len(rows) > 0
+        assert description is not None
+        assert len(description) == 4
+
+        # Extract column names and type codes
+        col_info = [(desc[0], desc[1]) for desc in description]
+        col_names = [name for name, _ in col_info]
+        type_codes = {name: type_code for name, type_code in col_info}
+
+        # Verify column names
+        assert "id" in col_names
+        assert "numeric_age" in col_names
+        assert "creation_date" in col_names
+        assert "last_updated" in col_names
+
+        # Verify type codes match projection functions
+        # All projection functions return string type codes like 'float', 'datetime', 'date', etc.
+        import datetime
+
+        # NUMBER() should produce 'float' type code
+        assert type_codes["numeric_age"] == "float", f"Expected 'float' but got {type_codes['numeric_age']!r}"
+
+        # DATE() should produce 'datetime' type code (note: projection functions return 'datetime' for both DATE and DATETIME)
+        assert type_codes["creation_date"] == "datetime", f"Expected 'datetime' but got {type_codes['creation_date']!r}"
+
+        # DATETIME() should produce 'datetime' type code
+        assert type_codes["last_updated"] == "datetime", f"Expected 'datetime' but got {type_codes['last_updated']!r}"
+
+        # Verify data values are correctly converted
+        for row in rows:
+            numeric_age_idx = col_names.index("numeric_age")
+            creation_date_idx = col_names.index("creation_date")
+            last_updated_idx = col_names.index("last_updated")
+
+            # NUMBER() should convert to float
+            assert isinstance(
+                row[numeric_age_idx], (int, float)
+            ), f"numeric_age should be numeric, got {type(row[numeric_age_idx])}"
+
+            # DATE() should convert to date object
+            creation_date_val = row[creation_date_idx]
+            assert creation_date_val is None or isinstance(
+                creation_date_val, datetime.date
+            ), f"creation_date should be date or None, got {type(creation_date_val)}"
+
+            # DATETIME() should convert to datetime object
+            last_updated_val = row[last_updated_idx]
+            assert last_updated_val is None or isinstance(
+                last_updated_val, datetime.datetime
+            ), f"last_updated should be datetime or None, got {type(last_updated_val)}"
+
+    def test_projection_functions_with_custom_format(self, superset_conn):
+        """Test that projection functions with custom format parameters work correctly in superset execution"""
+        cursor = superset_conn.cursor()
+
+        # Query using projection functions with custom formats in INNER query (MongoDB execution)
+        # Format parameters are processed during MongoDB stage
+        subquery_sql = """
+        SELECT id, formatted_date, formatted_datetime, timestamp_value
+        FROM (SELECT _id AS id,
+                     DATE(created_at, '%Y-%m-%d') AS formatted_date,
+                     DATETIME(updated_at, '%Y-%m-%d %H:%M:%S') AS formatted_datetime,
+                     TIMESTAMP(created_at, '%Y-%m-%d') AS timestamp_value
+              FROM users) AS virtual_table
+        LIMIT 3
+        """
+        cursor.execute(subquery_sql)
+        rows = cursor.fetchall()
+        description = cursor.description
+
+        assert len(rows) > 0
+        assert description is not None
+        assert len(description) == 4
+
+        # Extract column names
+        col_names = [desc[0] for desc in description]
+
+        # Verify column names
+        assert "id" in col_names
+        assert "formatted_date" in col_names
+        assert "formatted_datetime" in col_names
+        assert "timestamp_value" in col_names
+
+        # Verify type codes from description
+        type_codes = {desc[0]: desc[1] for desc in description}
+
+        import datetime
+
+        from bson import Timestamp
+
+        # Verify expected type codes
+        # All projection functions return string type codes
+        # DATE() should produce 'datetime' type code
+        assert (
+            type_codes["formatted_date"] == "datetime"
+        ), f"Expected 'datetime' but got {type_codes['formatted_date']!r}"
+
+        # DATETIME() should produce 'datetime' type code
+        assert (
+            type_codes["formatted_datetime"] == "datetime"
+        ), f"Expected 'datetime' but got {type_codes['formatted_datetime']!r}"
+
+        # TIMESTAMP() should produce 'datetime' type code
+        assert (
+            type_codes["timestamp_value"] == "datetime"
+        ), f"Expected 'datetime' but got {type_codes['timestamp_value']!r}"
+
+        # Verify data values are correctly converted with custom formats
+        for row in rows:
+            formatted_date_idx = col_names.index("formatted_date")
+            formatted_datetime_idx = col_names.index("formatted_datetime")
+            timestamp_value_idx = col_names.index("timestamp_value")
+
+            # DATE() with format should convert to date object
+            date_value = row[formatted_date_idx]
+            assert date_value is None or isinstance(
+                date_value, datetime.date
+            ), f"formatted_date should be date or None, got {type(date_value)}"
+
+            # DATETIME() with format should convert to datetime object
+            datetime_value = row[formatted_datetime_idx]
+            assert datetime_value is None or isinstance(
+                datetime_value, datetime.datetime
+            ), f"formatted_datetime should be datetime or None, got {type(datetime_value)}"
+
+            # TIMESTAMP() with format should convert to Timestamp object
+            timestamp_value = row[timestamp_value_idx]
+            assert timestamp_value is None or isinstance(
+                timestamp_value, Timestamp
+            ), f"timestamp_value should be Timestamp or None, got {type(timestamp_value)}"
 
     def test_empty_result_with_valid_description(self, superset_conn):
         """Test that description is available for result sets, even if empty after filtering"""

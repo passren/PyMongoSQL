@@ -89,7 +89,7 @@ class TestDateFunction:
     def test_get_type_code(self):
         """Test type code for date function"""
         func = DateFunction()
-        assert func.get_type_code() == "date"
+        assert func.get_type_code() == "datetime"
 
 
 class TestDatetimeFunction:
@@ -239,7 +239,7 @@ class TestTimestampFunction:
     def test_get_type_code(self):
         """Test type code for timestamp function"""
         func = TimestampFunction()
-        assert func.get_type_code() == "timestamp"
+        assert func.get_type_code() == "datetime"
 
 
 class TestNumberFunction:

@@ -33,6 +33,20 @@ class QueryDatabase(ABC):
         pass
 
     @abstractmethod
+    def insert_records_with_description(
+        self, table_name: str, records: List[Dict[str, Any]], description: List[tuple]
+    ) -> None:
+        """
+        Insert records into a table using cursor description for schema.
+
+        Args:
+            table_name: Name of the table
+            records: List of dictionaries with data
+            description: Cursor description with (name, type_code, ...) tuples
+        """
+        pass
+
+    @abstractmethod
     def execute_query(self, query: str) -> List[Dict[str, Any]]:
         """
         Execute a query and return results as list of dictionaries.
