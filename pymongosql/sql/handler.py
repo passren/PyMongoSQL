@@ -134,6 +134,12 @@ class OperatorExtractorMixin:
         """Parse string value to appropriate Python type"""
         value_text = value_text.strip()
 
+        # Check if this is a function call (e.g., date('2025-01-01'))
+        if "(" in value_text and ")" in value_text:
+            func_result = self._try_parse_function_value(value_text)
+            if func_result is not None:
+                return func_result
+
         # Remove parentheses from values
         value_text = value_text.strip("()")
 
@@ -158,6 +164,41 @@ class OperatorExtractorMixin:
             return None
 
         return value_text
+
+    def _try_parse_function_value(self, value_text: str) -> Any:
+        """Try to parse a function call like date('2025-01-01') in WHERE condition
+
+        Uses WhereClauseFunctionRegistry to convert string values to MongoDB types.
+        Supported functions: DATE, DATETIME, TIMESTAMP
+        """
+        try:
+            from .where_functions import WhereClauseFunctionRegistry
+
+            registry = WhereClauseFunctionRegistry()
+            func = registry.find_function(value_text)
+
+            if func:
+                # Extract the argument from the function call
+                # For date('2025-01-01'), extract '2025-01-01'
+                column, format_param = func.extract_column_and_format(value_text)
+
+                # Remove quotes from the argument if it's quoted
+                if column and (
+                    (column.startswith("'") and column.endswith("'"))
+                    or (column.startswith('"') and column.endswith('"'))
+                ):
+                    column = column[1:-1]
+
+                # Convert the value using the WHERE clause function
+                if column:
+                    result = func.convert_value(column, format_param)
+                    _logger.debug(f"WHERE function {func.function_name} converted '{column}' to {result}")
+                    return result
+
+            return None
+        except Exception as e:
+            _logger.debug(f"Failed to parse function value '{value_text}': {e}")
+            return None
 
 
 class BaseHandler(ABC):

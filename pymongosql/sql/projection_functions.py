@@ -82,7 +82,16 @@ class DateFunction(ProjectionFunction):
                     pass
 
             # Fallback: try common formats
-            for fmt in ["%Y-%m-%dT%H:%M:%SZ", "%Y-%m-%d", "%d-%m-%Y", "%m/%d/%Y"]:
+            # Order matters: try more specific patterns first
+            for fmt in [
+                "%Y-%m-%dT%H:%M:%SZ",  # ISO with time
+                "%Y-%m-%d",  # ISO date
+                "%d/%m/%Y",  # EU format DD/MM/YYYY
+                "%d-%m-%Y",  # EU format DD-MM-YYYY
+                "%d.%m.%Y",  # EU format DD.MM.YYYY
+                "%m/%d/%Y",  # US format MM/DD/YYYY
+                "%m-%d-%Y",  # US format MM-DD-YYYY
+            ]:
                 try:
                     dt = datetime.strptime(value, fmt)
                     return dt.date()
@@ -204,21 +213,24 @@ class DatetimeFunction(ProjectionFunction):
         if isinstance(value, str):
             # Try ISO format first
             try:
-                return datetime.fromisoformat(value)
+                dt = datetime.fromisoformat(value)
+                return dt
             except (ValueError, TypeError):
                 pass
 
             # Try custom format if provided
             if format_param:
                 try:
-                    return datetime.strptime(value, format_param)
+                    dt = datetime.strptime(value, format_param)
+                    return dt
                 except (ValueError, TypeError):
                     pass
 
             # Try common formats
             for fmt in ["%Y-%m-%d %H:%M:%S", "%Y-%m-%dT%H:%M:%SZ", "%Y-%m-%d", "%d-%m-%Y", "%m/%d/%Y"]:
                 try:
-                    return datetime.strptime(value, fmt)
+                    dt = datetime.strptime(value, fmt)
+                    return dt
                 except ValueError:
                     continue
 

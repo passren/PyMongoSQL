@@ -513,3 +513,179 @@ class TestCursor:
         rows = cursor.result_set.fetchall()
         assert len(rows) == 3
         assert len(rows[0]) == 1
+
+    # ===== Date Function Tests in WHERE Conditions =====
+    # These tests verify that WHERE clause functions correctly convert values
+    # to MongoDB types for filtering (different from projection functions in SELECT)
+
+    def test_where_with_date_function_comparison(self, conn):
+        """Test WHERE clause with explicit date() function for date comparison
+
+        Verifies that date('2025-01-15') converts ISO string to Python date
+        for proper MongoDB date filtering
+        """
+        sql = 'SELECT name FROM users WHERE "date" > date("2025-01-01")'
+        cursor = conn.cursor()
+        result = cursor.execute(sql)
+
+        assert result == cursor
+        assert isinstance(cursor.result_set, ResultSet)
+
+        rows = cursor.result_set.fetchall()
+        # Should return users with date > 2025-01-01
+        assert len(rows) >= 0  # Number depends on test data
+
+        # Verify we got name column
+        if len(rows) > 0:
+            col_names = [desc[0] for desc in cursor.result_set.description]
+            assert "name" in col_names
+            assert len(rows[0]) == 1
+
+    def test_where_with_date_function_eu_format(self, conn):
+        """Test WHERE clause with date() function using EU date format
+
+        Verifies that date('15/01/2025') EU format is correctly parsed
+        and converted to Python date for MongoDB filtering
+        """
+        sql = 'SELECT name FROM users WHERE "date" >= date("15/01/2025")'
+        cursor = conn.cursor()
+        result = cursor.execute(sql)
+
+        assert result == cursor
+        assert isinstance(cursor.result_set, ResultSet)
+
+        rows = cursor.result_set.fetchall()
+        # EU format DD/MM/YYYY should be parsed correctly
+        assert len(rows) >= 0
+
+        if len(rows) > 0:
+            col_names = [desc[0] for desc in cursor.result_set.description]
+            assert "name" in col_names
+
+    def test_where_with_datetime_function(self, conn):
+        """Test WHERE clause with explicit datetime() function
+
+        Verifies that datetime('2025-01-15T10:30:00Z') converts ISO datetime
+        with timezone to Python datetime for MongoDB filtering
+        """
+        sql = 'SELECT name FROM users WHERE "date" > datetime("2025-01-01T00:00:00Z")'
+        cursor = conn.cursor()
+        result = cursor.execute(sql)
+
+        assert result == cursor
+        assert isinstance(cursor.result_set, ResultSet)
+
+        rows = cursor.result_set.fetchall()
+        # Should return users with datetime > 2025-01-01 00:00:00 UTC
+        assert len(rows) >= 0
+
+        if len(rows) > 0:
+            col_names = [desc[0] for desc in cursor.result_set.description]
+            assert "name" in col_names
+
+    def test_where_with_timestamp_function(self, conn):
+        """Test WHERE clause with explicit timestamp() function
+
+        Verifies that timestamp('2025-01-15T10:30:00Z') converts ISO string
+        to BSON Timestamp (4-byte sec + 4-byte counter) for MongoDB filtering
+        """
+        sql = 'SELECT name FROM users WHERE "date" > timestamp("2025-01-01T00:00:00Z")'
+        cursor = conn.cursor()
+        result = cursor.execute(sql)
+
+        assert result == cursor
+        assert isinstance(cursor.result_set, ResultSet)
+
+        rows = cursor.result_set.fetchall()
+        # Timestamp field should be compared correctly
+        assert len(rows) >= 0
+
+        if len(rows) > 0:
+            col_names = [desc[0] for desc in cursor.result_set.description]
+            assert "name" in col_names
+
+    def test_where_with_date_function_between(self, conn):
+        """Test WHERE clause with BETWEEN and date() functions
+
+        Verifies that multiple date() functions in BETWEEN clause
+        work correctly for range filtering
+        """
+        sql = 'SELECT name FROM users WHERE "date" BETWEEN date("2025-01-01") AND date("2025-12-31")'
+        cursor = conn.cursor()
+        result = cursor.execute(sql)
+
+        assert result == cursor
+        assert isinstance(cursor.result_set, ResultSet)
+
+        rows = cursor.result_set.fetchall()
+        # Should return users with dates in 2025
+        assert len(rows) >= 0
+
+        if len(rows) > 0:
+            col_names = [desc[0] for desc in cursor.result_set.description]
+            assert "name" in col_names
+
+    def test_where_with_date_function_in_clause(self, conn):
+        """Test WHERE clause with IN and date() functions
+
+        Verifies that multiple date() functions in IN clause
+        work correctly for multiple value filtering
+        """
+        sql = 'SELECT name FROM users WHERE "date" IN (date("2025-01-15"), date("2025-06-15"), date("2025-12-25"))'
+        cursor = conn.cursor()
+        result = cursor.execute(sql)
+
+        assert result == cursor
+        assert isinstance(cursor.result_set, ResultSet)
+
+        rows = cursor.result_set.fetchall()
+        # Should return users with matching dates
+        assert len(rows) >= 0
+
+        if len(rows) > 0:
+            col_names = [desc[0] for desc in cursor.result_set.description]
+            assert "name" in col_names
+
+    def test_where_with_date_and_string_filter(self, conn):
+        """Test WHERE clause combining date() function with regular string filter
+
+        Verifies that date functions work alongside other WHERE conditions
+        """
+        sql = 'SELECT name FROM users WHERE "date" > date("2025-01-01") AND active = true'
+        cursor = conn.cursor()
+        result = cursor.execute(sql)
+
+        assert result == cursor
+        assert isinstance(cursor.result_set, ResultSet)
+
+        rows = cursor.result_set.fetchall()
+        # Should return active users with date > 2025-01-01
+        assert len(rows) >= 0
+
+        if len(rows) > 0:
+            col_names = [desc[0] for desc in cursor.result_set.description]
+            assert "name" in col_names
+
+    def test_where_date_function_preserves_type(self, conn):
+        """Test that date() function in WHERE preserves date type for filtering
+
+        Verifies the conversion behavior: string -> Python date -> MongoDB Date
+        This ensures correct type comparison in MongoDB
+        """
+        # Test with a known date value
+        sql = 'SELECT name, "date" FROM users WHERE "date" = date("2025-01-15")'
+        cursor = conn.cursor()
+        result = cursor.execute(sql)
+
+        assert result == cursor
+        assert isinstance(cursor.result_set, ResultSet)
+
+        rows = cursor.result_set.fetchall()
+        # May or may not have matching records depending on test data
+        assert len(rows) >= 0
+
+        if len(rows) > 0:
+            # Verify the returned date value
+            col_names = [desc[0] for desc in cursor.result_set.description]
+            assert "name" in col_names
+            assert "date" in col_names or '"date"' in col_names

@@ -1,6 +1,4 @@
 # -*- coding: utf-8 -*-
-"""Tests for projection functions"""
-
 import re
 from datetime import date, datetime, timezone
 

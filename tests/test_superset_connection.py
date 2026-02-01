@@ -599,6 +599,110 @@ class TestSubqueryExecutionIntegration:
         assert "id" in col_names
         assert len(rows) <= 2
 
+    def test_where_clause_functions_with_superset_execution(self, superset_conn):
+        """Test that WHERE clause functions work correctly in superset two-stage execution"""
+        cursor = superset_conn.cursor()
+
+        # Query using WHERE clause functions in the outer query (SQLite stage)
+        # The WHERE function is applied to filter results after MongoDB stage
+        subquery_sql = """
+        SELECT _id AS _id, name AS name, created_at AS created_at
+        FROM (SELECT _id, name, created_at FROM users) AS virtual_table
+        WHERE created_at > date('2023-01-01')
+        LIMIT 5
+        """
+        cursor.execute(subquery_sql)
+        rows = cursor.fetchall()
+        description = cursor.description
+
+        assert len(rows) > 0, "Should have rows with created_at > 2023-01-01"
+        assert description is not None
+        assert len(description) == 3
+
+        # Extract column names
+        col_names = [desc[0] for desc in description]
+        assert "_id" in col_names
+        assert "name" in col_names
+        assert "created_at" in col_names
+
+    def test_where_clause_datetime_function_with_superset_execution(self, superset_conn):
+        """Test WHERE clause DATETIME() function in superset execution"""
+        cursor = superset_conn.cursor()
+
+        # Query using DATETIME() function in WHERE clause with created_at field
+        subquery_sql = """
+        SELECT _id AS _id, name AS name, created_at AS created_at
+        FROM (SELECT _id, name, created_at FROM users) AS virtual_table
+        WHERE created_at > datetime('2020-01-01 00:00:00')
+        LIMIT 5
+        """
+        cursor.execute(subquery_sql)
+        rows = cursor.fetchall()
+        description = cursor.description
+
+        assert len(rows) > 0, "Should have rows with created_at > 2020-01-01"
+        assert description is not None
+        assert len(description) == 3
+
+        # Extract column names
+        col_names = [desc[0] for desc in description]
+        assert "_id" in col_names
+        assert "name" in col_names
+        assert "created_at" in col_names
+
+    def test_where_clause_between_with_date_function(self, superset_conn):
+        """Test WHERE clause with BETWEEN using DATE() function in superset execution"""
+        cursor = superset_conn.cursor()
+
+        # Query using DATE() function in BETWEEN clause
+        subquery_sql = """
+        SELECT _id AS _id, name AS name, created_at AS created_at
+        FROM (SELECT _id, name, created_at FROM users) AS virtual_table
+        WHERE created_at BETWEEN date('2000-01-01') AND date('2030-12-31')
+        LIMIT 5
+        """
+        cursor.execute(subquery_sql)
+        rows = cursor.fetchall()
+        description = cursor.description
+
+        assert len(rows) > 0, "Should have rows with created_at in range"
+        assert description is not None
+        assert len(description) == 3
+
+        # Extract column names
+        col_names = [desc[0] for desc in description]
+        assert "_id" in col_names
+        assert "name" in col_names
+        assert "created_at" in col_names
+
+    def test_where_clause_function_with_multiple_conditions(self, superset_conn):
+        """Test WHERE clause functions combined with other conditions in superset execution"""
+        cursor = superset_conn.cursor()
+
+        # Query using WHERE function with additional AND conditions
+        # Both conditions are in the outer query WHERE clause
+        subquery_sql = """
+        SELECT _id AS _id, name AS name, age AS age, created_at AS created_at
+        FROM (SELECT _id, name, age, created_at FROM users) AS virtual_table
+        WHERE age > 25 AND created_at > date('2023-01-01')
+        GROUP BY _id, name, age, created_at
+        LIMIT 5
+        """
+        cursor.execute(subquery_sql)
+        rows = cursor.fetchall()
+        description = cursor.description
+
+        assert len(rows) > 0, "Should have rows matching both age > 25 and created_at > 2023-01-01"
+        assert description is not None
+        assert len(description) == 4
+
+        # Extract column names
+        col_names = [desc[0] for desc in description]
+        assert "_id" in col_names
+        assert "name" in col_names
+        assert "age" in col_names
+        assert "created_at" in col_names
+
 
 class TestSubqueryDetector:
     """Test subquery detection and outer query extraction"""
