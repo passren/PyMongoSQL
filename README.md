@@ -230,7 +230,7 @@ Parameters are substituted into the MongoDB filter during execution, providing p
 - **Array access**: `items[0].name`, `orders[1].total`
 - **Complex queries**: `WHERE customer.profile.age > 18 AND orders[0].status = 'paid'`
 
-> **Note**: Avoid SQL reserved words (`user`, `data`, `value`, `count`, etc.) as unquoted field names. Use alternatives or bracket notation for arrays.
+> **Note**: Avoid SQL reserved words (`user`, `data`, `value`, `count`, etc.) as unquoted field names. Use alternatives names, or wrap them in double quotes if you must use them.
 
 ### Sorting and Limiting
 

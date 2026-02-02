@@ -75,7 +75,7 @@ class TestSQLParserNestedFields:
 
         execution_plan = parser.get_execution_plan()
         assert execution_plan.collection == "collection"
-        assert execution_plan.projection_stage == {'"user"': 1}
+        assert execution_plan.projection_stage == {"user": 1}
 
     def test_complex_nested_query(self):
         """Test complex query with multiple nested field types"""
