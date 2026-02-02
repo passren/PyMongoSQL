@@ -430,21 +430,141 @@ class PreProcessedResultSet(ResultSet):
     """Result set for pre-formatted rows that don't need projection processing.
 
     Used when rows are already projected and formatted (e.g., from SQLite intermediate storage).
-    Skips the document projection step and goes directly to formatting as tuples.
+    Skips the document projection step but applies type conversions for projection function results.
     """
 
     def _process_and_cache_batch(self, batch: List[Dict[str, Any]]) -> None:
         """Process and cache a batch of pre-processed documents.
 
-        Unlike the base ResultSet, this skips projection processing and directly formats results.
+        Unlike the base ResultSet, this skips projection processing but still applies type conversions
+        for values that came from projection functions (e.g., converting strings back to datetime objects).
         """
         if not batch:
             return
-        # Skip projection processing - rows are already in final form
-        # Just format to output format (tuple)
-        formatted_batch = [self._format_result(doc) for doc in batch]
+        # Skip full projection processing - rows are already in final form
+        # But apply type conversions for projection function results
+        converted_batch = [self._convert_projection_types(doc) for doc in batch]
+        # Format to output format (tuple)
+        formatted_batch = [self._format_result(doc) for doc in converted_batch]
         self._cached_results.extend(formatted_batch)
         self._total_fetched += len(batch)
+
+    def _convert_projection_types(self, doc: Dict[str, Any]) -> Dict[str, Any]:
+        """Convert string values from SQLite back to proper types based on projection functions.
+
+        When projection functions produce datetime/date objects, SQLite stores them as strings.
+        This method converts them back to proper Python types.
+        """
+        if not self._execution_plan:
+            return doc
+
+        from datetime import datetime, timezone
+
+        from .sql.projection_functions import ProjectionFunctionRegistry
+
+        converted = dict(doc)
+
+        # Get projection information from execution plan
+        projection_functions = getattr(self._execution_plan, "projection_functions", {})
+        column_aliases = getattr(self._execution_plan, "column_aliases", {})
+
+        if not projection_functions:
+            return converted
+
+        _ = ProjectionFunctionRegistry()
+
+        # Iterate through projection functions to convert values
+        for field_name, func_info in projection_functions.items():
+            # The column name might be aliased, so check both the original name and the alias
+            col_names_to_check = [field_name]
+            if field_name in column_aliases:
+                col_names_to_check.append(column_aliases[field_name])
+            # Also check for the mongo_to_bracket_key format
+            col_names_to_check.append(self._mongo_to_bracket_key(field_name))
+
+            col_name = None
+            for check_name in col_names_to_check:
+                if check_name in converted:
+                    col_name = check_name
+                    break
+
+            if not col_name:
+                continue
+
+            value = converted[col_name]
+            if value is None:
+                continue
+
+            # Extract function name and format parameter
+            func_name = None
+            format_param = None
+
+            if isinstance(func_info, dict):
+                func_name = func_info.get("name")
+                format_param = func_info.get("format_param")
+            elif isinstance(func_info, (list, tuple)):
+                if len(func_info) >= 1:
+                    func_name = func_info[0]
+                if len(func_info) >= 2:
+                    format_param = func_info[1]
+
+            if not func_name:
+                continue
+
+            # Handle special cases for SQLite-stored projection function results
+            if func_name.upper() in ("DATE", "DATETIME", "TIMESTAMP"):
+                # These functions should produce datetime objects
+                try:
+                    if isinstance(value, str):
+                        # Handle BSON Timestamp string representation: "Timestamp(timestamp_int, increment)"
+                        if value.startswith("Timestamp("):
+                            match = re.match(r"Timestamp\((\d+),\s*\d+\)", value)
+                            if match:
+                                timestamp_int = int(match.group(1))
+                                # Convert UNIX timestamp to datetime
+                                converted[col_name] = datetime.fromtimestamp(timestamp_int, tz=timezone.utc).replace(
+                                    tzinfo=None
+                                )
+                            continue
+
+                        # Try to parse as ISO format date/datetime string
+                        try:
+                            # Try full datetime first
+                            converted[col_name] = datetime.fromisoformat(value)
+                        except (ValueError, TypeError):
+                            try:
+                                # Try date only (YYYY-MM-DD)
+                                converted[col_name] = datetime.strptime(value, "%Y-%m-%d")
+                            except (ValueError, TypeError):
+                                try:
+                                    # Try with custom format if provided
+                                    if format_param:
+                                        converted[col_name] = datetime.strptime(value, format_param)
+                                except (ValueError, TypeError):
+                                    # Keep original value if all conversions fail
+                                    pass
+                except Exception as e:
+                    _logger.debug(f"Error converting {col_name} using {func_name}: {e}")
+                    # Keep original value if conversion fails
+            elif func_name.upper() in ("NUMBER", "INT"):
+                # These functions should produce numeric values
+                try:
+                    if isinstance(value, str):
+                        # Try to convert to float
+                        converted[col_name] = float(value)
+                except (ValueError, TypeError):
+                    # Keep original value if conversion fails
+                    pass
+            elif func_name.upper() == "BOOL":
+                # BOOL function should produce boolean values
+                try:
+                    if isinstance(value, str):
+                        converted[col_name] = value.lower() in ("true", "1", "yes")
+                except Exception:
+                    # Keep original value if conversion fails
+                    pass
+
+        return converted
 
 
 # For backward compatibility

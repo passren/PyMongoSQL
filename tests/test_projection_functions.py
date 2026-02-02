@@ -87,7 +87,7 @@ class TestDateFunction:
     def test_get_type_code(self):
         """Test type code for date function"""
         func = DateFunction()
-        assert func.get_type_code() == "datetime"
+        assert func.get_type_code() == datetime
 
 
 class TestDatetimeFunction:
@@ -167,7 +167,7 @@ class TestDatetimeFunction:
     def test_get_type_code(self):
         """Test type code for datetime function"""
         func = DatetimeFunction()
-        assert func.get_type_code() == "datetime"
+        assert func.get_type_code() == datetime
 
 
 class TestTimestampFunction:
@@ -237,7 +237,7 @@ class TestTimestampFunction:
     def test_get_type_code(self):
         """Test type code for timestamp function"""
         func = TimestampFunction()
-        assert func.get_type_code() == "datetime"
+        assert func.get_type_code() == datetime
 
 
 class TestNumberFunction:
@@ -281,7 +281,7 @@ class TestNumberFunction:
     def test_get_type_code(self):
         """Test type code for number function"""
         func = NumberFunction()
-        assert func.get_type_code() == "float"
+        assert func.get_type_code() == float
 
 
 class TestBoolFunction:
@@ -332,7 +332,7 @@ class TestBoolFunction:
     def test_get_type_code(self):
         """Test type code for bool function"""
         func = BoolFunction()
-        assert func.get_type_code() == "bool"
+        assert func.get_type_code() == bool
 
 
 class TestSubstrFunction:
@@ -394,7 +394,7 @@ class TestSubstrFunction:
     def test_get_type_code(self):
         """Test type code for substr function"""
         func = SubstrFunction()
-        assert func.get_type_code() == "str"
+        assert func.get_type_code() == str
 
 
 class TestReplaceFunction:
@@ -449,7 +449,7 @@ class TestReplaceFunction:
     def test_get_type_code(self):
         """Test type code for replace function"""
         func = ReplaceFunction()
-        assert func.get_type_code() == "str"
+        assert func.get_type_code() == str
 
 
 class TestTrimFunction:
@@ -503,7 +503,7 @@ class TestTrimFunction:
     def test_get_type_code(self):
         """Test type code for trim function"""
         func = TrimFunction()
-        assert func.get_type_code() == "str"
+        assert func.get_type_code() == str
 
 
 class TestUpperFunction:
@@ -553,7 +553,7 @@ class TestUpperFunction:
     def test_get_type_code(self):
         """Test type code for upper function"""
         func = UpperFunction()
-        assert func.get_type_code() == "str"
+        assert func.get_type_code() == str
 
 
 class TestLowerFunction:
@@ -603,7 +603,7 @@ class TestLowerFunction:
     def test_get_type_code(self):
         """Test type code for lower function"""
         func = LowerFunction()
-        assert func.get_type_code() == "str"
+        assert func.get_type_code() == str
 
 
 class TestProjectionFunctionRegistry:

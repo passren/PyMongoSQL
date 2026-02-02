@@ -425,14 +425,18 @@ class TestSubqueryExecutionIntegration:
         # All projection functions return string type codes like 'float', 'datetime', 'date', etc.
         import datetime
 
-        # NUMBER() should produce 'float' type code
-        assert type_codes["numeric_age"] == "float", f"Expected 'float' but got {type_codes['numeric_age']!r}"
+        # NUMBER() should produce float type code
+        assert type_codes["numeric_age"] == float, f"Expected float but got {type_codes['numeric_age']!r}"
 
-        # DATE() should produce 'datetime' type code (note: projection functions return 'datetime' for both DATE and DATETIME)
-        assert type_codes["creation_date"] == "datetime", f"Expected 'datetime' but got {type_codes['creation_date']!r}"
+        # DATE() should produce datetime type code (note: projection functions return datetime for both DATE and DATETIME)
+        assert (
+            type_codes["creation_date"] == datetime.datetime
+        ), f"Expected datetime but got {type_codes['creation_date']!r}"
 
-        # DATETIME() should produce 'datetime' type code
-        assert type_codes["last_updated"] == "datetime", f"Expected 'datetime' but got {type_codes['last_updated']!r}"
+        # DATETIME() should produce datetime type code
+        assert (
+            type_codes["last_updated"] == datetime.datetime
+        ), f"Expected datetime but got {type_codes['last_updated']!r}"
 
         # Verify data values are correctly converted
         for row in rows:
@@ -445,11 +449,11 @@ class TestSubqueryExecutionIntegration:
                 row[numeric_age_idx], (int, float)
             ), f"numeric_age should be numeric, got {type(row[numeric_age_idx])}"
 
-            # DATE() should convert to date object
+            # DATE() should convert to datetime object
             creation_date_val = row[creation_date_idx]
             assert creation_date_val is None or isinstance(
                 creation_date_val, datetime.date
-            ), f"creation_date should be date or None, got {type(creation_date_val)}"
+            ), f"creation_date should be datetime or None, got {type(creation_date_val)}"
 
             # DATETIME() should convert to datetime object
             last_updated_val = row[last_updated_idx]
@@ -494,24 +498,22 @@ class TestSubqueryExecutionIntegration:
 
         import datetime
 
-        from bson import Timestamp
-
         # Verify expected type codes
-        # All projection functions return string type codes
-        # DATE() should produce 'datetime' type code
+        # All projection functions return type objects, not strings
+        # DATE() should produce datetime type code
         assert (
-            type_codes["formatted_date"] == "datetime"
-        ), f"Expected 'datetime' but got {type_codes['formatted_date']!r}"
+            type_codes["formatted_date"] == datetime.datetime
+        ), f"Expected datetime but got {type_codes['formatted_date']!r}"
 
-        # DATETIME() should produce 'datetime' type code
+        # DATETIME() should produce datetime type code
         assert (
-            type_codes["formatted_datetime"] == "datetime"
-        ), f"Expected 'datetime' but got {type_codes['formatted_datetime']!r}"
+            type_codes["formatted_datetime"] == datetime.datetime
+        ), f"Expected datetime but got {type_codes['formatted_datetime']!r}"
 
-        # TIMESTAMP() should produce 'datetime' type code
+        # TIMESTAMP() should produce datetime type code
         assert (
-            type_codes["timestamp_value"] == "datetime"
-        ), f"Expected 'datetime' but got {type_codes['timestamp_value']!r}"
+            type_codes["timestamp_value"] == datetime.datetime
+        ), f"Expected datetime but got {type_codes['timestamp_value']!r}"
 
         # Verify data values are correctly converted with custom formats
         for row in rows:
@@ -528,14 +530,14 @@ class TestSubqueryExecutionIntegration:
             # DATETIME() with format should convert to datetime object
             datetime_value = row[formatted_datetime_idx]
             assert datetime_value is None or isinstance(
-                datetime_value, datetime.datetime
+                datetime_value, datetime.date
             ), f"formatted_datetime should be datetime or None, got {type(datetime_value)}"
 
-            # TIMESTAMP() with format should convert to Timestamp object
+            # TIMESTAMP() with format should convert to datetime object
             timestamp_value = row[timestamp_value_idx]
             assert timestamp_value is None or isinstance(
-                timestamp_value, Timestamp
-            ), f"timestamp_value should be Timestamp or None, got {type(timestamp_value)}"
+                timestamp_value, datetime.datetime
+            ), f"timestamp_value should be datetime or None, got {type(timestamp_value)}"
 
     def test_empty_result_with_valid_description(self, superset_conn):
         """Test that description is available for result sets, even if empty after filtering"""

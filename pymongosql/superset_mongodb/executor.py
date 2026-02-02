@@ -161,8 +161,16 @@ class SupersetExecution(StandardQueryExecution):
             # This tells the cursor to use PreProcessedResultSet instead of regular ResultSet
             final_execution_plan.from_intermediate_storage = True
 
-            # Extract projection_output from MongoDB result set description
-            # This provides the correct mapping from outer query column names to type codes
+            # Extract projection_output and projection_functions from MongoDB execution plan
+            # This provides the correct mapping from outer query column names to type codes and conversion functions
+            if hasattr(mongo_execution_plan, "projection_output") and mongo_execution_plan.projection_output:
+                final_execution_plan.projection_output = mongo_execution_plan.projection_output
+
+            # Also copy projection_functions from the inner MongoDB query so PreProcessedResultSet
+            # can convert string values from SQLite back to proper types (datetime, etc.)
+            if hasattr(mongo_execution_plan, "projection_functions") and mongo_execution_plan.projection_functions:
+                final_execution_plan.projection_functions = mongo_execution_plan.projection_functions
+
             if mongo_result_set.description:
                 projection_output = []
                 for col_name, type_code, *_ in mongo_result_set.description:
@@ -177,7 +185,9 @@ class SupersetExecution(StandardQueryExecution):
 
                     projection_output.append({"output_name": col_name, "function": func_info})
 
-                final_execution_plan.projection_output = projection_output
+                # Only update if projection_output wasn't already set from mongo_execution_plan
+                if not hasattr(final_execution_plan, "projection_output") or not final_execution_plan.projection_output:
+                    final_execution_plan.projection_output = projection_output
 
             self._execution_plan = final_execution_plan
 
