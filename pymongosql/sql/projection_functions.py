@@ -32,7 +32,7 @@ class ProjectionFunction(ABC):
 
     def get_type_code(self) -> str:
         """Return type code for result description"""
-        return "str"
+        return str
 
 
 class DateFunction(ProjectionFunction):
@@ -101,7 +101,7 @@ class DateFunction(ProjectionFunction):
         return value
 
     def get_type_code(self) -> str:
-        return "datetime"
+        return datetime
 
 
 class TimestampFunction(ProjectionFunction):
@@ -180,7 +180,7 @@ class TimestampFunction(ProjectionFunction):
         return value
 
     def get_type_code(self) -> str:
-        return "datetime"
+        return datetime
 
 
 class DatetimeFunction(ProjectionFunction):
@@ -237,7 +237,7 @@ class DatetimeFunction(ProjectionFunction):
         return value
 
     def get_type_code(self) -> str:
-        return "datetime"
+        return datetime
 
 
 class NumberFunction(ProjectionFunction):
@@ -274,7 +274,7 @@ class NumberFunction(ProjectionFunction):
         return value
 
     def get_type_code(self) -> str:
-        return "float"
+        return float
 
 
 class BoolFunction(ProjectionFunction):
@@ -311,7 +311,7 @@ class BoolFunction(ProjectionFunction):
         return bool(value)
 
     def get_type_code(self) -> str:
-        return "bool"
+        return bool
 
 
 class SubstrFunction(ProjectionFunction):
@@ -362,7 +362,7 @@ class SubstrFunction(ProjectionFunction):
             return value
 
     def get_type_code(self) -> str:
-        return "str"
+        return str
 
 
 class SubstringFunction(SubstrFunction):
@@ -418,7 +418,7 @@ class ReplaceFunction(ProjectionFunction):
             return value
 
     def get_type_code(self) -> str:
-        return "str"
+        return str
 
 
 class TrimFunction(ProjectionFunction):
@@ -445,7 +445,7 @@ class TrimFunction(ProjectionFunction):
         return value.strip()
 
     def get_type_code(self) -> str:
-        return "str"
+        return str
 
 
 class UpperFunction(ProjectionFunction):
@@ -472,7 +472,7 @@ class UpperFunction(ProjectionFunction):
         return value.upper()
 
     def get_type_code(self) -> str:
-        return "str"
+        return str
 
 
 class LowerFunction(ProjectionFunction):
@@ -499,7 +499,7 @@ class LowerFunction(ProjectionFunction):
         return value.lower()
 
     def get_type_code(self) -> str:
-        return "str"
+        return str
 
 
 class ProjectionFunctionRegistry:
