@@ -2,6 +2,7 @@
   {
     "_id": "1",
     "name": "John Doe",
+    "user": "user_1",
     "age": 30,
     "email": "john@example.com",
     "active": true,
@@ -35,7 +36,7 @@
       ],
       "certifications": []
     },
-    "created_at": "2023-01-15T09:30:00Z",
+    "created_at": {"$date": "2023-01-15T09:30:00Z"},
     "login_count": 42,
     "salary": 85000.5,
     "is_premium": false,
@@ -48,11 +49,18 @@
       "p2"
     ],
     "owned_products": [],
-    "department_id": "dept1"
+    "department_id": "dept1",
+    "date": {
+      "$timestamp": {
+        "t": 1735776000,
+        "i": 0
+      }
+    }
   },
   {
     "_id": "2",
     "name": "Jane Smith",
+    "user": "user_2",
     "age": 25,
     "email": "jane@example.com",
     "active": true,
@@ -93,7 +101,7 @@
         "Adobe Certified Expert"
       ]
     },
-    "created_at": "2022-03-01T14:22:30Z",
+    "created_at": {"$date": "2022-03-01T14:22:30Z"},
     "login_count": 156,
     "salary": 72000.0,
     "is_premium": true,
@@ -108,11 +116,18 @@
     "owned_products": [
       "p3"
     ],
-    "department_id": "dept2"
+    "department_id": "dept2",
+    "date": {
+      "$timestamp": {
+        "t": 1748736000,
+        "i": 0
+      }
+    }
   },
   {
     "_id": "3",
     "name": "Bob Johnson",
+    "user": "user_3",
     "age": 35,
     "email": "bob@example.com",
     "active": false,
@@ -147,7 +162,7 @@
         "CKA"
       ]
     },
-    "created_at": "2020-01-15T08:00:00Z",
+    "created_at": {"$date": "2020-01-15T08:00:00Z"},
     "login_count": 0,
     "salary": null,
     "is_premium": false,
@@ -157,11 +172,18 @@
       "p1",
       "p2"
     ],
-    "department_id": "dept3"
+    "department_id": "dept3",
+    "date": {
+      "$timestamp": {
+        "t": 1767225600,
+        "i": 0
+      }
+    }
   },
   {
     "_id": "4",
     "name": "Alice Williams",
+    "user": "user_4",
     "age": 28,
     "email": "alice@example.com",
     "active": true,
@@ -207,7 +229,7 @@
         "Product Management Certificate"
       ]
     },
-    "created_at": "2021-09-15T10:15:45Z",
+    "created_at": {"$date": "2021-09-15T10:15:45Z"},
     "login_count": 89,
     "salary": 95000.75,
     "is_premium": true,
@@ -221,7 +243,13 @@
     "owned_products": [
       "p4"
     ],
-    "department_id": "dept2"
+    "department_id": "dept2",
+    "date": {
+      "$timestamp": {
+        "t": 1631700945,
+        "i": 0
+      }
+    }
   },
   {
     "_id": "5",
@@ -264,7 +292,7 @@
         "Tableau Desktop Specialist"
       ]
     },
-    "created_at": "2023-02-01T12:00:00Z",
+    "created_at": {"$date": "2023-02-01T12:00:00Z"},
     "login_count": 67,
     "salary": 68000.0,
     "is_premium": false,
@@ -276,11 +304,18 @@
       "p3"
     ],
     "owned_products": [],
-    "department_id": "dept4"
+    "department_id": "dept4",
+    "date": {
+      "$timestamp": {
+        "t": 1675252800,
+        "i": 0
+      }
+    }
   },
   {
     "_id": "6",
     "name": "Diana Prince",
+    "user": "user_6",
     "age": 32,
     "email": "diana@example.com",
     "active": true,
@@ -321,7 +356,7 @@
         "Security+"
       ]
     },
-    "created_at": "2021-11-15T09:00:00Z",
+    "created_at": {"$date": "2021-11-15T09:00:00Z"},
     "login_count": 234,
     "salary": 92000.0,
     "is_premium": true,
@@ -333,7 +368,13 @@
       "p4"
     ],
     "owned_products": [],
-    "department_id": "dept5"
+    "department_id": "dept5",
+    "date": {
+      "$timestamp": {
+        "t": 1636966800,
+        "i": 0
+      }
+    }
   },
   {
     "_id": "7",
@@ -371,7 +412,7 @@
         "Business Analysis Professional"
       ]
     },
-    "created_at": "2019-05-20T16:30:00Z",
+    "created_at": {"$date": "2019-05-20T16:30:00Z"},
     "login_count": 12,
     "salary": null,
     "is_premium": false,
@@ -381,11 +422,18 @@
       "p3"
     ],
     "owned_products": [],
-    "department_id": null
+    "department_id": null,
+    "date": {
+      "$timestamp": {
+        "t": 1558369800,
+        "i": 0
+      }
+    }
   },
   {
     "_id": "8",
     "name": "Fiona Green",
+    "user": "user_8",
     "age": 26,
     "email": "fiona@example.com",
     "active": true,
@@ -426,7 +474,7 @@
         "HubSpot Content Marketing"
       ]
     },
-    "created_at": "2022-08-10T11:45:00Z",
+    "created_at": {"$date": "2022-08-10T11:45:00Z"},
     "login_count": 145,
     "salary": 55000.0,
     "is_premium": false,
@@ -438,7 +486,13 @@
       "p2"
     ],
     "owned_products": [],
-    "department_id": "dept6"
+    "department_id": "dept6",
+    "date": {
+      "$timestamp": {
+        "t": 1660131900,
+        "i": 0
+      }
+    }
   },
   {
     "_id": "9",
@@ -482,7 +536,7 @@
         "Sales Professional"
       ]
     },
-    "created_at": "2020-03-01T08:30:00Z",
+    "created_at": {"$date": "2020-03-01T08:30:00Z"},
     "login_count": 298,
     "salary": 105000.0,
     "is_premium": true,
@@ -496,7 +550,13 @@
       "p4"
     ],
     "owned_products": [],
-    "department_id": "dept7"
+    "department_id": "dept7",
+    "date": {
+      "$timestamp": {
+        "t": 1583051400,
+        "i": 0
+      }
+    }
   },
   {
     "_id": "10",
@@ -540,7 +600,7 @@
         "PHR"
       ]
     },
-    "created_at": "2021-01-15T10:00:00Z",
+    "created_at": {"$date": "2021-01-15T10:00:00Z"},
     "login_count": 189,
     "salary": 75000.0,
     "is_premium": true,
@@ -551,7 +611,13 @@
       "p3"
     ],
     "owned_products": [],
-    "department_id": "dept8"
+    "department_id": "dept8",
+    "date": {
+      "$timestamp": {
+        "t": 1610704800,
+        "i": 0
+      }
+    }
   },
   {
     "_id": "11",
@@ -594,7 +660,7 @@
         "ISTQB Foundation Level"
       ]
     },
-    "created_at": "2022-05-01T09:15:00Z",
+    "created_at": {"$date": "2022-05-01T09:15:00Z"},
     "login_count": 156,
     "salary": 62000.0,
     "is_premium": false,
@@ -606,7 +672,13 @@
       "p2"
     ],
     "owned_products": [],
-    "department_id": "dept9"
+    "department_id": "dept9",
+    "date": {
+      "$timestamp": {
+        "t": 1651396500,
+        "i": 0
+      }
+    }
   },
   {
     "_id": "12",
@@ -650,7 +722,7 @@
         "CFA Level 1"
       ]
     },
-    "created_at": "2020-09-01T08:00:00Z",
+    "created_at": {"$date": "2020-09-01T08:00:00Z"},
     "login_count": 267,
     "salary": 78000.0,
     "is_premium": true,
@@ -663,7 +735,13 @@
       "p1"
     ],
     "owned_products": [],
-    "department_id": "dept10"
+    "department_id": "dept10",
+    "date": {
+      "$timestamp": {
+        "t": 1598947200,
+        "i": 0
+      }
+    }
   },
   {
     "_id": "13",
@@ -705,7 +783,7 @@
       ],
       "certifications": []
     },
-    "created_at": "2023-06-01T09:00:00Z",
+    "created_at": {"$date": "2023-06-01T09:00:00Z"},
     "login_count": 89,
     "salary": 45000.0,
     "is_premium": false,
@@ -715,7 +793,13 @@
     ],
     "purchased_products": [],
     "owned_products": [],
-    "department_id": "dept11"
+    "department_id": "dept11",
+    "date": {
+      "$timestamp": {
+        "t": 1685610000,
+        "i": 0
+      }
+    }
   },
   {
     "_id": "14",
@@ -759,7 +843,7 @@
         "Bar Admission"
       ]
     },
-    "created_at": "2019-11-01T10:30:00Z",
+    "created_at": {"$date": "2019-11-01T10:30:00Z"},
     "login_count": 201,
     "salary": 125000.0,
     "is_premium": true,
@@ -771,7 +855,13 @@
       "p3"
     ],
     "owned_products": [],
-    "department_id": "dept12"
+    "department_id": "dept12",
+    "date": {
+      "$timestamp": {
+        "t": 1572604200,
+        "i": 0
+      }
+    }
   },
   {
     "_id": "15",
@@ -807,7 +897,7 @@
         "TOGAF"
       ]
     },
-    "created_at": "2018-03-15T14:00:00Z",
+    "created_at": {"$date": "2018-03-15T14:00:00Z"},
     "login_count": 5,
     "salary": null,
     "is_premium": false,
@@ -816,7 +906,13 @@
       "p1"
     ],
     "owned_products": [],
-    "department_id": null
+    "department_id": null,
+    "date": {
+      "$timestamp": {
+        "t": 1521122400,
+        "i": 0
+      }
+    }
   },
   {
     "_id": "16",
@@ -860,7 +956,7 @@
         "Supply Chain Professional"
       ]
     },
-    "created_at": "2020-07-01T08:45:00Z",
+    "created_at": {"$date": "2020-07-01T08:45:00Z"},
     "login_count": 223,
     "salary": 82000.0,
     "is_premium": true,
@@ -873,7 +969,13 @@
       "p3"
     ],
     "owned_products": [],
-    "department_id": "dept13"
+    "department_id": "dept13",
+    "date": {
+      "$timestamp": {
+        "t": 1593593100,
+        "i": 0
+      }
+    }
   },
   {
     "_id": "17",
@@ -917,7 +1019,7 @@
         "Customer Service Professional"
       ]
     },
-    "created_at": "2021-12-01T10:15:00Z",
+    "created_at": {"$date": "2021-12-01T10:15:00Z"},
     "login_count": 198,
     "salary": 48000.0,
     "is_premium": false,
@@ -929,7 +1031,13 @@
       "p4"
     ],
     "owned_products": [],
-    "department_id": "dept14"
+    "department_id": "dept14",
+    "date": {
+      "$timestamp": {
+        "t": 1638353700,
+        "i": 0
+      }
+    }
   },
   {
     "_id": "18",
@@ -974,7 +1082,7 @@
         "Board Certification"
       ]
     },
-    "created_at": "2018-01-01T00:00:00Z",
+    "created_at": {"$date": "2018-01-01T00:00:00Z"},
     "login_count": 456,
     "salary": 250000.0,
     "is_premium": true,
@@ -992,7 +1100,13 @@
       "p3",
       "p4"
     ],
-    "department_id": "dept15"
+    "department_id": "dept15",
+    "date": {
+      "$timestamp": {
+        "t": 1514764800,
+        "i": 0
+      }
+    }
   },
   {
     "_id": "19",
@@ -1038,7 +1152,7 @@
         "Google Cloud ML Engineer"
       ]
     },
-    "created_at": "2022-01-10T09:30:00Z",
+    "created_at": {"$date": "2022-01-10T09:30:00Z"},
     "login_count": 167,
     "salary": 135000.0,
     "is_premium": true,
@@ -1049,7 +1163,13 @@
       "p1"
     ],
     "owned_products": [],
-    "department_id": "dept16"
+    "department_id": "dept16",
+    "date": {
+      "$timestamp": {
+        "t": 1641807000,
+        "i": 0
+      }
+    }
   },
   {
     "_id": "20",
@@ -1093,7 +1213,7 @@
         "Instructional Design"
       ]
     },
-    "created_at": "2021-04-15T11:00:00Z",
+    "created_at": {"$date": "2021-04-15T11:00:00Z"},
     "login_count": 178,
     "salary": 65000.0,
     "is_premium": false,
@@ -1104,11 +1224,18 @@
       "p3"
     ],
     "owned_products": [],
-    "department_id": "dept17"
+    "department_id": "dept17",
+    "date": {
+      "$timestamp": {
+        "t": 1618484400,
+        "i": 0
+      }
+    }
   },
   {
     "_id": "21",
     "name": "Invalid User One",
+    "user": "user_21",
     "age": 25,
     "email": "invalid1@example.com",
     "active": true,
@@ -1140,7 +1267,7 @@
       ],
       "certifications": []
     },
-    "created_at": "2023-01-01T00:00:00Z",
+    "created_at": {"$date": "2023-01-01T00:00:00Z"},
     "login_count": 1,
     "salary": 50000.0,
     "is_premium": false,
@@ -1156,11 +1283,18 @@
     "owned_products": [
       "p44"
     ],
-    "department_id": "dept99"
+    "department_id": "dept99",
+    "date": {
+      "$timestamp": {
+        "t": 1672531200,
+        "i": 0
+      }
+    }
   },
   {
     "_id": "22",
     "name": "Broken Reference User",
+    "user": "user_22",
     "age": 30,
     "email": "broken@example.com",
     "active": false,
@@ -1179,7 +1313,7 @@
       "skills": [],
       "certifications": []
     },
-    "created_at": "2020-01-01T00:00:00Z",
+    "created_at": {"$date": "2020-01-01T00:00:00Z"},
     "login_count": 0,
     "salary": null,
     "is_premium": false,
@@ -1191,6 +1325,12 @@
     "owned_products": [
       "pZZZ"
     ],
-    "department_id": "deptXYZ"
+    "department_id": "deptXYZ",
+    "date": {
+      "$timestamp": {
+        "t": 1577836800,
+        "i": 0
+      }
+    }
   }
 ]

@@ -6,6 +6,7 @@
 [![codecov](https://codecov.io/gh/passren/PyMongoSQL/branch/main/graph/badge.svg?token=2CTRL80NP2)](https://codecov.io/gh/passren/PyMongoSQL)
 [![License: MIT](https://img.shields.io/badge/License-MIT-purple.svg)](https://github.com/passren/PyMongoSQL/blob/0.1.2/LICENSE)
 [![Python Version](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
+[![Downloads](https://static.pepy.tech/badge/pymongosql/month)](https://pepy.tech/projects/pymongosql)
 [![MongoDB](https://img.shields.io/badge/MongoDB-7.0+-green.svg)](https://www.mongodb.com/)
 [![SQLAlchemy](https://img.shields.io/badge/SQLAlchemy-1.4+_2.0+-darkgreen.svg)](https://www.sqlalchemy.org/)
 [![Superset](https://img.shields.io/badge/Apache_Superset-1.0+-blue.svg)](https://superset.apache.org/docs/6.0.0/configuration/databases)
@@ -229,7 +230,7 @@ Parameters are substituted into the MongoDB filter during execution, providing p
 - **Array access**: `items[0].name`, `orders[1].total`
 - **Complex queries**: `WHERE customer.profile.age > 18 AND orders[0].status = 'paid'`
 
-> **Note**: Avoid SQL reserved words (`user`, `data`, `value`, `count`, etc.) as unquoted field names. Use alternatives or bracket notation for arrays.
+> **Note**: Avoid SQL reserved words (`user`, `data`, `value`, `count`, etc.) as unquoted field names. Use alternatives names, or wrap them in double quotes if you must use them.
 
 ### Sorting and Limiting
 
