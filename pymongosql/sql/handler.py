@@ -401,12 +401,98 @@ class ComparisonExpressionHandler(BaseHandler, ContextUtilsMixin, LoggingMixin, 
             if operator:
                 parts = self._split_by_operator(text, operator)
                 if len(parts) >= 2:
-                    return self._parse_value(parts[1].strip("()"))
+                    value_text = parts[1].strip()
+                    # Check if value is a function call
+                    return self._extract_value_or_function(value_text)
 
             return None
         except Exception as e:
             _logger.debug(f"Failed to extract value: {e}")
             return None
+
+    def _extract_value_or_function(self, value_text: str) -> Any:
+        """
+        Extract value, which could be a literal or a value function call.
+
+        Detects and executes value functions like str_to_datetime(...), str_to_timestamp(...).
+
+        Args:
+            value_text: Text representing the value, possibly a function call
+
+        Returns:
+            Processed value (result of function execution if function, otherwise parsed literal)
+        """
+        value_text = value_text.strip()
+
+        # Check if this looks like a function call: func_name(...)
+        if "(" in value_text and value_text.endswith(")"):
+            # Extract function name and arguments
+            paren_pos = value_text.find("(")
+            func_name = value_text[:paren_pos].strip()
+
+            # Check if it's a valid identifier (function name)
+            if func_name.isidentifier():
+                try:
+                    from .value_function_registry import get_default_registry
+
+                    registry = get_default_registry()
+                    if registry.has_function(func_name):
+                        # It's a registered value function - execute it
+                        args_text = value_text[paren_pos + 1 : -1]
+                        args = self._parse_function_arguments(args_text)
+                        result = registry.execute(func_name, args)
+                        _logger.debug(f"Executed value function: {func_name}({args}) -> {result}")
+                        return result
+                except Exception as e:
+                    _logger.warning(f"Failed to execute value function '{func_name}': {e}")
+                    # Fall through to treat as regular value
+
+        # Not a function call or function execution failed - treat as regular value
+        return self._parse_value(value_text)
+
+    def _parse_function_arguments(self, args_text: str) -> list:
+        """
+        Parse function arguments from comma-separated string.
+
+        Handles string literals with quotes and nested structures.
+
+        Args:
+            args_text: Text of function arguments (e.g., "'2024-01-01', '%m/%d/%Y'")
+
+        Returns:
+            List of parsed argument values
+        """
+        if not args_text.strip():
+            return []
+
+        args = []
+        current_arg = ""
+        in_quotes = False
+        quote_char = None
+
+        for char in args_text:
+            if char in ('"', "'") and not in_quotes:
+                in_quotes = True
+                quote_char = char
+                current_arg += char
+            elif char == quote_char and in_quotes:
+                in_quotes = False
+                quote_char = None
+                current_arg += char
+            elif char == "," and not in_quotes:
+                # End of argument
+                arg = current_arg.strip()
+                if arg:
+                    args.append(self._parse_value(arg))
+                current_arg = ""
+            else:
+                current_arg += char
+
+        # Don't forget the last argument
+        if current_arg.strip():
+            args.append(self._parse_value(current_arg.strip()))
+
+        return args
 
     def _extract_in_values(self, text: str) -> List[Any]:
         """Extract values from IN clause"""

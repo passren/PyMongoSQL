@@ -223,6 +223,37 @@ Parameters are substituted into the MongoDB filter during execution, providing p
 - **Logical operators**: `WHERE age > 18 AND status = 'active'`, `WHERE age < 30 OR role = 'admin'`
 - **Nested field filtering**: `WHERE profile.status = 'active'`
 - **Array filtering**: `WHERE items[0].price > 100`
+- **Value Functions**: Apply transformations to values in WHERE clauses for filtering
+
+#### Value Functions
+
+PyMongoSQL supports value functions to transform and filter values in WHERE clauses. Built-in value functions include:
+
+**str_to_datetime()** - Convert ISO 8601 or custom formatted strings to Python datetime objects
+
+```python
+# ISO 8601 format
+cursor.execute("SELECT * FROM events WHERE created_at >= str_to_datetime('2024-01-15T10:30:00Z')")
+
+# Custom format
+cursor.execute("SELECT * FROM events WHERE created_at < str_to_datetime('03/15/2024', '%m/%d/%Y')")
+```
+
+**str_to_timestamp()** - Convert ISO 8601 or custom formatted strings to BSON Timestamp objects
+
+```python
+# ISO 8601 format
+cursor.execute("SELECT * FROM logs WHERE timestamp > str_to_timestamp('2024-01-15T00:00:00Z')")
+
+# Custom format
+cursor.execute("SELECT * FROM logs WHERE timestamp < str_to_timestamp('01/15/2024', '%m/%d/%Y')")
+```
+
+Both functions:
+- Support ISO 8601 strings with 'Z' timezone indicator
+- Support custom format strings using Python strftime directives
+- Return values with UTC timezone
+- Can be combined with standard SQL operators (>, <, >=, <=, =, !=)
 
 ### Nested Field Support
 - **Single-level**: `profile.name`, `settings.theme`
@@ -504,15 +535,6 @@ PyMongoSQL can be used as a database driver in Apache Superset for querying and 
 4. **Create Visualizations**: Build charts and dashboards from your MongoDB queries using Superset's visualization tools
 
 This allows seamless integration between MongoDB data and Superset's BI capabilities without requiring data migration to traditional SQL databases.
-
-## Limitations & Roadmap
-
-**Note**: PyMongoSQL currently supports DQL (Data Query Language) and DML (Data Manipulation Language) operations. The following SQL features are **not yet supported** but are planned for future releases:
-
-- **Advanced DML Operations**
-  - `REPLACE`, `MERGE`, `UPSERT`
-
-These features are on our development roadmap and contributions are welcome!
 
 ## Contributing
 
