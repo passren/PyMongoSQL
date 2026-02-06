@@ -467,3 +467,60 @@ class TestCursor:
         rows = cursor.result_set.fetchall()
         assert len(rows) == 3
         assert len(rows[0]) == 1
+
+    def test_execute_with_value_function_datetime_filter(self, conn):
+        """Test filtering with value function str_to_datetime() in WHERE clause"""
+        sql = """
+        SELECT name, created_at FROM users
+        WHERE created_at >= str_to_datetime('2023-01-01T00:00:00Z')
+            AND created_at < str_to_datetime('2023/03/01', '%Y/%m/%d')
+        """
+        cursor = conn.cursor()
+        result = cursor.execute(sql)
+
+        assert result == cursor
+        assert isinstance(cursor.result_set, ResultSet)
+
+        rows = cursor.result_set.fetchall()
+        assert len(rows) == 3
+
+        col_names = [desc[0] for desc in cursor.result_set.description]
+        assert "created_at" in col_names
+        created_at_idx = col_names.index("created_at")
+
+        for row in rows:
+            created_at = row[created_at_idx]
+            assert isinstance(created_at, datetime)
+            if created_at.tzinfo is None:
+                created_at = created_at.replace(tzinfo=timezone.utc)
+            assert created_at >= datetime(2023, 1, 1, tzinfo=timezone.utc)
+            assert created_at < datetime(2023, 3, 1, tzinfo=timezone.utc)
+
+    def test_execute_with_value_function_timestamp_filter(self, conn):
+        """Test filtering with value function str_to_timestamp() in WHERE clause"""
+        sql = """
+        SELECT name, "date" FROM users
+        WHERE "date" > str_to_timestamp('2025-01-01T00:00:00Z')
+            AND "date" < str_to_timestamp('2026/01/01', '%Y/%m/%d')
+        """
+        cursor = conn.cursor()
+        result = cursor.execute(sql)
+
+        assert result == cursor
+        assert isinstance(cursor.result_set, ResultSet)
+
+        rows = cursor.result_set.fetchall()
+        assert len(rows) == 3
+
+        col_names = [desc[0] for desc in cursor.result_set.description]
+        assert "date" in col_names
+        date_idx = col_names.index("date")
+
+        start = Timestamp(int(datetime(2025, 1, 1, tzinfo=timezone.utc).timestamp()), 1)
+        end = Timestamp(int(datetime(2026, 1, 1, tzinfo=timezone.utc).timestamp()), 1)
+
+        for row in rows:
+            date_value = row[date_idx]
+            assert isinstance(date_value, Timestamp)
+            assert date_value > start
+            assert date_value < end
