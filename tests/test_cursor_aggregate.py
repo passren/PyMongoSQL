@@ -273,4 +273,15 @@ class TestCursorAggregate:
         # Should have one row with aggregated stats
         assert len(rows) == 1
         row = rows[0]
-        assert len(row) >= 2  # Should have average_age and total_users
+
+        # Verify projections defined in pipeline appear in the result
+        col_names = [desc[0] for desc in cursor.result_set.description]
+        assert "average_age" in col_names, "average_age should be in result columns"
+        assert "total_users" in col_names, "total_users should be in result columns"
+        assert "_id" not in col_names, "_id should be excluded from result columns"
+
+        # Verify the values are present and valid
+        avg_age_idx = col_names.index("average_age")
+        total_users_idx = col_names.index("total_users")
+        assert row[avg_age_idx] is not None and isinstance(row[avg_age_idx], (int, float))
+        assert row[total_users_idx] is not None and isinstance(row[total_users_idx], (int, float))

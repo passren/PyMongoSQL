@@ -27,6 +27,9 @@ MANIFEST
 .vscode/
 .idea/
 
+# Test configuration
+pytest.ini
+
 # Environments
 .env
 .envrc
