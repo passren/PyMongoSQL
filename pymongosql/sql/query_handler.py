@@ -168,6 +168,18 @@ class FromHandler(BaseHandler):
         """Check if this is a from context"""
         return hasattr(ctx, "tableReference")
 
+    @staticmethod
+    def _strip_collection_quotes(name: str) -> str:
+        """Strip surrounding double quotes from collection name if present.
+
+        Args:
+            name: Collection name, potentially quoted
+
+        Returns:
+            Collection name with quotes removed
+        """
+        return re.sub(r'^"([^"]+)"$', r"\1", name)
+
     def _parse_function_call(self, ctx: Any) -> Optional[Dict[str, Any]]:
         """
         Detect and parse aggregate() function calls in FROM clause.
@@ -196,13 +208,17 @@ class FromHandler(BaseHandler):
 
             # Pattern: [qualifier.]functionName(arg1, arg2)
             # We need to match: (optional_collection.)aggregate('...', '...')
-            pattern = r"^(?:(\w+)\.)?aggregate\s*\(\s*'([^']*)'\s*,\s*'([^']*)'\s*\)$"
+            # Support collection names with double quotes for special characters like hyphens
+            pattern = r"^(?:(\"[^\"]+\"|\w+)\.)?aggregate\s*\(\s*'([^']*)'\s*,\s*'([^']*)'\s*\)$"
             match = re.match(pattern, text, re.IGNORECASE | re.DOTALL)
 
             if not match:
                 return None
 
             collection = match.group(1)  # Can be None for unqualified aggregate()
+            # Strip quotes from collection name if present
+            if collection:
+                collection = self._strip_collection_quotes(collection)
             pipeline = match.group(2)
             options = match.group(3)
 
@@ -245,7 +261,7 @@ class FromHandler(BaseHandler):
             # Regular collection reference
             table_text = ctx.tableReference().getText()
             # Strip surrounding quotes from collection name (e.g., "user.accounts" -> user.accounts)
-            collection_name = re.sub(r'^"([^"]+)"$', r"\1", table_text)
+            collection_name = self._strip_collection_quotes(table_text)
             parse_result.collection = collection_name
             _logger.debug(f"Parsed regular collection: {collection_name}")
             return collection_name
