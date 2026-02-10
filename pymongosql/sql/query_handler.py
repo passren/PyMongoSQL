@@ -244,7 +244,8 @@ class FromHandler(BaseHandler):
 
             # Regular collection reference
             table_text = ctx.tableReference().getText()
-            collection_name = table_text
+            # Strip surrounding quotes from collection name (e.g., "user.accounts" -> user.accounts)
+            collection_name = re.sub(r'^"([^"]+)"$', r"\1", table_text)
             parse_result.collection = collection_name
             _logger.debug(f"Parsed regular collection: {collection_name}")
             return collection_name

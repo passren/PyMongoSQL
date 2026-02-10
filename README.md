@@ -536,6 +536,10 @@ PyMongoSQL can be used as a database driver in Apache Superset for querying and 
 
 This allows seamless integration between MongoDB data and Superset's BI capabilities without requiring data migration to traditional SQL databases.
 
+**Important Note on Collection Names:**
+
+When using collection names containing special characters (`.`, `-`, `:`), you must wrap them in double quotes to prevent Superset's SQL parser from incorrectly interpreting them.
+
 ## Contributing
 
 Contributions are welcome! Please feel free to submit a Pull Request. For major changes, please open an issue first to discuss what you would like to change.

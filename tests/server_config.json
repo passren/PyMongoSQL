@@ -24,6 +24,7 @@
         "orders": "data/orders.json",
         "analytics": "data/analytics.json",
         "departments": "data/departments.json",
-        "suppliers": "data/suppliers.json"
+        "suppliers": "data/suppliers.json",
+        "user-orders": "data/user-orders.json"
     }
 }

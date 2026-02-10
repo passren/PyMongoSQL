@@ -263,8 +263,8 @@ def setup_test_data():
         )
         db = client[MONGODB_DATABASE]
 
-        # List of all collections to handle
-        collections = ["users", "products", "categories", "orders", "analytics", "departments", "suppliers"]
+        # Get all collections from loaded test data (dynamic, no hardcoding)
+        collections = list(test_data.keys())
 
         # Clear existing data and insert new data for each collection
         for collection_name in collections:
