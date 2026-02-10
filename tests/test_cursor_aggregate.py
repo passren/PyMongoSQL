@@ -327,3 +327,30 @@ class TestCursorAggregate:
         total_users_idx = col_names.index("total_users")
         assert row[avg_age_idx] is not None and isinstance(row[avg_age_idx], (int, float))
         assert row[total_users_idx] is not None and isinstance(row[total_users_idx], (int, float))
+
+    def test_aggregate_collection_name_with_hyphen(self, conn):
+        """Test aggregate function with collection name containing hyphen (user-orders)"""
+        pipeline = json.dumps([{"$match": {"customer_type": "premium"}}])
+
+        # Test collection name with hyphen
+        sql = f"""
+        SELECT *
+        FROM "user-orders".aggregate('{pipeline}', '{{}}')
+        """
+
+        cursor = conn.cursor()
+        result = cursor.execute(sql)
+
+        assert result == cursor
+        assert isinstance(cursor.result_set, ResultSet)
+
+        rows = cursor.result_set.fetchall()
+        assert len(rows) > 0, "Should have results from user-orders collection"
+
+        # Verify all returned rows are premium customers
+        col_names = [desc[0] for desc in cursor.result_set.description]
+        assert "customer_type" in col_names, "customer_type should be in result columns"
+
+        customer_type_idx = col_names.index("customer_type")
+        for row in rows:
+            assert row[customer_type_idx] == "premium", "All rows should have customer_type='premium'"
