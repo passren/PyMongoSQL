@@ -433,3 +433,51 @@ class TestSQLParserGeneral:
             "age": "user_age",
         }
         assert execution_plan.filter_stage == {"status": "active"}
+
+    @pytest.mark.parametrize(
+        "collection,sql,projection,filter_condition",
+        [
+            # Hyphen (-) tests
+            ("user-accounts", "SELECT * FROM user-accounts", None, {}),
+            (
+                "user-accounts",
+                "SELECT name, email FROM user-accounts WHERE status = 'active'",
+                {"name": 1, "email": 1},
+                {"status": "active"},
+            ),
+            # Period (.) tests
+            ("user.accounts", 'SELECT * FROM "user.accounts"', None, {}),
+            (
+                "customer.orders",
+                'SELECT name FROM "customer.orders" WHERE total > 100',
+                {"name": 1},
+                {"total": {"$gt": 100}},
+            ),
+            # Colon (:) tests
+            ("user:accounts", 'SELECT * FROM "user:accounts"', None, {}),
+            (
+                "service:requests",
+                'SELECT id, name FROM "service:requests" WHERE resolved = false',
+                {"id": 1, "name": 1},
+                {"resolved": False},
+            ),
+            # Multiple special characters test
+            ("user-account.data:prod", 'SELECT * FROM "user-account.data:prod"', None, {}),
+        ],
+    )
+    def test_collection_name_with_special_characters(self, collection, sql, projection, filter_condition):
+        """Test SELECT with collection names containing special characters (-, ., :)"""
+        parser = SQLParser(sql)
+
+        assert not parser.has_errors, f"Parser errors: {parser.errors}"
+
+        execution_plan = parser.get_execution_plan()
+        assert execution_plan.collection == collection
+
+        # For SELECT *, projection should be a dict (possibly empty or with just keys)
+        if projection is None:
+            assert isinstance(execution_plan.projection_stage, dict)
+        else:
+            assert execution_plan.projection_stage == projection
+
+        assert execution_plan.filter_stage == filter_condition

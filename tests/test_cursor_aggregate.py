@@ -53,6 +53,48 @@ class TestCursorAggregate:
         assert len(rows) > 0
         assert len(rows[0]) == 2  # Should have 2 columns (name, age)
 
+    def test_aggregate_with_nested_projection(self, conn):
+        """Test aggregate with $project stage to validate nested structure projection (e.g., address.city)"""
+        pipeline = json.dumps(
+            [{"$match": {"active": True}}, {"$project": {"name": 1, "city": "$address.city", "age": 1}}]
+        )
+
+        sql = f"""
+        SELECT *
+        FROM users.aggregate('{pipeline}', '{{}}')
+        LIMIT 5
+        """
+
+        cursor = conn.cursor()
+        result = cursor.execute(sql)
+
+        assert result == cursor
+        assert isinstance(cursor.result_set, ResultSet)
+
+        # Check description has correct columns including projected nested field
+        col_names = [desc[0] for desc in cursor.result_set.description]
+        assert "name" in col_names
+        assert "city" in col_names, "city field should be projected from address.city"
+        assert "age" in col_names
+
+        rows = cursor.result_set.fetchall()
+        assert len(rows) > 0
+
+        # Verify that nested city values are correctly returned
+        city_idx = col_names.index("city")
+        name_idx = col_names.index("name")
+        age_idx = col_names.index("age")
+
+        for row in rows:
+            city_value = row[city_idx]
+            # City should be a string value extracted from the nested address object
+            assert city_value is not None
+            assert isinstance(city_value, str)
+            assert len(city_value) > 0
+            # Verify other fields are also present
+            assert row[name_idx] is not None
+            assert row[age_idx] is not None
+
     def test_aggregate_with_where_clause(self, conn):
         """Test aggregate pipeline combined with WHERE clause for additional filtering"""
         sql = """
