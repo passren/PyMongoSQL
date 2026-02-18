@@ -6,6 +6,7 @@ from typing import Any, Dict, List, Optional, Sequence, Tuple
 import jmespath
 from pymongo.errors import PyMongoError
 
+from . import STRING
 from .common import CursorIterator
 from .error import DatabaseError, ProgrammingError
 from .sql.query_builder import QueryExecutionPlan
@@ -69,7 +70,9 @@ class ResultSet(CursorIterator):
         if not self._execution_plan.projection_stage:
             # No projection specified, build description from column names if available
             if self._column_names:
-                self._description = [(col_name, str, None, None, None, None, None) for col_name in self._column_names]
+                self._description = [
+                    (col_name, STRING, None, None, None, None, None) for col_name in self._column_names
+                ]
             else:
                 # Will be built dynamically when columns are established
                 self._description = None
@@ -84,7 +87,7 @@ class ResultSet(CursorIterator):
             if include_flag == 1:  # Field is included in projection
                 # Use alias if available, otherwise use field name
                 display_name = column_aliases.get(field_name, field_name)
-                description.append((display_name, str, None, None, None, None, None))
+                description.append((display_name, STRING, None, None, None, None, None))
 
         self._description = description
 
@@ -226,7 +229,7 @@ class ResultSet(CursorIterator):
                 if self._column_names:
                     # Build description from established column names
                     self._description = [
-                        (col_name, str, None, None, None, None, None) for col_name in self._column_names
+                        (col_name, STRING, None, None, None, None, None) for col_name in self._column_names
                     ]
             except Exception as e:
                 _logger.warning(f"Could not build dynamic description: {e}")
