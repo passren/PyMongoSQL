@@ -8,6 +8,7 @@ from pymongo.errors import PyMongoError
 
 from .error import DatabaseError, OperationalError, ProgrammingError, SqlSyntaxError
 from .helper import SQLHelper
+from .retry import execute_with_retry
 from .sql.delete_builder import DeleteExecutionPlan
 from .sql.insert_builder import InsertExecutionPlan
 from .sql.parser import SQLParser
@@ -15,6 +16,24 @@ from .sql.query_builder import QueryExecutionPlan
 from .sql.update_builder import UpdateExecutionPlan
 
 _logger = logging.getLogger(__name__)
+
+
+def _run_db_command(db: Any, command: Dict[str, Any], connection: Any, operation_name: str) -> Dict[str, Any]:
+    """Run a MongoDB command with optional transaction session and retry policy."""
+    retry_config = getattr(connection, "retry_config", None)
+
+    if connection and connection.session and connection.session.in_transaction:
+        return execute_with_retry(
+            lambda: db.command(command, session=connection.session),
+            retry_config,
+            operation_name,
+        )
+
+    return execute_with_retry(
+        lambda: db.command(command),
+        retry_config,
+        operation_name,
+    )
 
 
 @dataclass
@@ -156,11 +175,8 @@ class StandardQueryExecution(ExecutionStrategy):
 
             _logger.debug(f"Executing MongoDB command: {find_command}")
 
-            # Execute find command with session if in transaction
-            if connection and connection.session and connection.session.in_transaction:
-                result = db.command(find_command, session=connection.session)
-            else:
-                result = db.command(find_command)
+            # Execute find command with retry for transient system-level errors
+            result = _run_db_command(db, find_command, connection, "find command")
 
             # Create command result
             return result
@@ -214,11 +230,13 @@ class StandardQueryExecution(ExecutionStrategy):
             # Get collection and call aggregate()
             collection = db[execution_plan.collection]
 
-            # Execute aggregate with options
-            cursor = collection.aggregate(pipeline, **options)
-
-            # Convert cursor to list
-            results = list(cursor)
+            # Execute aggregate with retry for transient system-level errors
+            retry_config = getattr(connection, "retry_config", None)
+            results = execute_with_retry(
+                lambda: list(collection.aggregate(pipeline, **options)),
+                retry_config,
+                "aggregate command",
+            )
 
             # Apply additional filters if specified (from WHERE clause)
             if execution_plan.filter_stage:
@@ -420,11 +438,7 @@ class InsertExecution(ExecutionStrategy):
 
             _logger.debug(f"Executing MongoDB insert command: {command}")
 
-            # Execute with session if in transaction
-            if connection and connection.session and connection.session.in_transaction:
-                return db.command(command, session=connection.session)
-            else:
-                return db.command(command)
+            return _run_db_command(db, command, connection, "insert command")
         except PyMongoError as e:
             _logger.error(f"MongoDB insert failed: {e}")
             raise DatabaseError(f"Insert execution failed: {e}")
@@ -504,11 +518,7 @@ class DeleteExecution(ExecutionStrategy):
 
             _logger.debug(f"Executing MongoDB delete command: {command}")
 
-            # Execute with session if in transaction
-            if connection and connection.session and connection.session.in_transaction:
-                return db.command(command, session=connection.session)
-            else:
-                return db.command(command)
+            return _run_db_command(db, command, connection, "delete command")
         except PyMongoError as e:
             _logger.error(f"MongoDB delete failed: {e}")
             raise DatabaseError(f"Delete execution failed: {e}")
@@ -608,11 +618,7 @@ class UpdateExecution(ExecutionStrategy):
 
             _logger.debug(f"Executing MongoDB update command: {command}")
 
-            # Execute with session if in transaction
-            if connection and connection.session and connection.session.in_transaction:
-                return db.command(command, session=connection.session)
-            else:
-                return db.command(command)
+            return _run_db_command(db, command, connection, "update command")
         except PyMongoError as e:
             _logger.error(f"MongoDB update failed: {e}")
             raise DatabaseError(f"Update execution failed: {e}")

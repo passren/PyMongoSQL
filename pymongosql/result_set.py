@@ -9,6 +9,7 @@ from pymongo.errors import PyMongoError
 from . import STRING
 from .common import CursorIterator
 from .error import DatabaseError, ProgrammingError
+from .retry import RetryConfig, execute_with_retry
 from .sql.query_builder import QueryExecutionPlan
 
 _logger = logging.getLogger(__name__)
@@ -23,6 +24,7 @@ class ResultSet(CursorIterator):
         execution_plan: QueryExecutionPlan = None,
         arraysize: int = None,
         database: Optional[Any] = None,
+        retry_config: Optional[RetryConfig] = None,
         **kwargs,
     ) -> None:
         super().__init__(arraysize=arraysize or self.DEFAULT_FETCH_SIZE, **kwargs)
@@ -38,6 +40,8 @@ class ResultSet(CursorIterator):
             self._cached_results: List[Sequence[Any]] = []
         else:
             raise ProgrammingError("command_result must be provided")
+
+        self._retry_config = retry_config
 
         self._execution_plan = execution_plan
         self._is_closed = False
@@ -108,7 +112,11 @@ class ResultSet(CursorIterator):
                         "getMore": self._cursor_id,
                         "collection": self._execution_plan.collection,
                     }
-                    result = self._database.command(getmore_cmd)
+                    result = execute_with_retry(
+                        lambda: self._database.command(getmore_cmd),
+                        self._retry_config,
+                        "getMore command",
+                    )
 
                     # Extract and process next batch
                     cursor_info = result.get("cursor", {})

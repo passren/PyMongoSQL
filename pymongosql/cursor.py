@@ -110,6 +110,7 @@ class Cursor(BaseCursor, CursorIterator):
                     command_result=result,
                     execution_plan=execution_plan_for_rs,
                     database=self.connection.database,
+                    retry_config=self.connection.retry_config,
                     **self._kwargs,
                 )
             else:
@@ -125,6 +126,7 @@ class Cursor(BaseCursor, CursorIterator):
                     },
                     execution_plan=stub_plan,
                     database=self.connection.database,
+                    retry_config=self.connection.retry_config,
                     **self._kwargs,
                 )
                 # Store the actual insert result for reference
