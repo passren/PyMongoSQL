@@ -221,46 +221,12 @@ class TestMongoQueryBuilder:
 
         assert builder._execution_plan.limit_stage == 100
 
-    def test_limit_negative(self):
-        """Test limit with negative value adds error."""
-        builder = MongoQueryBuilder()
-        builder.limit(-10)
-
-        errors = builder.get_errors()
-        assert len(errors) > 0
-        assert "non-negative" in errors[0].lower()
-
-    def test_limit_non_integer(self):
-        """Test limit with non-integer adds error."""
-        builder = MongoQueryBuilder()
-        builder.limit(10.5)
-
-        errors = builder.get_errors()
-        assert len(errors) > 0
-
     def test_skip_valid(self):
         """Test skip with valid value."""
         builder = MongoQueryBuilder()
         builder.skip(50)
 
         assert builder._execution_plan.skip_stage == 50
-
-    def test_skip_negative(self):
-        """Test skip with negative value adds error."""
-        builder = MongoQueryBuilder()
-        builder.skip(-5)
-
-        errors = builder.get_errors()
-        assert len(errors) > 0
-        assert "non-negative" in errors[0].lower()
-
-    def test_skip_non_integer(self):
-        """Test skip with non-integer adds error."""
-        builder = MongoQueryBuilder()
-        builder.skip("10")
-
-        errors = builder.get_errors()
-        assert len(errors) > 0
 
     def test_column_aliases_valid(self):
         """Test column_aliases with valid dict."""

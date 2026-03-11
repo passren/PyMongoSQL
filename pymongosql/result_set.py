@@ -6,8 +6,10 @@ from typing import Any, Dict, List, Optional, Sequence, Tuple
 import jmespath
 from pymongo.errors import PyMongoError
 
+from . import STRING
 from .common import CursorIterator
 from .error import DatabaseError, ProgrammingError
+from .retry import RetryConfig, execute_with_retry
 from .sql.query_builder import QueryExecutionPlan
 
 _logger = logging.getLogger(__name__)
@@ -22,6 +24,7 @@ class ResultSet(CursorIterator):
         execution_plan: QueryExecutionPlan = None,
         arraysize: int = None,
         database: Optional[Any] = None,
+        retry_config: Optional[RetryConfig] = None,
         **kwargs,
     ) -> None:
         super().__init__(arraysize=arraysize or self.DEFAULT_FETCH_SIZE, **kwargs)
@@ -37,6 +40,8 @@ class ResultSet(CursorIterator):
             self._cached_results: List[Sequence[Any]] = []
         else:
             raise ProgrammingError("command_result must be provided")
+
+        self._retry_config = retry_config
 
         self._execution_plan = execution_plan
         self._is_closed = False
@@ -69,7 +74,9 @@ class ResultSet(CursorIterator):
         if not self._execution_plan.projection_stage:
             # No projection specified, build description from column names if available
             if self._column_names:
-                self._description = [(col_name, str, None, None, None, None, None) for col_name in self._column_names]
+                self._description = [
+                    (col_name, STRING, None, None, None, None, None) for col_name in self._column_names
+                ]
             else:
                 # Will be built dynamically when columns are established
                 self._description = None
@@ -84,7 +91,7 @@ class ResultSet(CursorIterator):
             if include_flag == 1:  # Field is included in projection
                 # Use alias if available, otherwise use field name
                 display_name = column_aliases.get(field_name, field_name)
-                description.append((display_name, str, None, None, None, None, None))
+                description.append((display_name, STRING, None, None, None, None, None))
 
         self._description = description
 
@@ -105,7 +112,11 @@ class ResultSet(CursorIterator):
                         "getMore": self._cursor_id,
                         "collection": self._execution_plan.collection,
                     }
-                    result = self._database.command(getmore_cmd)
+                    result = execute_with_retry(
+                        lambda: self._database.command(getmore_cmd),
+                        self._retry_config,
+                        "getMore command",
+                    )
 
                     # Extract and process next batch
                     cursor_info = result.get("cursor", {})
@@ -226,7 +237,7 @@ class ResultSet(CursorIterator):
                 if self._column_names:
                     # Build description from established column names
                     self._description = [
-                        (col_name, str, None, None, None, None, None) for col_name in self._column_names
+                        (col_name, STRING, None, None, None, None, None) for col_name in self._column_names
                     ]
             except Exception as e:
                 _logger.warning(f"Could not build dynamic description: {e}")

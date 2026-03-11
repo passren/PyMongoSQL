@@ -4,6 +4,7 @@ from datetime import datetime, timezone
 import pytest
 from bson.timestamp import Timestamp
 
+from pymongosql import STRING
 from pymongosql.error import DatabaseError, ProgrammingError, SqlSyntaxError
 from pymongosql.result_set import ResultSet
 
@@ -271,8 +272,8 @@ class TestCursor:
         desc = cursor.description
         assert isinstance(desc, list)
         assert all(isinstance(d, tuple) and len(d) == 7 and isinstance(d[0], str) for d in desc)
-        # type_code should be a type object (e.g., str) or None when unknown
-        assert all((isinstance(d[1], type) or d[1] is None) for d in desc)
+        # type_code should be a DBAPITypeObject (e.g., STRING) or None when unknown
+        assert all((d[1] == STRING or d[1] is None) for d in desc)
 
     def test_description_projection(self, conn):
         """Ensure projection via SQL reflects in the description names and types"""
@@ -285,7 +286,7 @@ class TestCursor:
         assert "email" in col_names
         for d in desc:
             if d[0] in ("name", "email"):
-                assert isinstance(d[1], type) or d[1] is None
+                assert d[1] == STRING or d[1] is None
 
     def test_cursor_pagination_fetchmany_triggers_getmore(self, conn, monkeypatch):
         """Test that cursor.fetchmany triggers getMore when executing SQL that yields a paginated cursor

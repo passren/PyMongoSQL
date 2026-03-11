@@ -13,6 +13,7 @@ from .common import BaseCursor
 from .cursor import Cursor
 from .error import DatabaseError, OperationalError
 from .helper import ConnectionHelper
+from .retry import RetryConfig, execute_with_retry
 
 _logger = logging.getLogger(__name__)
 
@@ -54,6 +55,10 @@ class Connection:
         self._mode = kwargs.pop("mode", None)
         if not self._mode and mode:
             self._mode = mode
+
+        # Retry behavior for transient system-level PyMongo failures.
+        # These kwargs are consumed by PyMongoSQL and are not passed to MongoClient.
+        self._retry_config = RetryConfig.from_kwargs(kwargs)
 
         # Extract commonly used parameters for backward compatibility
         self._host = host or "localhost"
@@ -109,7 +114,11 @@ class Connection:
             self._client = MongoClient(**self._pymongo_params)
 
             # Test connection
-            self._client.admin.command("ping")
+            execute_with_retry(
+                lambda: self._client.admin.command("ping"),
+                self._retry_config,
+                "initial MongoDB ping",
+            )
 
             # Initialize the database according to explicit parameter or client's default
             # This may raise OperationalError if no database could be determined; allow it to bubble up
@@ -178,6 +187,11 @@ class Connection:
     def mode(self) -> str:
         """Get the specified mode"""
         return self._mode
+
+    @property
+    def retry_config(self) -> RetryConfig:
+        """Get retry configuration used for transient system-level errors."""
+        return self._retry_config
 
     def use_database(self, database_name: str) -> None:
         """Switch to a different database"""
@@ -332,7 +346,11 @@ class Connection:
         if self._client is None:
             raise OperationalError("No active connection")
 
-        session = self._client.start_session(**kwargs)
+        session = execute_with_retry(
+            lambda: self._client.start_session(**kwargs),
+            self._retry_config,
+            "start MongoDB session",
+        )
         self._session = session
         _logger.info("Started new MongoDB session")
         return session
@@ -340,7 +358,11 @@ class Connection:
     def _end_session(self) -> None:
         """End the current session (internal method)"""
         if self._session is not None:
-            self._session.end_session()
+            execute_with_retry(
+                lambda: self._session.end_session(),
+                self._retry_config,
+                "end MongoDB session",
+            )
             self._session = None
             _logger.info("Ended MongoDB session")
 
@@ -357,7 +379,11 @@ class Connection:
         if self._session is None:
             raise OperationalError("No active session")
 
-        self._session.start_transaction(**kwargs)
+        execute_with_retry(
+            lambda: self._session.start_transaction(**kwargs),
+            self._retry_config,
+            "start MongoDB transaction",
+        )
         self._in_transaction = True
         self._autocommit = False
         _logger.info("Started MongoDB transaction")
@@ -370,7 +396,11 @@ class Connection:
         if not self._session.in_transaction:
             raise OperationalError("No active transaction to commit")
 
-        self._session.commit_transaction()
+        execute_with_retry(
+            lambda: self._session.commit_transaction(),
+            self._retry_config,
+            "commit MongoDB transaction",
+        )
         self._in_transaction = False
         self._autocommit = True
         _logger.info("Committed MongoDB transaction")
@@ -383,7 +413,11 @@ class Connection:
         if not self._session.in_transaction:
             raise OperationalError("No active transaction to abort")
 
-        self._session.abort_transaction()
+        execute_with_retry(
+            lambda: self._session.abort_transaction(),
+            self._retry_config,
+            "abort MongoDB transaction",
+        )
         self._in_transaction = False
         self._autocommit = True
         _logger.info("Aborted MongoDB transaction")
@@ -460,7 +494,11 @@ class Connection:
         """Test if the connection is alive"""
         try:
             if self._client:
-                self._client.admin.command("ping")
+                execute_with_retry(
+                    lambda: self._client.admin.command("ping"),
+                    self._retry_config,
+                    "connection health check ping",
+                )
                 return True
             return False
         except Exception as e:

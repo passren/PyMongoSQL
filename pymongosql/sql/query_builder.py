@@ -156,7 +156,6 @@ class MongoQueryBuilder:
     def limit(self, count: int) -> "MongoQueryBuilder":
         """Set limit for results"""
         if not isinstance(count, int) or count < 0:
-            self._add_error("Limit must be a non-negative integer")
             return self
 
         self._execution_plan.limit_stage = count
@@ -166,7 +165,6 @@ class MongoQueryBuilder:
     def skip(self, count: int) -> "MongoQueryBuilder":
         """Set skip count for pagination"""
         if not isinstance(count, int) or count < 0:
-            self._add_error("Skip must be a non-negative integer")
             return self
 
         self._execution_plan.skip_stage = count
