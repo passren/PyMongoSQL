@@ -658,3 +658,14 @@ class TestDialectRegistration(unittest.TestCase):
         except ImportError:
             # Skip if SQLAlchemy registry is not available
             self.skipTest("SQLAlchemy registry not available")
+
+    def test_srv_dialect_lookup(self):
+        """Test that mongodb.srv resolves correctly (mongodb+srv:// URLs)."""
+        if not HAS_SQLALCHEMY:
+            self.skipTest("SQLAlchemy not available")
+
+        from sqlalchemy.dialects import registry
+
+        loaded = registry.load("mongodb.srv")
+        self.assertIsNotNone(loaded)
+        self.assertEqual(loaded.name, "mongodb")

@@ -58,6 +58,7 @@ Documentation = "https://github.com/passren/PyMongoSQL/wiki"
 [project.entry-points."sqlalchemy.dialects"]
 mongodb = "pymongosql.sqlalchemy_mongodb.sqlalchemy_dialect:PyMongoSQLDialect"
 "mongodb+srv" = "pymongosql.sqlalchemy_mongodb.sqlalchemy_dialect:PyMongoSQLDialect"
+"mongodb.srv" = "pymongosql.sqlalchemy_mongodb.sqlalchemy_dialect:PyMongoSQLDialect"
 
 [tool.black]
 line-length = 120
