@@ -26,6 +26,13 @@ OPERATOR_MAP = {
     "NOT IN": "$nin",
 }
 
+# Pattern to count all comparison operations in ANTLR getText() output (no spaces).
+# Includes standard operators and SQL keywords (IN, LIKE, BETWEEN, IS [NOT] NULL).
+_COMPARISON_COUNT_PATTERN = re.compile(
+    r">=|<=|!=|<>|=|<|>|IN\(|LIKE['\"]|BETWEEN|ISNOTNULL|ISNULL",
+    re.IGNORECASE,
+)
+
 
 class ContextUtilsMixin:
     """Mixin providing common context utility methods"""
@@ -194,8 +201,10 @@ class ComparisonExpressionHandler(BaseHandler, ContextUtilsMixin, LoggingMixin, 
             text = self.get_context_text(ctx)
             text_upper = text.upper()
 
-            # Count comparison operators
-            comparison_count = sum(1 for op in COMPARISON_OPERATORS if op in text)
+            # Count comparison operator *occurrences* (not distinct types) so that
+            # "B=trueANDA=1" is correctly seen as having 2 comparisons even though
+            # both use the same "=" operator.  Also counts IN(, LIKE, BETWEEN, etc.
+            comparison_count = len(_COMPARISON_COUNT_PATTERN.findall(text))
 
             # If there are multiple comparisons and logical operators, it's a logical expression
             has_logical_ops = any(op in text_upper for op in LOGICAL_OPERATORS)
@@ -550,8 +559,23 @@ class LogicalExpressionHandler(BaseHandler, ContextUtilsMixin, LoggingMixin, Ope
                     and i + len(operator) < len(text)
                     and text[i + len(operator)].isalpha()
                 ):
-                    i += len(operator)
-                    continue
+                    # ANTLR getText() concatenates tokens without spaces, so
+                    # "B=true AND A=1" becomes "B=trueANDA=1".  We must still
+                    # recognise AND/OR here when the preceding text ends with a
+                    # SQL literal keyword (true/false/null) that is itself
+                    # preceded by a comparison operator (=, <, >, !, etc.).
+                    # This avoids false positives like "category" containing "OR".
+                    before_upper = text[:i].upper()
+                    is_value_boundary = False
+                    for keyword in ("TRUE", "FALSE", "NULL"):
+                        if before_upper.endswith(keyword):
+                            prefix = text[: i - len(keyword)]
+                            if prefix and prefix[-1] in ("=", "<", ">", "!"):
+                                is_value_boundary = True
+                                break
+                    if not is_value_boundary:
+                        i += len(operator)
+                        continue
 
                 # Check parentheses and quote depth
                 if self._is_at_valid_split_position(text, i):
@@ -583,7 +607,7 @@ class LogicalExpressionHandler(BaseHandler, ContextUtilsMixin, LoggingMixin, Ope
             # Count comparison operator occurrences, not just distinct operator types
             # so that "a = 1 OR b = 2" counts as 2 comparisons and is treated
             # as a logical expression instead of a single comparison.
-            comparison_count = len(re.findall(r"(>=|<=|!=|<>|=|<|>)", text))
+            comparison_count = len(_COMPARISON_COUNT_PATTERN.findall(text))
             has_logical_ops = any(op in text for op in ["AND", "OR"])
             return has_logical_ops and comparison_count >= 2
         except Exception:
