@@ -301,7 +301,7 @@ class ComparisonExpressionHandler(BaseHandler, ContextUtilsMixin, LoggingMixin, 
     def _has_comparison_pattern(self, ctx: Any) -> bool:
         """Check if the expression text contains comparison patterns"""
         try:
-            text = self.get_context_text(ctx)
+            text = self.get_context_text(ctx).upper()
             # Extended pattern matching for SQL constructs
             patterns = COMPARISON_OPERATORS + ["LIKE", "IN", "BETWEEN", "ISNULL", "ISNOTNULL"]
             return any(op in text for op in patterns)
@@ -327,12 +327,14 @@ class ComparisonExpressionHandler(BaseHandler, ContextUtilsMixin, LoggingMixin, 
         """Extract field name from comparison expression"""
         try:
             text = self.get_context_text(ctx)
+            text_upper = text.upper()
 
             # Handle SQL constructs with keywords
             sql_keywords = ["IN(", "LIKE", "BETWEEN", "ISNULL", "ISNOTNULL"]
             for keyword in sql_keywords:
-                if keyword in text:
-                    candidate = text.split(keyword, 1)[0].strip()
+                if keyword in text_upper:
+                    idx = text_upper.index(keyword)
+                    candidate = text[:idx].strip()
                     return self.normalize_field_path(candidate)
 
             # Try operator-based splitting
@@ -359,6 +361,7 @@ class ComparisonExpressionHandler(BaseHandler, ContextUtilsMixin, LoggingMixin, 
         """Extract comparison operator"""
         try:
             text = self.get_context_text(ctx)
+            text_upper = text.upper()
 
             # Check SQL constructs first (order matters for ISNOTNULL vs ISNULL)
             sql_constructs = {
@@ -370,7 +373,7 @@ class ComparisonExpressionHandler(BaseHandler, ContextUtilsMixin, LoggingMixin, 
             }
 
             for construct, operator in sql_constructs.items():
-                if construct in text:
+                if construct in text_upper:
                     return operator
 
             # Look for comparison operators
@@ -394,15 +397,16 @@ class ComparisonExpressionHandler(BaseHandler, ContextUtilsMixin, LoggingMixin, 
         """Extract value from comparison expression"""
         try:
             text = self.get_context_text(ctx)
+            text_upper = text.upper()
 
             # Handle SQL constructs with specific parsing needs
-            if "IN(" in text:
+            if "IN(" in text_upper:
                 return self._extract_in_values(text)
-            elif "LIKE" in text:
+            elif "LIKE" in text_upper:
                 return self._extract_like_pattern(text)
-            elif "BETWEEN" in text:
+            elif "BETWEEN" in text_upper:
                 return self._extract_between_range(text)
-            elif "ISNULL" in text or "ISNOTNULL" in text:
+            elif "ISNULL" in text_upper or "ISNOTNULL" in text_upper:
                 return None
 
             # Standard operator-based extraction
@@ -526,16 +530,24 @@ class ComparisonExpressionHandler(BaseHandler, ContextUtilsMixin, LoggingMixin, 
 
     def _extract_like_pattern(self, text: str) -> str:
         """Extract pattern from LIKE clause"""
-        parts = text.split("LIKE", 1)
-        return parts[1].strip().strip("'\"") if len(parts) == 2 else ""
+        idx = text.upper().find("LIKE")
+        if idx == -1:
+            return ""
+        return text[idx + 4 :].strip().strip("'\"")
 
     def _extract_between_range(self, text: str) -> Optional[Tuple[Any, Any]]:
         """Extract range values from BETWEEN clause"""
-        parts = text.split("BETWEEN", 1)
-        if len(parts) == 2 and "AND" in parts[1]:
-            range_values = parts[1].split("AND", 1)
-            if len(range_values) == 2:
-                return (self._parse_value(range_values[0].strip()), self._parse_value(range_values[1].strip()))
+        text_upper = text.upper()
+        between_idx = text_upper.find("BETWEEN")
+        if between_idx == -1:
+            return None
+        after = text[between_idx + 7 :]
+        after_upper = after.upper()
+        and_idx = after_upper.find("AND")
+        if and_idx != -1:
+            low = after[:and_idx].strip()
+            high = after[and_idx + 3 :].strip()
+            return (self._parse_value(low), self._parse_value(high))
         return None
 
 

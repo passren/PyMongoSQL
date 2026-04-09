@@ -215,3 +215,103 @@ class TestWhereClauseFieldOrdering:
         for key in ["active", "deleted", "age", "name"]:
             assert key in flat, f"Missing expected key '{key}' in filter: {f}"
         assert "$or" in flat
+
+
+class TestCaseInsensitiveOperators:
+    """Test that SQL operators in WHERE clauses work regardless of case."""
+
+    # --- LIKE case variants ---
+
+    def test_like_lowercase(self):
+        sql = "SELECT * FROM col WHERE name like '%john%'"
+        plan = SQLParser(sql).get_execution_plan()
+        f = plan.filter_stage
+        assert "name" in f
+        assert "$regex" in f["name"]
+
+    def test_like_mixed_case(self):
+        sql = "SELECT * FROM col WHERE name Like '%john%'"
+        plan = SQLParser(sql).get_execution_plan()
+        f = plan.filter_stage
+        assert "name" in f
+        assert "$regex" in f["name"]
+
+    # --- IN case variants ---
+
+    def test_in_lowercase(self):
+        sql = "SELECT * FROM col WHERE status in ('a','b','c')"
+        plan = SQLParser(sql).get_execution_plan()
+        f = plan.filter_stage
+        assert "status" in f
+        assert "$in" in f["status"]
+
+    def test_in_mixed_case(self):
+        sql = "SELECT * FROM col WHERE status In ('a','b','c')"
+        plan = SQLParser(sql).get_execution_plan()
+        f = plan.filter_stage
+        assert "status" in f
+        assert "$in" in f["status"]
+
+    # --- BETWEEN case variants ---
+
+    def test_between_lowercase(self):
+        sql = "SELECT * FROM col WHERE age between 10 and 50"
+        plan = SQLParser(sql).get_execution_plan()
+        f = plan.filter_stage
+        assert "$and" in f
+        assert any("age" in cond and "$gte" in cond.get("age", {}) for cond in f["$and"])
+        assert any("age" in cond and "$lte" in cond.get("age", {}) for cond in f["$and"])
+
+    def test_between_mixed_case(self):
+        sql = "SELECT * FROM col WHERE age Between 10 And 50"
+        plan = SQLParser(sql).get_execution_plan()
+        f = plan.filter_stage
+        assert "$and" in f
+        assert any("age" in cond and "$gte" in cond.get("age", {}) for cond in f["$and"])
+        assert any("age" in cond and "$lte" in cond.get("age", {}) for cond in f["$and"])
+
+    # --- IS NULL / IS NOT NULL case variants ---
+
+    def test_is_null_lowercase(self):
+        sql = "SELECT * FROM col WHERE name is null"
+        plan = SQLParser(sql).get_execution_plan()
+        f = plan.filter_stage
+        assert "name" in f
+        assert f["name"] == {"$eq": None}
+
+    def test_is_not_null_lowercase(self):
+        sql = "SELECT * FROM col WHERE name is not null"
+        plan = SQLParser(sql).get_execution_plan()
+        f = plan.filter_stage
+        assert "name" in f
+        assert f["name"] == {"$ne": None}
+
+    # --- AND / OR case variants ---
+
+    def test_and_lowercase(self):
+        sql = "SELECT * FROM col WHERE age=30 and name='John'"
+        plan = SQLParser(sql).get_execution_plan()
+        assert plan.filter_stage == {"$and": [{"age": 30}, {"name": "John"}]}
+
+    def test_or_lowercase(self):
+        sql = "SELECT * FROM col WHERE age=30 or name='John'"
+        plan = SQLParser(sql).get_execution_plan()
+        assert plan.filter_stage == {"$or": [{"age": 30}, {"name": "John"}]}
+
+    # --- Mixed case operators in compound expressions ---
+
+    def test_like_and_bool_lowercase_operators(self):
+        sql = "SELECT * FROM col WHERE name like '%john%' and active=true"
+        plan = SQLParser(sql).get_execution_plan()
+        f = plan.filter_stage
+        assert "$and" in f
+        assert {"active": True} in f["$and"]
+        assert any("name" in cond and "$regex" in cond.get("name", {}) for cond in f["$and"])
+
+    def test_in_and_comparison_lowercase(self):
+        sql = "SELECT * FROM col WHERE status in ('a','b') and age>25"
+        plan = SQLParser(sql).get_execution_plan()
+        f = plan.filter_stage
+        assert "$and" in f
+        assert any("status" in cond and "$in" in cond.get("status", {}) for cond in f["$and"])
+        assert any("age" in cond and "$gt" in cond.get("age", {}) for cond in f["$and"])
