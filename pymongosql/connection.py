@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import logging
+from importlib.metadata import version as _get_version
 from typing import Any, Optional, Sequence, Type, Union
 
 from bson.codec_options import TypeRegistry
@@ -7,7 +8,15 @@ from pymongo import MongoClient
 from pymongo.client_session import ClientSession
 from pymongo.collection import Collection
 from pymongo.database import Database
+from pymongo.driver_info import DriverInfo
 from pymongo.errors import ConnectionFailure
+
+try:
+    _VERSION = _get_version("pymongosql")
+except Exception:
+    _VERSION = None
+
+_DRIVER_INFO = DriverInfo(name="PyMongoSQL", version=_VERSION)
 
 from .common import BaseCursor
 from .cursor import Cursor
@@ -86,6 +95,10 @@ class Connection:
             self._pymongo_params["connect"] = connect
         if type_registry is not None:
             self._pymongo_params["type_registry"] = type_registry
+
+        # Inject MongoDB client metadata so the handshake identifies this library
+        if "driver" not in self._pymongo_params:
+            self._pymongo_params["driver"] = _DRIVER_INFO
 
         # Connection state
         self._autocommit = True
