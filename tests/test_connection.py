@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 import pytest
 
-from pymongosql.connection import Connection
+from pymongosql.connection import _VERSION, Connection
 from pymongosql.cursor import Cursor
 from pymongosql.error import OperationalError
 from tests.conftest import TEST_DB, TEST_URI
@@ -26,6 +26,12 @@ class TestConnection:
             assert conn.port == 27017
             assert conn.database_name == "test_db"
             assert conn.is_connected
+
+        # Verify driver name and version are correctly configured
+        assert _VERSION is not None
+        assert conn._pymongo_params.get("driver").name == "PyMongoSQL"
+        assert conn._pymongo_params.get("driver").version == _VERSION
+
         conn.close()
 
     def test_connection_with_connect_false(self):
