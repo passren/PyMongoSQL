@@ -66,7 +66,7 @@ pip install pymongosql
 Or install from source:
 
 ```bash
-git clone https://github.com/your-username/PyMongoSQL.git
+git clone https://github.com/passren/PyMongoSQL.git
 cd PyMongoSQL
 pip install -e .
 ```
@@ -90,6 +90,7 @@ pip install -e .
   - [UPDATE Statements](#update-statements)
   - [DELETE Statements](#delete-statements)
   - [Transaction Support](#transaction-support)
+- [SQL to MongoDB Mapping](#sql-to-mongodb-mapping)
 - [Apache Superset Integration](#apache-superset-integration)
 - [Limitations & Roadmap](#limitations--roadmap)
 - [Contributing](#contributing)
@@ -533,6 +534,76 @@ finally:
 ```
 
 **Note:** MongoDB requires a replica set or sharded cluster for transaction support. Standalone MongoDB servers do not support ACID transactions at the server level.
+
+## SQL to MongoDB Mapping
+
+The table below shows how PyMongoSQL translates SQL operations into MongoDB commands.
+
+### SQL Operations to MongoDB Commands
+
+| SQL Operation | MongoDB Command | Equivalent PyMongo Method |
+|---|---|---|
+| `SELECT ... FROM col` | `{find: col, projection: {...}}` | `db.command("find", ...)` |
+| `SELECT ... FROM col WHERE ...` | `{find: col, filter: {...}}` | `db.command("find", ...)` |
+| `SELECT ... ORDER BY col ASC/DESC` | `{find: ..., sort: {col: 1/-1}}` | `db.command("find", ...)` |
+| `SELECT ... LIMIT n` | `{find: ..., limit: n}` | `db.command("find", ...)` |
+| `SELECT ... OFFSET n` | `{find: ..., skip: n}` | `db.command("find", ...)` |
+| `SELECT * FROM col.aggregate(...)` | `collection.aggregate(pipeline)` | `collection.aggregate()` |
+| `INSERT INTO col ...` | `{insert: col, documents: [...]}` | `db.command("insert", ...)` |
+| `UPDATE col SET ... WHERE ...` | `{update: col, updates: [{q: filter, u: {$set: {...}}, multi: true}]}` | `db.command("update", ...)` |
+| `DELETE FROM col WHERE ...` | `{delete: col, deletes: [{q: filter, limit: 0}]}` | `db.command("delete", ...)` |
+
+### SQL Clauses to MongoDB Query Components
+
+| SQL Clause | MongoDB Equivalent | Example |
+|---|---|---|
+| `SELECT col1, col2` | `projection: {col1: 1, col2: 1}` | Fields to include |
+| `SELECT *` | _(no projection)_ | Returns all fields |
+| `SELECT col AS alias` | Column alias applied in result set | Post-processing rename |
+| `FROM collection` | `find: "collection"` | Target collection |
+| `ORDER BY col ASC` | `sort: {col: 1}` | Ascending sort |
+| `ORDER BY col DESC` | `sort: {col: -1}` | Descending sort |
+| `LIMIT n` | `limit: n` | Restrict result count |
+| `OFFSET n` | `skip: n` | Skip first n results |
+
+### WHERE Operators to MongoDB Filter Operators
+
+| SQL WHERE Clause | MongoDB Filter | Notes |
+|---|---|---|
+| `field = value` | `{field: value}` | Equality shorthand |
+| `field != value` | `{field: {$ne: value}}` | Not equal |
+| `field > value` | `{field: {$gt: value}}` | Greater than |
+| `field >= value` | `{field: {$gte: value}}` | Greater than or equal |
+| `field < value` | `{field: {$lt: value}}` | Less than |
+| `field <= value` | `{field: {$lte: value}}` | Less than or equal |
+| `field LIKE 'pat%'` | `{field: {$regex: "pat.*"}}` | `%` → `.*`, `_` → `.` |
+| `field IN (a, b, c)` | `{field: {$in: [a, b, c]}}` | Match any value in list |
+| `field NOT IN (a, b)` | `{field: {$nin: [a, b]}}` | Exclude values in list |
+| `field BETWEEN a AND b` | `{$and: [{field: {$gte: a}}, {field: {$lte: b}}]}` | Range filter |
+| `field IS NULL` | `{field: {$eq: null}}` | Null check |
+| `field IS NOT NULL` | `{field: {$ne: null}}` | Not null check |
+| `cond1 AND cond2` | `{$and: [filter1, filter2]}` | Logical AND |
+| `cond1 OR cond2` | `{$or: [filter1, filter2]}` | Logical OR |
+| `NOT cond` | `{$not: filter}` | Logical NOT |
+
+### Nested Field and Array Access
+
+| SQL Syntax | MongoDB Dot Notation | Example |
+|---|---|---|
+| `profile.name` | `profile.name` | Single-level nesting |
+| `account.profile.name` | `account.profile.name` | Multi-level nesting |
+| `items[0].name` | `items.0.name` | Array index access |
+
+### DML Mapping Details
+
+| SQL DML | MongoDB Behavior | Notes |
+|---|---|---|
+| `INSERT INTO col VALUE {...}` | Single document insert | PartiQL object literal |
+| `INSERT INTO col VALUE << {...}, {...} >>` | Multi-document insert | PartiQL bag syntax |
+| `INSERT INTO col (c1, c2) VALUES (v1, v2)` | Columns and values zipped into document | Standard SQL syntax |
+| `UPDATE col SET f1 = v1` | `{$set: {f1: v1}}` with `multi: true` | Updates all matching docs |
+| `DELETE FROM col` | `{q: {}, limit: 0}` | Deletes all documents |
+| `DELETE FROM col WHERE ...` | `{q: filter, limit: 0}` | Deletes all matching docs |
 
 ## Apache Superset Integration
 

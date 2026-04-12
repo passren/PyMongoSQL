@@ -11,6 +11,12 @@ from pymongo.database import Database
 from pymongo.driver_info import DriverInfo
 from pymongo.errors import ConnectionFailure
 
+from .common import BaseCursor
+from .cursor import Cursor
+from .error import DatabaseError, OperationalError
+from .helper import ConnectionHelper
+from .retry import RetryConfig, execute_with_retry
+
 try:
     _VERSION = _get_version("pymongosql")
 except Exception:
@@ -18,11 +24,6 @@ except Exception:
 
 _DRIVER_INFO = DriverInfo(name="PyMongoSQL", version=_VERSION)
 
-from .common import BaseCursor
-from .cursor import Cursor
-from .error import DatabaseError, OperationalError
-from .helper import ConnectionHelper
-from .retry import RetryConfig, execute_with_retry
 
 _logger = logging.getLogger(__name__)
 
