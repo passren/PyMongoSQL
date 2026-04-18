@@ -4,7 +4,13 @@ from dataclasses import dataclass
 from typing import Any, Callable, Optional, Tuple, TypeVar
 
 from pymongo.errors import AutoReconnect, ConnectionFailure, NetworkTimeout, PyMongoError, ServerSelectionTimeoutError
-from tenacity import Retrying, retry_if_exception_type, stop_after_attempt, wait_exponential
+
+try:
+    from tenacity import Retrying, retry_if_exception_type, stop_after_attempt, wait_exponential
+
+    _has_tenacity = True
+except ImportError:
+    _has_tenacity = False
 
 _logger = logging.getLogger(__name__)
 _T = TypeVar("_T")
@@ -55,6 +61,13 @@ def execute_with_retry(
     config = retry_config or RetryConfig(enabled=False, attempts=1, wait_min=0.0, wait_max=0.0)
 
     if not config.enabled or config.attempts <= 1:
+        return operation()
+
+    if not _has_tenacity:
+        _logger.warning(
+            "Retry is enabled but 'tenacity' package is not installed. "
+            "Falling back to no-retry. Install it with: pip install pymongosql[retry]"
+        )
         return operation()
 
     def _before_sleep(retry_state: Any) -> None:

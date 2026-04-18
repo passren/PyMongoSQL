@@ -49,13 +49,15 @@ PyMongoSQL implements the DB API 2.0 interfaces to provide SQL-like access to Mo
 - **JMESPath** (JSON/Dict Path Query)
   - jmespath >= 1.0.0
 
-- **Tenacity** (Transient Failure Retry)
-    - tenacity >= 9.0.0
-
 ### Optional Dependencies
+
+- **Tenacity** (Transient Failure Retry)
+  - tenacity >= 9.0.0
+  - Install with: `pip install pymongosql[retry]`
 
 - **SQLAlchemy** (for ORM/Core support)
   - sqlalchemy >= 1.4.0 (SQLAlchemy 1.4+ and 2.0+ supported)
+  - Install with: `pip install pymongosql[sqlalchemy]`
 
 ## Installation
 
@@ -212,12 +214,12 @@ Parameters are substituted into the MongoDB filter during execution, providing p
 
 ### Retry on Transient System Errors
 
-PyMongoSQL supports retrying transient, system-level MongoDB failures (for example connection timeout and reconnect errors) using Tenacity.
+PyMongoSQL supports retrying transient, system-level MongoDB failures (for example connection timeout and reconnect errors) using [Tenacity](https://github.com/jd/tenacity). This feature requires the optional `tenacity` package — install it with `pip install pymongosql[retry]`. If retry is enabled but tenacity is not installed, operations will proceed without retry.
 
 ```python
 connection = connect(
     host="mongodb://localhost:27017/database",
-    retry_enabled=False,     # default: False
+    retry_enabled=False,    # default: False
     retry_attempts=3,       # default: 3
     retry_wait_min=0.1,     # default: 0.1 seconds
     retry_wait_max=1.0,     # default: 1.0 seconds

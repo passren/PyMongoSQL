@@ -162,3 +162,45 @@ def test_result_set_getmore_retries_transient_failures():
     assert row is not None
     assert row[0] == "retry-user"
     assert state["calls"] == 3
+
+
+def test_execute_with_retry_works_without_tenacity(monkeypatch):
+    """When tenacity is not installed, retry-enabled calls fall back to no-retry."""
+    monkeypatch.setattr("pymongosql.retry._has_tenacity", False)
+
+    state = {"calls": 0}
+
+    def operation():
+        state["calls"] += 1
+        return "ok"
+
+    result = execute_with_retry(
+        operation,
+        RetryConfig(enabled=True, attempts=3, wait_min=0.0, wait_max=0.0),
+        "no-tenacity fallback",
+    )
+
+    assert result == "ok"
+    assert state["calls"] == 1  # no retry, just one direct call
+
+
+def test_retry_module_imports_without_tenacity(monkeypatch):
+    """The retry module can be imported even if tenacity is absent."""
+    import importlib
+    import sys
+
+    monkeypatch.setitem(sys.modules, "tenacity", None)  # block tenacity import
+
+    import pymongosql.retry
+
+    importlib.reload(pymongosql.retry)
+
+    assert pymongosql.retry._has_tenacity is False
+
+    # Still usable with retry disabled
+    result = pymongosql.retry.execute_with_retry(
+        lambda: 42,
+        pymongosql.retry.RetryConfig(enabled=False),
+        "import test",
+    )
+    assert result == 42
