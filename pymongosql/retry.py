@@ -19,14 +19,14 @@ RETRYABLE_SYSTEM_EXCEPTIONS: Tuple[type, ...] = (
 
 @dataclass(frozen=True)
 class RetryConfig:
-    enabled: bool = True
+    enabled: bool = False
     attempts: int = 3
     wait_min: float = 0.1
     wait_max: float = 1.0
 
     @classmethod
     def from_kwargs(cls, kwargs: dict) -> "RetryConfig":
-        enabled = bool(kwargs.pop("retry_enabled", True))
+        enabled = bool(kwargs.pop("retry_enabled", False))
         attempts = int(kwargs.pop("retry_attempts", 3))
         wait_min = float(kwargs.pop("retry_wait_min", 0.1))
         wait_max = float(kwargs.pop("retry_wait_max", 1.0))
