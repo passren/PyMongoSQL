@@ -4,7 +4,13 @@ from dataclasses import dataclass
 from typing import Any, Callable, Optional, Tuple, TypeVar
 
 from pymongo.errors import AutoReconnect, ConnectionFailure, NetworkTimeout, PyMongoError, ServerSelectionTimeoutError
-from tenacity import Retrying, retry_if_exception_type, stop_after_attempt, wait_exponential
+
+try:
+    from tenacity import Retrying, retry_if_exception_type, stop_after_attempt, wait_exponential
+
+    _has_tenacity = True
+except ImportError:
+    _has_tenacity = False
 
 _logger = logging.getLogger(__name__)
 _T = TypeVar("_T")
@@ -19,14 +25,14 @@ RETRYABLE_SYSTEM_EXCEPTIONS: Tuple[type, ...] = (
 
 @dataclass(frozen=True)
 class RetryConfig:
-    enabled: bool = True
+    enabled: bool = False
     attempts: int = 3
     wait_min: float = 0.1
     wait_max: float = 1.0
 
     @classmethod
     def from_kwargs(cls, kwargs: dict) -> "RetryConfig":
-        enabled = bool(kwargs.pop("retry_enabled", True))
+        enabled = bool(kwargs.pop("retry_enabled", False))
         attempts = int(kwargs.pop("retry_attempts", 3))
         wait_min = float(kwargs.pop("retry_wait_min", 0.1))
         wait_max = float(kwargs.pop("retry_wait_max", 1.0))
@@ -55,6 +61,13 @@ def execute_with_retry(
     config = retry_config or RetryConfig(enabled=False, attempts=1, wait_min=0.0, wait_max=0.0)
 
     if not config.enabled or config.attempts <= 1:
+        return operation()
+
+    if not _has_tenacity:
+        _logger.warning(
+            "Retry is enabled but 'tenacity' package is not installed. "
+            "Falling back to no-retry. Install it with: pip install pymongosql[retry]"
+        )
         return operation()
 
     def _before_sleep(retry_state: Any) -> None:
