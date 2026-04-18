@@ -217,7 +217,7 @@ PyMongoSQL supports retrying transient, system-level MongoDB failures (for examp
 ```python
 connection = connect(
     host="mongodb://localhost:27017/database",
-    retry_enabled=True,     # default: True
+    retry_enabled=False,     # default: False
     retry_attempts=3,       # default: 3
     retry_wait_min=0.1,     # default: 0.1 seconds
     retry_wait_max=1.0,     # default: 1.0 seconds
