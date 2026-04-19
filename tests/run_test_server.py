@@ -58,6 +58,9 @@ TEST_DATA_FILES = config.get("test_data_files", {})
 if "test_data_file" in config and not TEST_DATA_FILES:
     TEST_DATA_FILES = {"legacy": config["test_data_file"]}
 
+# Time-series collection definitions
+TIMESERIES_COLLECTIONS = config.get("timeseries_collections", {})
+
 
 def check_docker():
     """Check if Docker is available and running"""
@@ -244,6 +247,82 @@ def load_test_data():
     return test_data
 
 
+def _create_views(db):
+    """Create MongoDB views for testing"""
+    views = [
+        {
+            "name": "active_users",
+            "viewOn": "users",
+            "pipeline": [
+                {"$match": {"active": True}},
+                {"$project": {"_id": 1, "name": 1, "email": 1, "age": 1, "balance": 1}},
+            ],
+        },
+        {
+            "name": "completed_orders",
+            "viewOn": "orders",
+            "pipeline": [
+                {"$match": {"status": "completed"}},
+                {
+                    "$project": {
+                        "_id": 1,
+                        "user_id": 1,
+                        "order_date": 1,
+                        "total_amount": 1,
+                        "currency": 1,
+                    }
+                },
+            ],
+        },
+        {
+            "name": "in_stock_products",
+            "viewOn": "products",
+            "pipeline": [
+                {"$match": {"in_stock": True}},
+                {"$project": {"_id": 1, "name": 1, "price": 1, "category": 1, "quantity": 1}},
+            ],
+        },
+        {
+            "name": "orders_with_users",
+            "viewOn": "orders",
+            "pipeline": [
+                {
+                    "$lookup": {
+                        "from": "users",
+                        "localField": "user_id",
+                        "foreignField": "_id",
+                        "as": "user",
+                    }
+                },
+                {"$unwind": "$user"},
+                {
+                    "$project": {
+                        "_id": 1,
+                        "order_date": 1,
+                        "status": 1,
+                        "total_amount": 1,
+                        "currency": 1,
+                        "user_name": "$user.name",
+                        "user_email": "$user.email",
+                    }
+                },
+            ],
+        },
+    ]
+
+    for view in views:
+        # Drop existing view if it exists
+        db[view["name"]].drop()
+        db.command(
+            {
+                "create": view["name"],
+                "viewOn": view["viewOn"],
+                "pipeline": view["pipeline"],
+            }
+        )
+        print(f"  Created view '{view['name']}' on '{view['viewOn']}'")
+
+
 def setup_test_data():
     """Setup test data in MongoDB"""
     print("Setting up test data...")
@@ -273,10 +352,22 @@ def setup_test_data():
                 # Drop existing collection
                 db[collection_name].drop()
 
+                # Create time-series collection if configured
+                if collection_name in TIMESERIES_COLLECTIONS:
+                    ts_opts = TIMESERIES_COLLECTIONS[collection_name]
+                    db.create_collection(
+                        collection_name,
+                        timeseries=ts_opts,
+                    )
+                    print(f"  Created time-series collection '{collection_name}' (timeField={ts_opts['timeField']})")
+
                 # Insert new data
                 db[collection_name].insert_many(test_data[collection_name])
                 count = db[collection_name].count_documents({})
                 print(f"  Inserted {count} {collection_name}")
+
+        # Create MongoDB views
+        _create_views(db)
 
         print("[SUCCESS] Test data setup completed successfully!")
         return True

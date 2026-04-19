@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import logging
+import re
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import Any, Dict, Optional, Sequence, Union
@@ -14,6 +15,7 @@ from .sql.insert_builder import InsertExecutionPlan
 from .sql.parser import SQLParser
 from .sql.query_builder import QueryExecutionPlan
 from .sql.update_builder import UpdateExecutionPlan
+from .sql.view_builder import ViewExecutionPlan
 
 _logger = logging.getLogger(__name__)
 
@@ -642,10 +644,124 @@ class UpdateExecution(ExecutionStrategy):
         return self._execute_execution_plan(self._execution_plan, connection, parameters)
 
 
+class ViewExecution(ExecutionStrategy):
+    """Execution strategy for view statements (CREATE VIEW, DROP VIEW)."""
+
+    _DDL_PATTERN = re.compile(
+        r"^\s*(CREATE\s+VIEW|DROP\s+VIEW)\b",
+        re.IGNORECASE,
+    )
+
+    @property
+    def execution_plan(self) -> ViewExecutionPlan:
+        return self._execution_plan
+
+    def supports(self, context: ExecutionContext) -> bool:
+        return bool(self._DDL_PATTERN.match(context.query))
+
+    def _parse_sql(self, sql: str) -> ViewExecutionPlan:
+        normalized = " ".join(sql.split())
+
+        # CREATE VIEW view_name ON collection_name AS 'pipeline_json'
+        create_match = re.match(
+            r"CREATE\s+VIEW\s+(\w+)\s+ON\s+(\w+)\s+AS\s+'(.*)'",
+            normalized,
+            re.IGNORECASE | re.DOTALL,
+        )
+        if create_match:
+            import json
+
+            view_name = create_match.group(1)
+            source_collection = create_match.group(2)
+            pipeline_str = create_match.group(3)
+            try:
+                pipeline = json.loads(pipeline_str)
+            except json.JSONDecodeError as e:
+                raise SqlSyntaxError(f"Invalid pipeline JSON in CREATE VIEW: {e}")
+
+            if not isinstance(pipeline, list):
+                raise SqlSyntaxError("Pipeline must be a JSON array")
+
+            return ViewExecutionPlan(
+                collection=view_name,
+                ddl_type="create_view",
+                view_on=source_collection,
+                pipeline=pipeline,
+            )
+
+        # DROP VIEW view_name
+        drop_match = re.match(
+            r"DROP\s+VIEW\s+(\w+)\s*$",
+            normalized,
+            re.IGNORECASE,
+        )
+        if drop_match:
+            view_name = drop_match.group(1)
+            return ViewExecutionPlan(
+                collection=view_name,
+                ddl_type="drop_view",
+            )
+
+        raise SqlSyntaxError(f"Unsupported DDL statement: {sql}")
+
+    def _execute_execution_plan(
+        self,
+        execution_plan: ViewExecutionPlan,
+        connection: Any = None,
+        parameters: Optional[Union[Sequence[Any], Dict[str, Any]]] = None,
+    ) -> Optional[Dict[str, Any]]:
+        try:
+            if not connection:
+                raise OperationalError("No connection provided")
+
+            db = connection.database
+
+            if execution_plan.ddl_type == "create_view":
+                command = {
+                    "create": execution_plan.collection,
+                    "viewOn": execution_plan.view_on,
+                    "pipeline": execution_plan.pipeline,
+                }
+                _logger.debug(f"Executing MongoDB create view command: {command}")
+                return _run_db_command(db, command, connection, "create view")
+
+            elif execution_plan.ddl_type == "drop_view":
+                # MongoDB drops views with the regular drop command
+                command = {"drop": execution_plan.collection}
+                _logger.debug(f"Executing MongoDB drop view command: {command}")
+                return _run_db_command(db, command, connection, "drop view")
+
+            else:
+                raise ProgrammingError(f"Unknown DDL type: {execution_plan.ddl_type}")
+
+        except PyMongoError as e:
+            _logger.error(f"MongoDB DDL execution failed: {e}")
+            raise DatabaseError(f"DDL execution failed: {e}")
+        except (ProgrammingError, DatabaseError, OperationalError):
+            raise
+        except Exception as e:
+            _logger.error(f"Unexpected error during DDL execution: {e}")
+            raise OperationalError(f"DDL execution error: {e}")
+
+    def execute(
+        self,
+        context: ExecutionContext,
+        connection: Any,
+        parameters: Optional[Union[Sequence[Any], Dict[str, Any]]] = None,
+    ) -> Optional[Dict[str, Any]]:
+        _logger.debug(f"Using DDL execution for query: {context.query[:100]}")
+        self._execution_plan = self._parse_sql(context.query)
+
+        if not self._execution_plan.validate():
+            raise SqlSyntaxError("Generated DDL plan is invalid")
+
+        return self._execute_execution_plan(self._execution_plan, connection, parameters)
+
+
 class ExecutionPlanFactory:
     """Factory for creating appropriate execution strategy based on query context"""
 
-    _strategies = [StandardQueryExecution(), InsertExecution(), UpdateExecution(), DeleteExecution()]
+    _strategies = [ViewExecution(), StandardQueryExecution(), InsertExecution(), UpdateExecution(), DeleteExecution()]
 
     @classmethod
     def get_strategy(cls, context: ExecutionContext) -> ExecutionStrategy:

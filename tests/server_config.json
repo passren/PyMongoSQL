@@ -25,6 +25,14 @@
         "analytics": "data/analytics.json",
         "departments": "data/departments.json",
         "suppliers": "data/suppliers.json",
-        "user-orders": "data/user-orders.json"
+        "user-orders": "data/user-orders.json",
+        "sensor_readings": "data/sensor_readings.json"
+    },
+    "timeseries_collections": {
+        "sensor_readings": {
+            "timeField": "timestamp",
+            "metaField": "metadata",
+            "granularity": "minutes"
+        }
     }
 }

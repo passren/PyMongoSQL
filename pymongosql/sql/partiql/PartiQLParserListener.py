@@ -1,4 +1,4 @@
-# Generated from PartiQLParser.g4 by ANTLR 4.13.1
+# Generated from PartiQLParser.g4 by ANTLR 4.13.2
 from antlr4 import *
 if "." in __name__:
     from .PartiQLParser import PartiQLParser
@@ -188,6 +188,15 @@ class PartiQLParserListener(ParseTreeListener):
         pass
 
 
+    # Enter a parse tree produced by PartiQLParser#CreateView.
+    def enterCreateView(self, ctx:PartiQLParser.CreateViewContext):
+        pass
+
+    # Exit a parse tree produced by PartiQLParser#CreateView.
+    def exitCreateView(self, ctx:PartiQLParser.CreateViewContext):
+        pass
+
+
     # Enter a parse tree produced by PartiQLParser#DropTable.
     def enterDropTable(self, ctx:PartiQLParser.DropTableContext):
         pass
@@ -203,6 +212,15 @@ class PartiQLParserListener(ParseTreeListener):
 
     # Exit a parse tree produced by PartiQLParser#DropIndex.
     def exitDropIndex(self, ctx:PartiQLParser.DropIndexContext):
+        pass
+
+
+    # Enter a parse tree produced by PartiQLParser#DropView.
+    def enterDropView(self, ctx:PartiQLParser.DropViewContext):
+        pass
+
+    # Exit a parse tree produced by PartiQLParser#DropView.
+    def exitDropView(self, ctx:PartiQLParser.DropViewContext):
         pass
 
 

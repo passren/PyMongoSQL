@@ -1,4 +1,4 @@
-# Generated from PartiQLParser.g4 by ANTLR 4.13.1
+# Generated from PartiQLParser.g4 by ANTLR 4.13.2
 from antlr4 import *
 if "." in __name__:
     from .PartiQLParser import PartiQLParser
@@ -109,6 +109,11 @@ class PartiQLParserVisitor(ParseTreeVisitor):
         return self.visitChildren(ctx)
 
 
+    # Visit a parse tree produced by PartiQLParser#CreateView.
+    def visitCreateView(self, ctx:PartiQLParser.CreateViewContext):
+        return self.visitChildren(ctx)
+
+
     # Visit a parse tree produced by PartiQLParser#DropTable.
     def visitDropTable(self, ctx:PartiQLParser.DropTableContext):
         return self.visitChildren(ctx)
@@ -116,6 +121,11 @@ class PartiQLParserVisitor(ParseTreeVisitor):
 
     # Visit a parse tree produced by PartiQLParser#DropIndex.
     def visitDropIndex(self, ctx:PartiQLParser.DropIndexContext):
+        return self.visitChildren(ctx)
+
+
+    # Visit a parse tree produced by PartiQLParser#DropView.
+    def visitDropView(self, ctx:PartiQLParser.DropViewContext):
         return self.visitChildren(ctx)
 
 
