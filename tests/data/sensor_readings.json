@@ -1,0 +1,86 @@
+[
+  {
+    "sensor_id": "sensor_01",
+    "timestamp": {"$date": "2024-01-15T08:00:00Z"},
+    "metadata": {"location": "warehouse_A", "type": "temperature"},
+    "temperature": 22.5,
+    "humidity": 45.2
+  },
+  {
+    "sensor_id": "sensor_01",
+    "timestamp": {"$date": "2024-01-15T08:15:00Z"},
+    "metadata": {"location": "warehouse_A", "type": "temperature"},
+    "temperature": 22.8,
+    "humidity": 44.9
+  },
+  {
+    "sensor_id": "sensor_01",
+    "timestamp": {"$date": "2024-01-15T08:30:00Z"},
+    "metadata": {"location": "warehouse_A", "type": "temperature"},
+    "temperature": 23.1,
+    "humidity": 44.5
+  },
+  {
+    "sensor_id": "sensor_02",
+    "timestamp": {"$date": "2024-01-15T08:00:00Z"},
+    "metadata": {"location": "warehouse_B", "type": "temperature"},
+    "temperature": 19.3,
+    "humidity": 52.1
+  },
+  {
+    "sensor_id": "sensor_02",
+    "timestamp": {"$date": "2024-01-15T08:15:00Z"},
+    "metadata": {"location": "warehouse_B", "type": "temperature"},
+    "temperature": 19.5,
+    "humidity": 51.8
+  },
+  {
+    "sensor_id": "sensor_02",
+    "timestamp": {"$date": "2024-01-15T08:30:00Z"},
+    "metadata": {"location": "warehouse_B", "type": "temperature"},
+    "temperature": 19.8,
+    "humidity": 51.3
+  },
+  {
+    "sensor_id": "sensor_03",
+    "timestamp": {"$date": "2024-01-15T08:00:00Z"},
+    "metadata": {"location": "office_1", "type": "environment"},
+    "temperature": 21.0,
+    "humidity": 40.0
+  },
+  {
+    "sensor_id": "sensor_03",
+    "timestamp": {"$date": "2024-01-15T08:15:00Z"},
+    "metadata": {"location": "office_1", "type": "environment"},
+    "temperature": 21.3,
+    "humidity": 39.7
+  },
+  {
+    "sensor_id": "sensor_03",
+    "timestamp": {"$date": "2024-01-15T08:30:00Z"},
+    "metadata": {"location": "office_1", "type": "environment"},
+    "temperature": 21.6,
+    "humidity": 39.4
+  },
+  {
+    "sensor_id": "sensor_01",
+    "timestamp": {"$date": "2024-01-15T09:00:00Z"},
+    "metadata": {"location": "warehouse_A", "type": "temperature"},
+    "temperature": 23.5,
+    "humidity": 43.8
+  },
+  {
+    "sensor_id": "sensor_02",
+    "timestamp": {"$date": "2024-01-15T09:00:00Z"},
+    "metadata": {"location": "warehouse_B", "type": "temperature"},
+    "temperature": 20.1,
+    "humidity": 50.9
+  },
+  {
+    "sensor_id": "sensor_03",
+    "timestamp": {"$date": "2024-01-15T09:00:00Z"},
+    "metadata": {"location": "office_1", "type": "environment"},
+    "temperature": 22.0,
+    "humidity": 38.9
+  }
+]

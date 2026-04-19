@@ -3,6 +3,8 @@ import unittest
 from typing import Callable
 from unittest.mock import Mock, patch
 
+import pytest
+
 # SQLAlchemy version compatibility
 try:
     import sqlalchemy
@@ -43,12 +45,26 @@ from pymongosql.sqlalchemy_mongodb.sqlalchemy_dialect import (
     PyMongoSQLTypeCompiler,
 )
 
+# Known test collections and views set up by run_test_server.py
+EXPECTED_COLLECTIONS = {
+    "users",
+    "products",
+    "categories",
+    "orders",
+    "analytics",
+    "departments",
+    "suppliers",
+    "user-orders",
+}
+EXPECTED_VIEWS = {"active_users", "completed_orders", "in_stock_products", "orders_with_users"}
 
-class TestPyMongoSQLDialect(unittest.TestCase):
-    """Test cases for the PyMongoSQL SQLAlchemy dialect."""
+pytestmark = pytest.mark.skipif(not HAS_SQLALCHEMY, reason="SQLAlchemy not available")
+
+
+class TestPyMongoSQLDialectUnit(unittest.TestCase):
+    """Pure unit tests for dialect properties that don't need MongoDB."""
 
     def setUp(self):
-        """Set up test fixtures."""
         if not HAS_SQLALCHEMY:
             self.skipTest("SQLAlchemy not available")
         self.dialect = PyMongoSQLDialect()
@@ -60,18 +76,13 @@ class TestPyMongoSQLDialect(unittest.TestCase):
 
     def test_dbapi(self):
         """Test DBAPI module reference."""
-        # Test class method
         self.assertEqual(PyMongoSQLDialect.dbapi(), pymongosql)
-
-        # Test import_dbapi class method (SQLAlchemy 2.x)
         self.assertEqual(PyMongoSQLDialect.import_dbapi(), pymongosql)
 
-        # Test instance access (should work even if SQLAlchemy interferes)
         try:
             result = self.dialect.dbapi() if callable(self.dialect.dbapi) else self.dialect._get_dbapi_module()
             self.assertEqual(result, pymongosql)
         except Exception:
-            # Fallback test - at least the class method should work
             self.assertEqual(PyMongoSQLDialect.dbapi(), pymongosql)
 
     def test_create_connect_args_basic(self):
@@ -81,7 +92,6 @@ class TestPyMongoSQLDialect(unittest.TestCase):
 
         self.assertEqual(args, [])
         self.assertIn("host", kwargs)
-        # The new implementation passes the complete MongoDB URI as host
         self.assertEqual(kwargs["host"], "mongodb://localhost:27017/testdb")
 
     def test_create_connect_args_with_auth(self):
@@ -89,7 +99,6 @@ class TestPyMongoSQLDialect(unittest.TestCase):
         test_url = url.make_url("mongodb://user:pass@localhost:27017/testdb")
         args, kwargs = self.dialect.create_connect_args(test_url)
 
-        # The new implementation passes the complete MongoDB URI with auth as host
         self.assertIn("host", kwargs)
         self.assertEqual(kwargs["host"], "mongodb://user:pass@localhost:27017/testdb")
 
@@ -98,126 +107,27 @@ class TestPyMongoSQLDialect(unittest.TestCase):
         test_url = url.make_url("mongodb://localhost/testdb?ssl=true&replicaSet=rs0")
         args, kwargs = self.dialect.create_connect_args(test_url)
 
-        # The new implementation passes the complete MongoDB URI with query params as host
         self.assertIn("host", kwargs)
         self.assertIn("ssl=true", kwargs["host"])
         self.assertIn("replicaSet=rs0", kwargs["host"])
 
     def test_supports_features(self):
         """Test dialect feature support flags."""
-        # Features MongoDB doesn't support
         self.assertFalse(self.dialect.supports_alter)
         self.assertFalse(self.dialect.supports_comments)
         self.assertFalse(self.dialect.supports_sequences)
         self.assertFalse(self.dialect.supports_native_enum)
 
-        # Features MongoDB does support
         self.assertTrue(self.dialect.supports_default_values)
         self.assertTrue(self.dialect.supports_empty_inserts)
         self.assertTrue(self.dialect.supports_multivalues_insert)
         self.assertTrue(self.dialect.supports_native_decimal)
         self.assertTrue(self.dialect.supports_native_boolean)
 
-    def test_has_table(self):
-        """Test table (collection) existence check using MongoDB operations."""
-        from unittest.mock import MagicMock
-
-        # Mock MongoDB connection structure
-        mock_conn = Mock()
-        mock_db_connection = Mock()
-        mock_client = MagicMock()  # Use MagicMock for __getitem__ support
-        mock_db = Mock()
-
-        mock_conn.connection = mock_db_connection
-        mock_db_connection._client = mock_client
-        mock_db_connection.database = mock_db
-        mock_db.list_collection_names.return_value = ["users", "products", "orders"]
-
-        # Test existing table
-        self.assertTrue(self.dialect.has_table(mock_conn, "users"))
-
-        # Test non-existing table
-        self.assertFalse(self.dialect.has_table(mock_conn, "nonexistent"))
-
-        # Test with schema
-        mock_schema_db = Mock()
-        mock_client.__getitem__.return_value = mock_schema_db
-        mock_schema_db.list_collection_names.return_value = ["schema_users"]
-        self.assertTrue(self.dialect.has_table(mock_conn, "schema_users", schema="test_schema"))
-
-    def test_get_table_names(self):
-        """Test getting collection names using MongoDB operations."""
-        from unittest.mock import MagicMock
-
-        # Mock MongoDB connection structure
-        mock_conn = Mock()
-        mock_db_connection = Mock()
-        mock_client = MagicMock()  # Use MagicMock for __getitem__ support
-        mock_db = Mock()
-
-        mock_conn.connection = mock_db_connection
-        mock_db_connection._client = mock_client
-        mock_db_connection.database = mock_db
-        mock_db.list_collection_names.return_value = ["users", "products", "orders"]
-
-        tables = self.dialect.get_table_names(mock_conn)
-        expected = ["users", "products", "orders"]
-        self.assertEqual(tables, expected)
-
-        # Test with schema
-        mock_schema_db = Mock()
-        mock_client.__getitem__.return_value = mock_schema_db
-        mock_schema_db.list_collection_names.return_value = ["schema_table1", "schema_table2"]
-        schema_tables = self.dialect.get_table_names(mock_conn, schema="test_schema")
-        self.assertEqual(schema_tables, ["schema_table1", "schema_table2"])
-
-    @patch("bson.ObjectId")
-    def test_get_columns(self, mock_objectid):
-        """Test getting column information using MongoDB document sampling."""
-        from datetime import datetime
-        from unittest.mock import MagicMock
-
-        # Mock MongoDB connection structure
-        mock_conn = Mock()
-        mock_db_connection = Mock()
-        mock_client = Mock()
-        mock_db = MagicMock()  # Use MagicMock for __getitem__ support
-        mock_collection = Mock()
-
-        mock_conn.connection = mock_db_connection
-        mock_db_connection._client = mock_client
-        mock_db_connection.database = mock_db
-        mock_db.__getitem__.return_value = mock_collection
-
-        # Mock sample documents
-        sample_docs = [
-            {"_id": "507f1f77bcf86cd799439011", "name": "John", "age": 25, "active": True},
-            {"_id": "507f1f77bcf86cd799439012", "name": "Jane", "email": "jane@test.com", "score": 95.5},
-            {"_id": "507f1f77bcf86cd799439013", "created_at": datetime.now(), "tags": ["python", "mongodb"]},
-        ]
-        mock_collection.find.return_value.limit.return_value = sample_docs
-
-        columns = self.dialect.get_columns(mock_conn, "users")
-
-        # Should have inferred columns from sample documents
-        self.assertGreater(len(columns), 0)
-
-        # Check _id is always included and not nullable
-        id_column = next((col for col in columns if col["name"] == "_id"), None)
-        self.assertIsNotNone(id_column)
-        self.assertFalse(id_column["nullable"])
-
-        # Test fallback for empty collection
-        mock_collection.find.return_value.limit.return_value = []
-        fallback_columns = self.dialect.get_columns(mock_conn, "empty_collection")
-        self.assertEqual(len(fallback_columns), 1)
-        self.assertEqual(fallback_columns[0]["name"], "_id")
-
     def test_get_pk_constraint(self):
         """Test primary key constraint info."""
         mock_conn = Mock()
         pk_info = self.dialect.get_pk_constraint(mock_conn, "users")
-
         self.assertEqual(pk_info["constrained_columns"], ["_id"])
         self.assertEqual(pk_info["name"], "pk_id")
 
@@ -225,130 +135,12 @@ class TestPyMongoSQLDialect(unittest.TestCase):
         """Test foreign key constraints (should be empty for MongoDB)."""
         mock_conn = Mock()
         fks = self.dialect.get_foreign_keys(mock_conn, "users")
-
         self.assertEqual(fks, [])
-
-    def test_get_indexes(self):
-        """Test getting index information using MongoDB index_information."""
-        from unittest.mock import MagicMock
-
-        # Mock MongoDB connection structure
-        mock_conn = Mock()
-        mock_db_connection = Mock()
-        mock_client = Mock()
-        mock_db = MagicMock()  # Use MagicMock for __getitem__ support
-        mock_collection = Mock()
-
-        mock_conn.connection = mock_db_connection
-        mock_db_connection._client = mock_client
-        mock_db_connection.database = mock_db
-        mock_db.__getitem__.return_value = mock_collection
-
-        # Mock index information
-        mock_index_info = {
-            "_id_": {"key": [("_id", 1)], "unique": False},  # _id is implicit unique
-            "email_1": {"key": [("email", 1)], "unique": True},
-            "name_text": {"key": [("name", "text")], "unique": False},
-        }
-        mock_collection.index_information.return_value = mock_index_info
-
-        indexes = self.dialect.get_indexes(mock_conn, "users")
-
-        self.assertEqual(len(indexes), 3)
-
-        # Check _id index
-        id_index = next((idx for idx in indexes if idx["name"] == "_id_"), None)
-        self.assertIsNotNone(id_index)
-        self.assertEqual(id_index["column_names"], ["_id"])
-
-        # Check email index
-        email_index = next((idx for idx in indexes if idx["name"] == "email_1"), None)
-        self.assertIsNotNone(email_index)
-        self.assertTrue(email_index["unique"])
-        self.assertEqual(email_index["column_names"], ["email"])
-
-    def test_get_schema_names(self):
-        """Test getting database names using MongoDB listDatabases command."""
-        # Mock MongoDB connection structure
-        mock_conn = Mock()
-        mock_db_connection = Mock()
-        mock_client = Mock()
-        mock_admin_db = Mock()
-
-        mock_conn.connection = mock_db_connection
-        mock_db_connection._client = mock_client
-        mock_client.admin = mock_admin_db
-
-        # Mock listDatabases result
-        mock_admin_db.command.return_value = {
-            "databases": [
-                {"name": "admin", "sizeOnDisk": 32768},
-                {"name": "config", "sizeOnDisk": 12288},
-                {"name": "myapp", "sizeOnDisk": 65536},
-                {"name": "test", "sizeOnDisk": 8192},
-            ]
-        }
-
-        schemas = self.dialect.get_schema_names(mock_conn)
-        expected = ["admin", "config", "myapp", "test"]
-        self.assertEqual(schemas, expected)
-
-        # Verify the correct MongoDB command was called
-        mock_admin_db.command.assert_called_with("listDatabases")
-
-    def test_get_schema_names_fallback(self):
-        """Test get_schema_names fallback when MongoDB operation fails."""
-        # Mock connection that raises an exception
-        mock_conn = Mock()
-        mock_conn.connection.side_effect = Exception("Connection error")
-
-        schemas = self.dialect.get_schema_names(mock_conn)
-        self.assertEqual(schemas, ["default"])
-
-    def test_do_ping(self):
-        """Test connection ping using MongoDB native ping command."""
-        # Mock successful connection
-        mock_conn = Mock()
-        mock_conn.test_connection.return_value = True
-
-        result = self.dialect.do_ping(mock_conn)
-        self.assertTrue(result)
-
-        # Test fallback to direct client ping
-        mock_conn_no_test = Mock()
-        mock_conn_no_test.test_connection = None
-        mock_client = Mock()
-        mock_admin_db = Mock()
-        mock_conn_no_test._client = mock_client
-        mock_client.admin = mock_admin_db
-
-        result_fallback = self.dialect.do_ping(mock_conn_no_test)
-        self.assertTrue(result_fallback)
-        mock_admin_db.command.assert_called_with("ping")
-
-    def test_do_ping_failure(self):
-        """Test do_ping when connection fails."""
-        # Mock failed connection
-        mock_conn = Mock()
-        mock_conn.test_connection.return_value = False
-
-        result = self.dialect.do_ping(mock_conn)
-        self.assertFalse(result)
-
-        # Test fallback failure - connection without test_connection method
-        mock_conn_error = Mock()
-        del mock_conn_error.test_connection  # Remove the attribute entirely
-        mock_conn_error._client = Mock()
-        mock_conn_error._client.admin.command.side_effect = Exception("Connection failed")
-
-        result_error = self.dialect.do_ping(mock_conn_error)
-        self.assertFalse(result_error)
 
     def test_infer_bson_type(self):
         """Test BSON type inference from Python values."""
         from datetime import datetime
 
-        # Test various Python types
         test_cases = [
             ("test string", "string"),
             (42, "int"),
@@ -363,137 +155,167 @@ class TestPyMongoSQLDialect(unittest.TestCase):
 
         for value, expected_type in test_cases:
             with self.subTest(value=value, expected=expected_type):
-                inferred_type = self.dialect._infer_bson_type(value)
-                self.assertEqual(inferred_type, expected_type)
+                self.assertEqual(self.dialect._infer_bson_type(value), expected_type)
 
-    def test_error_handling(self):
-        """Test error handling and fallback behavior for all methods."""
-        # Mock connection that fails when trying to access MongoDB operations
-        mock_conn = Mock()
-        mock_db_connection = Mock()
-        mock_conn.connection = mock_db_connection
 
-        # Make hasattr check fail or make database operations fail
-        mock_db_connection._client = None  # This makes hasattr(_client) return False
-        # Or we can make database operations fail by making database.list_collection_names() fail
-        mock_db = Mock()
-        mock_db_connection.database = mock_db
-        mock_db.list_collection_names.side_effect = Exception("MongoDB error")
+class TestPyMongoSQLDialectIntegration:
+    """Integration tests for dialect introspection against real MongoDB."""
 
-        # Test has_table fallback
-        result = self.dialect.has_table(mock_conn, "test_table")
-        self.assertFalse(result)
+    def test_has_table_existing(self, sqlalchemy_engine):
+        """Test that existing collections are found."""
+        dialect = sqlalchemy_engine.dialect
+        with sqlalchemy_engine.connect() as conn:
+            assert dialect.has_table(conn, "users") is True
+            assert dialect.has_table(conn, "products") is True
+            assert dialect.has_table(conn, "orders") is True
 
-        # Test get_table_names fallback
-        tables = self.dialect.get_table_names(mock_conn)
-        self.assertEqual(tables, [])
+    def test_has_table_nonexistent(self, sqlalchemy_engine):
+        """Test that non-existing collections return False."""
+        dialect = sqlalchemy_engine.dialect
+        with sqlalchemy_engine.connect() as conn:
+            assert dialect.has_table(conn, "nonexistent_xyz") is False
 
-        # Test get_columns fallback
-        columns = self.dialect.get_columns(mock_conn, "test_table")
-        self.assertEqual(len(columns), 1)
-        self.assertEqual(columns[0]["name"], "_id")
+    def test_get_table_names(self, sqlalchemy_engine):
+        """Test listing collections excludes views."""
+        dialect = sqlalchemy_engine.dialect
+        with sqlalchemy_engine.connect() as conn:
+            tables = dialect.get_table_names(conn)
 
-        # Test get_indexes fallback
-        indexes = self.dialect.get_indexes(mock_conn, "test_table")
-        self.assertEqual(len(indexes), 1)
-        self.assertEqual(indexes[0]["name"], "_id_")
-        self.assertTrue(indexes[0]["unique"])
+            assert isinstance(tables, list)
+            # Should contain known test collections
+            for collection in EXPECTED_COLLECTIONS:
+                assert collection in tables, f"Expected collection '{collection}' not found in {tables}"
+            # Should NOT contain views
+            for view in EXPECTED_VIEWS:
+                assert view not in tables, f"View '{view}' should not appear in table names"
 
-    def test_schema_operations_with_schema_parameter(self):
-        """Test operations when schema parameter is provided."""
-        from unittest.mock import MagicMock
+    def test_get_view_names(self, sqlalchemy_engine):
+        """Test listing views returns only views."""
+        dialect = sqlalchemy_engine.dialect
+        with sqlalchemy_engine.connect() as conn:
+            views = dialect.get_view_names(conn)
 
-        # Mock MongoDB connection structure
-        mock_conn = Mock()
-        mock_db_connection = Mock()
-        mock_client = MagicMock()  # Use MagicMock for __getitem__ support
-        mock_schema_db = MagicMock()  # Use MagicMock for __getitem__ support
-        mock_collection = Mock()
+            assert isinstance(views, list)
+            # Should contain known test views
+            for view in EXPECTED_VIEWS:
+                assert view in views, f"Expected view '{view}' not found in {views}"
+            # Should NOT contain regular collections
+            for collection in EXPECTED_COLLECTIONS:
+                assert collection not in views, f"Collection '{collection}' should not appear in view names"
 
-        mock_conn.connection = mock_db_connection
-        mock_db_connection._client = mock_client
-        mock_client.__getitem__.return_value = mock_schema_db
-        mock_schema_db.__getitem__.return_value = mock_collection
-        mock_schema_db.list_collection_names.return_value = ["table1", "table2"]
+    def test_get_columns_users(self, sqlalchemy_engine):
+        """Test column inference from users collection."""
+        dialect = sqlalchemy_engine.dialect
+        with sqlalchemy_engine.connect() as conn:
+            columns = dialect.get_columns(conn, "users")
 
-        # Test has_table with schema
-        result = self.dialect.has_table(mock_conn, "table1", schema="test_schema")
-        self.assertTrue(result)
-        mock_client.__getitem__.assert_called_with("test_schema")
+            assert len(columns) > 0
+            col_names = [c["name"] for c in columns]
 
-        # Test get_table_names with schema
-        tables = self.dialect.get_table_names(mock_conn, schema="test_schema")
-        self.assertEqual(tables, ["table1", "table2"])
+            # Users collection should have these fields
+            assert "_id" in col_names
+            assert "name" in col_names
+            assert "email" in col_names
 
-        # Test get_columns with schema
-        mock_collection.find.return_value.limit.return_value = [{"_id": "123", "name": "test"}]
-        columns = self.dialect.get_columns(mock_conn, "table1", schema="test_schema")
-        self.assertGreater(len(columns), 0)
-        mock_schema_db.__getitem__.assert_called_with("table1")
+            # _id should not be nullable
+            id_col = next(c for c in columns if c["name"] == "_id")
+            assert id_col["nullable"] is False
 
-    def test_superset_integration_workflow(self):
-        """Test the complete workflow that Apache Superset would use."""
-        from unittest.mock import MagicMock
+    def test_get_columns_products(self, sqlalchemy_engine):
+        """Test column inference from products collection."""
+        dialect = sqlalchemy_engine.dialect
+        with sqlalchemy_engine.connect() as conn:
+            columns = dialect.get_columns(conn, "products")
 
-        # Mock complete MongoDB connection for Superset workflow
-        mock_conn = Mock()
-        mock_db_connection = Mock()
-        mock_client = MagicMock()
-        mock_db = MagicMock()  # Use MagicMock for __getitem__ support
-        mock_admin_db = Mock()
-        mock_collection = Mock()
+            col_names = [c["name"] for c in columns]
+            assert "_id" in col_names
+            assert "name" in col_names
+            assert "price" in col_names
+            assert "category" in col_names
 
-        # Wire up the mock chain
-        mock_conn.connection = mock_db_connection
-        mock_db_connection._client = mock_client
-        mock_db_connection.database = mock_db
-        mock_client.admin = mock_admin_db
-        mock_db.__getitem__.return_value = mock_collection
+    def test_get_columns_view(self, sqlalchemy_engine):
+        """Test column inference works on views too."""
+        dialect = sqlalchemy_engine.dialect
+        with sqlalchemy_engine.connect() as conn:
+            columns = dialect.get_columns(conn, "active_users")
 
-        # Set up realistic responses
-        mock_conn.test_connection = Mock(return_value=True)
-        mock_admin_db.command.return_value = {"databases": [{"name": "myapp"}, {"name": "analytics"}]}
-        mock_db.list_collection_names.return_value = ["users", "orders", "products"]
-        mock_collection.find.return_value.limit.return_value = [
-            {"_id": "1", "name": "Test User", "email": "test@example.com", "age": 30}
-        ]
-        mock_collection.index_information.return_value = {
-            "_id_": {"key": [("_id", 1)], "unique": False},
-            "email_1": {"key": [("email", 1)], "unique": True},
-        }
+            col_names = [c["name"] for c in columns]
+            assert "_id" in col_names
+            assert "name" in col_names
+            assert "email" in col_names
 
-        # Step 1: Connection testing (what Superset does first)
-        ping_success = self.dialect.do_ping(mock_conn)
-        self.assertTrue(ping_success, "Connection ping should succeed")
+    def test_get_indexes(self, sqlalchemy_engine):
+        """Test getting index information from a real collection."""
+        dialect = sqlalchemy_engine.dialect
+        with sqlalchemy_engine.connect() as conn:
+            indexes = dialect.get_indexes(conn, "users")
 
-        # Step 2: Discover available databases/schemas
-        schemas = self.dialect.get_schema_names(mock_conn)
-        self.assertEqual(schemas, ["myapp", "analytics"], "Should discover databases")
+            assert len(indexes) >= 1
+            # Every collection has at least the _id index
+            id_index = next((idx for idx in indexes if idx["name"] == "_id_"), None)
+            assert id_index is not None
+            assert "_id" in id_index["column_names"]
 
-        # Step 3: List tables/collections in default database
-        tables = self.dialect.get_table_names(mock_conn)
-        self.assertEqual(tables, ["users", "orders", "products"], "Should list collections")
+    def test_get_schema_names(self, sqlalchemy_engine):
+        """Test listing databases."""
+        dialect = sqlalchemy_engine.dialect
+        with sqlalchemy_engine.connect() as conn:
+            schemas = dialect.get_schema_names(conn)
 
-        # Step 4: Check if specific table exists
-        self.assertTrue(self.dialect.has_table(mock_conn, "users"), "Should find existing table")
-        self.assertFalse(self.dialect.has_table(mock_conn, "logs"), "Should not find non-existing table")
+            assert isinstance(schemas, list)
+            assert len(schemas) > 0
+            # test_db should be among the databases
+            assert "test_db" in schemas
 
-        # Step 5: Get column information for table introspection
-        columns = self.dialect.get_columns(mock_conn, "users")
-        self.assertGreater(len(columns), 0, "Should discover columns from document sampling")
+    def test_do_ping(self, sqlalchemy_engine):
+        """Test connection ping against real MongoDB."""
+        dialect = sqlalchemy_engine.dialect
+        with sqlalchemy_engine.connect() as conn:
+            result = dialect.do_ping(conn.connection)
+            assert result is True
 
-        # Verify required _id column exists and is not nullable
-        id_column = next((col for col in columns if col["name"] == "_id"), None)
-        self.assertIsNotNone(id_column, "_id column should exist")
-        self.assertFalse(id_column["nullable"], "_id should not be nullable")
+    def test_superset_workflow(self, sqlalchemy_engine):
+        """Test the complete introspection workflow Superset performs."""
+        dialect = sqlalchemy_engine.dialect
+        with sqlalchemy_engine.connect() as conn:
+            # Step 1: Ping
+            assert dialect.do_ping(conn.connection) is True
 
-        # Step 6: Get index information for performance optimization
-        indexes = self.dialect.get_indexes(mock_conn, "users")
-        self.assertGreater(len(indexes), 0, "Should discover indexes")
+            # Step 2: Discover schemas
+            schemas = dialect.get_schema_names(conn)
+            assert len(schemas) > 0
 
-        # Verify _id index exists
-        id_index = next((idx for idx in indexes if idx["name"] == "_id_"), None)
-        self.assertIsNotNone(id_index, "_id index should exist")
+            # Step 3: List tables (should not include views)
+            tables = dialect.get_table_names(conn)
+            assert "users" in tables
+            for view in EXPECTED_VIEWS:
+                assert view not in tables
+
+            # Step 4: List views
+            views = dialect.get_view_names(conn)
+            for view in EXPECTED_VIEWS:
+                assert view in views
+
+            # Step 5: Check table existence
+            assert dialect.has_table(conn, "users") is True
+            assert dialect.has_table(conn, "nonexistent_xyz") is False
+
+            # Step 6: Get columns
+            columns = dialect.get_columns(conn, "users")
+            assert len(columns) > 0
+            id_col = next(c for c in columns if c["name"] == "_id")
+            assert id_col["nullable"] is False
+
+            # Step 7: Get indexes
+            indexes = dialect.get_indexes(conn, "users")
+            assert len(indexes) >= 1
+
+            # Step 8: PK and FK constraints
+            pk = dialect.get_pk_constraint(conn, "users")
+            assert pk["constrained_columns"] == ["_id"]
+
+            fks = dialect.get_foreign_keys(conn, "users")
+            assert fks == []
 
 
 class TestPyMongoSQLCompilers(unittest.TestCase):

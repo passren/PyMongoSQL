@@ -300,9 +300,8 @@ class PyMongoSQLDialect(default.DefaultDialect):
         return False
 
     def get_table_names(self, connection, schema: Optional[str] = None, **kwargs) -> List[str]:
-        """Get list of collections (tables)."""
+        """Get list of collections (tables), excluding views."""
         try:
-            # Use MongoDB listCollections command directly
             db_connection = connection.connection
             if hasattr(db_connection, "_client"):
                 if schema:
@@ -310,28 +309,24 @@ class PyMongoSQLDialect(default.DefaultDialect):
                 else:
                     db = db_connection.database
 
-                # Use listCollections command
-                return db.list_collection_names()
+                return db.list_collection_names(filter={"type": {"$ne": "view"}})
         except Exception as e:
             _logger.warning(f"Failed to get table names: {e}")
         return []
 
     def get_view_names(self, connection, schema: Optional[str] = None, **kwargs) -> List[str]:
-        """Get list of views.
+        """Get list of MongoDB views."""
+        try:
+            db_connection = connection.connection
+            if hasattr(db_connection, "_client"):
+                if schema:
+                    db = db_connection._client[schema]
+                else:
+                    db = db_connection.database
 
-        MongoDB doesn't have traditional SQL views like relational databases.
-        Return empty list to satisfy SQLAlchemy and tools like Superset.
-
-        Args:
-            connection: Database connection
-            schema: Optional schema/database name
-            **kwargs: Additional arguments
-
-        Returns:
-            Empty list as MongoDB doesn't support SQL views
-        """
-        # MongoDB doesn't have traditional SQL views
-        # Return empty list to avoid NotImplementedError
+                return db.list_collection_names(filter={"type": "view"})
+        except Exception as e:
+            _logger.warning(f"Failed to get view names: {e}")
         return []
 
     def get_columns(self, connection, table_name: str, schema: Optional[str] = None, **kwargs) -> List[Dict[str, Any]]:
