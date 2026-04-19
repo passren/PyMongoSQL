@@ -2542,6 +2542,43 @@ class PartiQLParser ( Parser ):
                 return visitor.visitChildren(self)
 
 
+    class CreateViewContext(CreateCommandContext):
+
+        def __init__(self, parser, ctx:ParserRuleContext): # actually a PartiQLParser.CreateCommandContext
+            super().__init__(parser)
+            self.copyFrom(ctx)
+
+        def CREATE(self):
+            return self.getToken(PartiQLParser.CREATE, 0)
+        def VIEW(self):
+            return self.getToken(PartiQLParser.VIEW, 0)
+        def ON(self):
+            return self.getToken(PartiQLParser.ON, 0)
+        def AS(self):
+            return self.getToken(PartiQLParser.AS, 0)
+        def symbolPrimitive(self, i:int=None):
+            if i is None:
+                return self.getTypedRuleContexts(PartiQLParser.SymbolPrimitiveContext)
+            else:
+                return self.getTypedRuleContext(PartiQLParser.SymbolPrimitiveContext,i)
+
+        def LITERAL_STRING(self):
+            return self.getToken(PartiQLParser.LITERAL_STRING, 0)
+
+        def enterRule(self, listener:ParseTreeListener):
+            if hasattr( listener, "enterCreateView" ):
+                listener.enterCreateView(self)
+
+        def exitRule(self, listener:ParseTreeListener):
+            if hasattr( listener, "exitCreateView" ):
+                listener.exitCreateView(self)
+
+        def accept(self, visitor:ParseTreeVisitor):
+            if hasattr( visitor, "visitCreateView" ):
+                return visitor.visitCreateView(self)
+            else:
+                return visitor.visitChildren(self)
+
 
     def createCommand(self):
 
@@ -2694,6 +2731,34 @@ class PartiQLParser ( Parser ):
         def accept(self, visitor:ParseTreeVisitor):
             if hasattr( visitor, "visitDropIndex" ):
                 return visitor.visitDropIndex(self)
+            else:
+                return visitor.visitChildren(self)
+
+
+    class DropViewContext(DropCommandContext):
+
+        def __init__(self, parser, ctx:ParserRuleContext): # actually a PartiQLParser.DropCommandContext
+            super().__init__(parser)
+            self.copyFrom(ctx)
+
+        def DROP(self):
+            return self.getToken(PartiQLParser.DROP, 0)
+        def VIEW(self):
+            return self.getToken(PartiQLParser.VIEW, 0)
+        def symbolPrimitive(self):
+            return self.getTypedRuleContext(PartiQLParser.SymbolPrimitiveContext,0)
+
+        def enterRule(self, listener:ParseTreeListener):
+            if hasattr( listener, "enterDropView" ):
+                listener.enterDropView(self)
+
+        def exitRule(self, listener:ParseTreeListener):
+            if hasattr( listener, "exitDropView" ):
+                listener.exitDropView(self)
+
+        def accept(self, visitor:ParseTreeVisitor):
+            if hasattr( visitor, "visitDropView" ):
+                return visitor.visitDropView(self)
             else:
                 return visitor.visitChildren(self)
 

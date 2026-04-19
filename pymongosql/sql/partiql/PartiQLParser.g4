@@ -86,11 +86,13 @@ ddl
 createCommand
     : CREATE TABLE qualifiedName ( PAREN_LEFT tableDef PAREN_RIGHT )?                           # CreateTable
     | CREATE INDEX ON symbolPrimitive PAREN_LEFT pathSimple ( COMMA pathSimple )* PAREN_RIGHT   # CreateIndex
+    | CREATE VIEW symbolPrimitive ON symbolPrimitive AS LITERAL_STRING                          # CreateView
     ;
 
 dropCommand
     : DROP TABLE qualifiedName                                  # DropTable
     | DROP INDEX target=symbolPrimitive ON on=symbolPrimitive   # DropIndex
+    | DROP VIEW symbolPrimitive                                 # DropView
     ;
 
 tableDef
