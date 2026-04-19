@@ -91,6 +91,7 @@ pip install -e .
   - [INSERT Statements](#insert-statements)
   - [UPDATE Statements](#update-statements)
   - [DELETE Statements](#delete-statements)
+  - [View Management](#view-management)
   - [Transaction Support](#transaction-support)
 - [SQL to MongoDB Mapping](#sql-to-mongodb-mapping)
 - [Apache Superset Integration](#apache-superset-integration)
@@ -510,6 +511,37 @@ cursor.execute("DELETE FROM Music WHERE available = false")
 print(f"Deleted {cursor.rowcount} documents")
 ```
 
+### View Management
+
+PyMongoSQL supports creating and dropping MongoDB views using SQL syntax.
+
+**CREATE VIEW**
+
+```python
+import json
+
+# Create a view with a filter pipeline
+pipeline = json.dumps([{"$match": {"active": True}}])
+cursor.execute(f"CREATE VIEW active_users ON users AS '{pipeline}'")
+
+# Create a view with a $lookup (join) pipeline
+pipeline = json.dumps([
+    {"$lookup": {"from": "orders", "localField": "_id", "foreignField": "user_id", "as": "user_orders"}}
+])
+cursor.execute(f"CREATE VIEW users_with_orders ON users AS '{pipeline}'")
+
+# Query the view like any collection
+cursor.execute("SELECT * FROM active_users")
+```
+
+**DROP VIEW**
+
+```python
+cursor.execute("DROP VIEW active_users")
+```
+
+**Note:** The pipeline must be a valid JSON array string enclosed in single quotes. `CREATE VIEW` maps to `db.command({"create": view_name, "viewOn": collection, "pipeline": [...]})` and `DROP VIEW` maps to `db.command({"drop": view_name})`.
+
 ### Transaction Support
 
 PyMongoSQL supports DB API 2.0 transactions for ACID-compliant database operations. Use the `begin()`, `commit()`, and `rollback()` methods to manage transactions:
@@ -554,6 +586,8 @@ The table below shows how PyMongoSQL translates SQL operations into MongoDB comm
 | `INSERT INTO col ...` | `{insert: col, documents: [...]}` | `db.command("insert", ...)` |
 | `UPDATE col SET ... WHERE ...` | `{update: col, updates: [{q: filter, u: {$set: {...}}, multi: true}]}` | `db.command("update", ...)` |
 | `DELETE FROM col WHERE ...` | `{delete: col, deletes: [{q: filter, limit: 0}]}` | `db.command("delete", ...)` |
+| `CREATE VIEW v ON col AS '[...]'` | `{create: v, viewOn: col, pipeline: [...]}` | `db.command("create", ...)` |
+| `DROP VIEW v` | `{drop: v}` | `db.command("drop", ...)` |
 
 ### SQL Clauses to MongoDB Query Components
 
