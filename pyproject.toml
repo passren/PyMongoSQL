@@ -93,6 +93,7 @@ python_classes = ["Test*"]
 python_functions = ["test_*"]
 markers = [
     "transactional: marks tests that require MongoDB transaction support (requires replica set or sharded cluster)",
+    "integration: marks tests that require a running MongoDB instance",
 ]
 
 [tool.coverage.run]
