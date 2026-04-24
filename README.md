@@ -92,6 +92,7 @@ pip install -e .
   - [UPDATE Statements](#update-statements)
   - [DELETE Statements](#delete-statements)
   - [View Management](#view-management)
+  - [Explain Statement](#explain-statement)
   - [Transaction Support](#transaction-support)
 - [SQL to MongoDB Mapping](#sql-to-mongodb-mapping)
 - [Apache Superset Integration](#apache-superset-integration)
@@ -542,6 +543,38 @@ cursor.execute("DROP VIEW active_users")
 
 **Note:** The pipeline must be a valid JSON array string enclosed in single quotes. `CREATE VIEW` maps to `db.command({"create": view_name, "viewOn": collection, "pipeline": [...]})` and `DROP VIEW` maps to `db.command({"drop": view_name})`.
 
+### Explain Statement
+
+Prefix any `SELECT` statement with `EXPLAIN` to inspect the MongoDB [query plan](https://www.mongodb.com/docs/compass/query-plan/). PyMongoSQL wraps the inner command with MongoDB's [`explain`](https://www.mongodb.com/docs/manual/reference/command/explain/) command and flattens the winning plan tree into a two-column result set (`stage`, `details`) that renders well in table views (e.g. Apache Superset, DB clients).
+
+```python
+# Default verbosity: queryPlanner
+cursor.execute("EXPLAIN SELECT * FROM users WHERE age > 21")
+for stage, details in cursor.fetchall():
+    print(stage, details)
+
+# Request executionStats (actual timing, docs/keys examined) or allPlansExecution
+cursor.execute("EXPLAIN (verbosity executionStats) SELECT * FROM users WHERE age > 21")
+```
+
+**Supported verbosities** (grammar-native options, unquoted identifiers):
+
+| Verbosity | What you get |
+|---|---|
+| `queryPlanner` _(default)_ | Winning plan, rejected plans, namespace, parsedQuery |
+| `executionStats` | `queryPlanner` output + execution time, documents returned/examined, index keys examined |
+| `allPlansExecution` | `executionStats` for the winning plan **and** each rejected candidate plan |
+
+Example output rows (`queryPlanner`):
+
+```
+stage                  details
+namespace              mydb.users
+parsedQuery            {"age": {"$gt": 21}}
+├─ COLLSCAN            {"direction": "forward", "filter": {...}}
+rejectedPlans          []
+```
+
 ### Transaction Support
 
 PyMongoSQL supports DB API 2.0 transactions for ACID-compliant database operations. Use the `begin()`, `commit()`, and `rollback()` methods to manage transactions:
@@ -588,6 +621,7 @@ The table below shows how PyMongoSQL translates SQL operations into MongoDB comm
 | `DELETE FROM col WHERE ...` | `{delete: col, deletes: [{q: filter, limit: 0}]}` | `db.command("delete", ...)` |
 | `CREATE VIEW v ON col AS '[...]'` | `{create: v, viewOn: col, pipeline: [...]}` | `db.command("create", ...)` |
 | `DROP VIEW v` | `{drop: v}` | `db.command("drop", ...)` |
+| `EXPLAIN <select>` | `{explain: <find\|aggregate cmd>, verbosity: "queryPlanner"}` | `db.command("explain", ...)` |
 
 ### SQL Clauses to MongoDB Query Components
 

@@ -11,6 +11,7 @@ from .error import DatabaseError, OperationalError, ProgrammingError, SqlSyntaxE
 from .helper import SQLHelper
 from .retry import execute_with_retry
 from .sql.delete_builder import DeleteExecutionPlan
+from .sql.explain_builder import ExplainExecutionPlan
 from .sql.insert_builder import InsertExecutionPlan
 from .sql.parser import SQLParser
 from .sql.query_builder import QueryExecutionPlan
@@ -758,10 +759,93 @@ class ViewExecution(ExecutionStrategy):
         return self._execute_execution_plan(self._execution_plan, connection, parameters)
 
 
+class ExplainExecution(ExecutionStrategy):
+    """Execution strategy for ``EXPLAIN [ (opt val, ...) ] <statement>`` wrappers.
+
+    Parses via :class:`SQLParser` (grammar-native EXPLAIN production) to obtain
+    an :class:`ExplainExecutionPlan`, delegates command construction and result
+    flattening to the plan, and runs the resulting ``explain`` command through
+    the shared connection/retry path.
+    """
+
+    _EXPLAIN_PATTERN = re.compile(r"^\s*EXPLAIN\b", re.IGNORECASE)
+
+    @property
+    def execution_plan(self) -> QueryExecutionPlan:
+        return self._execution_plan
+
+    def supports(self, context: ExecutionContext) -> bool:
+        return bool(self._EXPLAIN_PATTERN.match(context.query))
+
+    def _parse_sql(self, sql: str) -> ExplainExecutionPlan:
+        try:
+            parser = SQLParser(sql)
+            plan = parser.get_execution_plan()
+            if not isinstance(plan, ExplainExecutionPlan):
+                raise SqlSyntaxError("Expected EXPLAIN execution plan")
+            if not plan.validate():
+                raise SqlSyntaxError("Generated EXPLAIN plan is invalid")
+            return plan
+        except SqlSyntaxError:
+            raise
+        except Exception as e:
+            _logger.error(f"SQL parsing failed: {e}")
+            raise SqlSyntaxError(f"Failed to parse SQL: {e}")
+
+    def execute(
+        self,
+        context: ExecutionContext,
+        connection: Any,
+        parameters: Optional[Union[Sequence[Any], Dict[str, Any]]] = None,
+    ) -> Optional[Dict[str, Any]]:
+        _logger.debug(f"Using explain execution for query: {context.query[:100]}")
+
+        # Normalize named parameters to positional, matching StandardQueryExecution.
+        processed_query = context.query
+        processed_params = parameters
+        if isinstance(parameters, dict):
+            param_names = re.findall(r":(\w+)", context.query)
+            processed_params = [parameters[name] for name in param_names]
+            processed_query = re.sub(r":(\w+)", "?", context.query)
+
+        explain_plan = self._parse_sql(processed_query)
+        # Store the synthesized result plan (QueryExecutionPlan) so the cursor
+        # can wire it directly into the ResultSet for column description.
+        self._execution_plan = explain_plan.result_plan
+
+        # Build the explain command (validates inner plan is a supported SELECT).
+        explain_cmd = explain_plan.build_command(processed_params)
+
+        if not connection:
+            raise OperationalError("No connection provided")
+
+        _logger.debug(f"Executing MongoDB explain command: {explain_cmd}")
+
+        try:
+            explain_result = _run_db_command(connection.database, explain_cmd, connection, "explain command")
+        except PyMongoError as e:
+            _logger.error(f"MongoDB explain execution failed: {e}")
+            raise DatabaseError(f"Explain execution failed: {e}")
+
+        # Return flattened rows as a command result. The cursor handles
+        # ExplainExecutionPlan -> result_plan translation when wiring the ResultSet.
+        return {
+            "cursor": {"id": 0, "firstBatch": explain_plan.flatten_result(explain_result)},
+            "ok": 1,
+        }
+
+
 class ExecutionPlanFactory:
     """Factory for creating appropriate execution strategy based on query context"""
 
-    _strategies = [ViewExecution(), StandardQueryExecution(), InsertExecution(), UpdateExecution(), DeleteExecution()]
+    _strategies = [
+        ExplainExecution(),
+        ViewExecution(),
+        StandardQueryExecution(),
+        InsertExecution(),
+        UpdateExecution(),
+        DeleteExecution(),
+    ]
 
     @classmethod
     def get_strategy(cls, context: ExecutionContext) -> ExecutionStrategy:
