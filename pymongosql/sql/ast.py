@@ -38,6 +38,9 @@ class MongoSQLParserVisitor(PartiQLParserVisitor):
         self._update_parse_result = UpdateParseResult.for_visitor()
         # Track current statement kind generically so UPDATE/DELETE can reuse this
         self._current_operation: str = "select"  # expected values: select | insert | update | delete
+        # EXPLAIN wrapper state (grammar: root : EXPLAIN? (options)? statement EOF)
+        self._is_explain: bool = False
+        self._explain_options: Dict[str, str] = {}
         self._handlers = self._initialize_handlers()
 
     def _initialize_handlers(self) -> Dict[str, BaseHandler]:
@@ -69,11 +72,47 @@ class MongoSQLParserVisitor(PartiQLParserVisitor):
         """Get the current operation type (select, insert, delete, or update)"""
         return self._current_operation
 
+    @property
+    def is_explain(self) -> bool:
+        """Whether the parsed statement was wrapped in EXPLAIN."""
+        return self._is_explain
+
+    @property
+    def explain_options(self) -> Dict[str, str]:
+        """Options collected from ``EXPLAIN (key value, ...)`` clause."""
+        return dict(self._explain_options)
+
     def visitRoot(self, ctx: PartiQLParser.RootContext) -> Any:
         """Visit root node and process child nodes"""
         _logger.debug("Starting to parse SQL query")
         # Reset to default SELECT operation at the start of each query
         self._current_operation = "select"
+        self._is_explain = False
+        self._explain_options = {}
+
+        # Detect EXPLAIN wrapper per grammar:
+        #   root : (EXPLAIN (PAREN_LEFT explainOption (COMMA explainOption)* PAREN_RIGHT)? )? statement EOF;
+        try:
+            explain_token = ctx.EXPLAIN() if hasattr(ctx, "EXPLAIN") else None
+        except Exception:
+            explain_token = None
+
+        if explain_token is not None:
+            self._is_explain = True
+            try:
+                option_ctxs = ctx.explainOption() or []
+            except Exception:
+                option_ctxs = []
+            for opt in option_ctxs:
+                try:
+                    param_tok = getattr(opt, "param", None)
+                    value_tok = getattr(opt, "value", None)
+                    if param_tok is not None and value_tok is not None:
+                        self._explain_options[param_tok.text] = value_tok.text
+                except Exception as e:
+                    _logger.warning(f"Error parsing explainOption: {e}")
+            _logger.debug(f"EXPLAIN detected with options: {self._explain_options}")
+
         try:
             result = self.visitChildren(ctx)
             return result

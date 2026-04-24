@@ -10,6 +10,7 @@ from ..error import SqlSyntaxError
 from .ast import MongoSQLLexer, MongoSQLParser, MongoSQLParserVisitor
 from .builder import ExecutionPlanBuilder
 from .delete_builder import DeleteExecutionPlan
+from .explain_builder import ExplainExecutionPlan
 from .insert_builder import InsertExecutionPlan
 from .query_builder import QueryExecutionPlan
 from .update_builder import UpdateExecutionPlan
@@ -132,8 +133,8 @@ class SQLParser(metaclass=ABCMeta):
 
     def get_execution_plan(
         self,
-    ) -> Union[QueryExecutionPlan, InsertExecutionPlan, DeleteExecutionPlan, UpdateExecutionPlan]:
-        """Parse SQL and return an execution plan (SELECT, INSERT, DELETE, or UPDATE)."""
+    ) -> Union[QueryExecutionPlan, InsertExecutionPlan, DeleteExecutionPlan, UpdateExecutionPlan, ExplainExecutionPlan]:
+        """Parse SQL and return an execution plan (SELECT, INSERT, DELETE, UPDATE, or EXPLAIN)."""
         if self._ast is None:
             raise SqlSyntaxError("No AST available - parsing may have failed")
 
@@ -141,13 +142,32 @@ class SQLParser(metaclass=ABCMeta):
             self._visitor = MongoSQLParserVisitor()
             self._visitor.visit(self._ast)
 
-            # Use ExecutionPlanBuilder to create the plan from parse result
+            # Use ExecutionPlanBuilder to create the inner plan from parse result
             execution_plan = ExecutionPlanBuilder.build_from_parse_result(
                 self._visitor.parse_result, self._visitor.current_operation
             )
 
             if not execution_plan.validate():
                 raise SqlSyntaxError("Generated execution plan is invalid")
+
+            # If the statement was wrapped in EXPLAIN, wrap the inner plan.
+            if getattr(self._visitor, "is_explain", False):
+                options = self._visitor.explain_options
+                # Option key names are case-insensitive; normalize to lower-case lookups.
+                normalized = {k.lower(): v for k, v in options.items()}
+                verbosity = normalized.get("verbosity", "queryPlanner")
+                explain_plan = ExplainExecutionPlan(
+                    collection=execution_plan.collection,
+                    inner_plan=execution_plan,
+                    verbosity=verbosity,
+                    options=options,
+                )
+                if not explain_plan.validate():
+                    raise SqlSyntaxError("Generated EXPLAIN plan is invalid")
+                _logger.debug(
+                    f"Generated EXPLAIN plan (verbosity={verbosity}) for collection: {execution_plan.collection}"
+                )
+                return explain_plan
 
             _logger.debug(f"Generated execution plan for collection: {execution_plan.collection}")
             return execution_plan
