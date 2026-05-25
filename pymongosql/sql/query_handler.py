@@ -32,6 +32,9 @@ class QueryParseResult:
     aggregate_pipeline: Optional[str] = None  # JSON string representation of pipeline
     aggregate_options: Optional[str] = None  # JSON string representation of options
 
+    # SQL aggregate functions detected in SELECT (COUNT, SUM, AVG, MIN, MAX)
+    aggregate_functions: List[Dict[str, Any]] = field(default_factory=list)
+
     # Subquery info (for wrapped subqueries, e.g., Superset outering)
     subquery_plan: Optional[Any] = None
     subquery_alias: Optional[str] = None
@@ -111,6 +114,12 @@ class EnhancedWhereHandler(ContextUtilsMixin):
 class SelectHandler(BaseHandler, ContextUtilsMixin):
     """Handles SELECT statement parsing"""
 
+    # Pattern to detect SQL aggregate functions: COUNT(*), SUM(field), AVG(field), etc.
+    _AGGREGATE_PATTERN = re.compile(
+        r"^(COUNT|SUM|AVG|MIN|MAX)\s*\(\s*(\*|\w+(?:\.\w+)*)\s*\)$",
+        re.IGNORECASE,
+    )
+
     def can_handle(self, ctx: Any) -> bool:
         """Check if this is a select context"""
         return hasattr(ctx, "projectionItems")
@@ -122,6 +131,21 @@ class SelectHandler(BaseHandler, ContextUtilsMixin):
         if hasattr(ctx, "projectionItems") and ctx.projectionItems():
             for item in ctx.projectionItems().projectionItem():
                 field_name, alias = self._extract_field_and_alias(item)
+
+                # Check if this is an aggregate function (COUNT, SUM, etc.)
+                agg_match = self._AGGREGATE_PATTERN.match(field_name)
+                if agg_match:
+                    func_name = agg_match.group(1).upper()
+                    func_arg = agg_match.group(2)
+                    parse_result.aggregate_functions.append(
+                        {
+                            "function": func_name,
+                            "argument": func_arg,
+                            "alias": alias or field_name,
+                        }
+                    )
+                    continue
+
                 # Use MongoDB standard projection format: {field: 1} to include field
                 projection[field_name] = 1
                 # Store alias if present

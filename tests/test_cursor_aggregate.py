@@ -354,3 +354,165 @@ class TestCursorAggregate:
         customer_type_idx = col_names.index("customer_type")
         for row in rows:
             assert row[customer_type_idx] == "premium", "All rows should have customer_type='premium'"
+
+
+class TestSqlGroupFunctions:
+    """Test SQL aggregate functions (COUNT, AVG, MIN, MAX, SUM) translated to MongoDB pipelines."""
+
+    def test_count_star(self, conn):
+        """SELECT COUNT(*) AS total FROM users → should return document count"""
+        cursor = conn.cursor()
+        cursor.execute("SELECT COUNT(*) AS total FROM users")
+
+        rows = cursor.fetchall()
+        assert len(rows) == 1
+
+        col_names = [desc[0] for desc in cursor.description]
+        assert "total" in col_names
+
+        total_idx = col_names.index("total")
+        assert rows[0][total_idx] == 22  # 22 users in test data
+
+    def test_count_star_no_alias(self, conn):
+        """SELECT COUNT(*) FROM users → column name defaults to COUNT(*)"""
+        cursor = conn.cursor()
+        cursor.execute("SELECT COUNT(*) FROM users")
+
+        rows = cursor.fetchall()
+        assert len(rows) == 1
+
+        col_names = [desc[0] for desc in cursor.description]
+        assert "COUNT(*)" in col_names
+        assert rows[0][col_names.index("COUNT(*)")] == 22
+
+    def test_count_star_with_where(self, conn):
+        """SELECT COUNT(*) AS total FROM users WHERE age > 30 → filtered count"""
+        cursor = conn.cursor()
+        cursor.execute("SELECT COUNT(*) AS total FROM users WHERE age > 30")
+
+        rows = cursor.fetchall()
+        assert len(rows) == 1
+
+        col_names = [desc[0] for desc in cursor.description]
+        total = rows[0][col_names.index("total")]
+        assert isinstance(total, (int, float))
+        assert total > 0
+        assert total < 22  # Must be less than total users
+
+    def test_avg(self, conn):
+        """SELECT AVG(age) AS avg_age FROM users"""
+        cursor = conn.cursor()
+        cursor.execute("SELECT AVG(age) AS avg_age FROM users")
+
+        rows = cursor.fetchall()
+        assert len(rows) == 1
+
+        col_names = [desc[0] for desc in cursor.description]
+        avg_age = rows[0][col_names.index("avg_age")]
+        assert isinstance(avg_age, (int, float))
+        assert 24 <= avg_age <= 45  # Must be within the age range
+
+    def test_min(self, conn):
+        """SELECT MIN(age) AS youngest FROM users"""
+        cursor = conn.cursor()
+        cursor.execute("SELECT MIN(age) AS youngest FROM users")
+
+        rows = cursor.fetchall()
+        assert len(rows) == 1
+
+        col_names = [desc[0] for desc in cursor.description]
+        youngest = rows[0][col_names.index("youngest")]
+        assert youngest == 24  # Min age in test data
+
+    def test_max(self, conn):
+        """SELECT MAX(age) AS oldest FROM users"""
+        cursor = conn.cursor()
+        cursor.execute("SELECT MAX(age) AS oldest FROM users")
+
+        rows = cursor.fetchall()
+        assert len(rows) == 1
+
+        col_names = [desc[0] for desc in cursor.description]
+        oldest = rows[0][col_names.index("oldest")]
+        assert oldest == 45  # Max age in test data
+
+    def test_sum(self, conn):
+        """SELECT SUM(price) AS total_price FROM products"""
+        cursor = conn.cursor()
+        cursor.execute("SELECT SUM(price) AS total_price FROM products")
+
+        rows = cursor.fetchall()
+        assert len(rows) == 1
+
+        col_names = [desc[0] for desc in cursor.description]
+        total_price = rows[0][col_names.index("total_price")]
+        assert isinstance(total_price, (int, float))
+        assert total_price > 0
+
+    def test_multiple_aggregates(self, conn):
+        """SELECT COUNT(*) AS cnt, MIN(price) AS cheapest, MAX(price) AS priciest, AVG(price) AS avg_price FROM products"""
+        cursor = conn.cursor()
+        cursor.execute(
+            "SELECT COUNT(*) AS cnt, MIN(price) AS cheapest, MAX(price) AS priciest, AVG(price) AS avg_price FROM products"
+        )
+
+        rows = cursor.fetchall()
+        assert len(rows) == 1
+
+        col_names = [desc[0] for desc in cursor.description]
+        row = rows[0]
+
+        cnt = row[col_names.index("cnt")]
+        cheapest = row[col_names.index("cheapest")]
+        priciest = row[col_names.index("priciest")]
+        avg_price = row[col_names.index("avg_price")]
+
+        assert cnt == 50
+        assert cheapest <= avg_price <= priciest
+
+    def test_min_max_on_products(self, conn):
+        """SELECT MIN(price) AS low, MAX(price) AS high FROM products"""
+        cursor = conn.cursor()
+        cursor.execute("SELECT MIN(price) AS low, MAX(price) AS high FROM products")
+
+        rows = cursor.fetchall()
+        assert len(rows) == 1
+
+        col_names = [desc[0] for desc in cursor.description]
+        low = rows[0][col_names.index("low")]
+        high = rows[0][col_names.index("high")]
+        assert low < high
+
+    def test_count_with_and_or_conditions(self, conn):
+        """SELECT COUNT(*) AS cnt FROM users WHERE (active = true AND age > 30) OR age < 25"""
+        cursor = conn.cursor()
+
+        # AND-only: active users over 30
+        cursor.execute("SELECT COUNT(*) AS cnt FROM users WHERE active = true AND age > 30")
+        rows = cursor.fetchall()
+        col_names = [desc[0] for desc in cursor.description]
+        and_count = rows[0][col_names.index("cnt")]
+        assert isinstance(and_count, (int, float))
+        assert and_count > 0
+        assert and_count < 22
+
+        # OR-only: very young or very old
+        cursor.execute("SELECT COUNT(*) AS cnt FROM users WHERE age < 26 OR age > 40")
+        rows = cursor.fetchall()
+        col_names = [desc[0] for desc in cursor.description]
+        or_count = rows[0][col_names.index("cnt")]
+        assert isinstance(or_count, (int, float))
+        assert or_count > 0
+        assert or_count < 22
+
+        # Three AND conditions
+        cursor.execute(
+            "SELECT COUNT(*) AS cnt, AVG(age) AS avg_age FROM users " "WHERE active = true AND age >= 25 AND age <= 40"
+        )
+        rows = cursor.fetchall()
+        col_names = [desc[0] for desc in cursor.description]
+        cnt = rows[0][col_names.index("cnt")]
+        avg_age = rows[0][col_names.index("avg_age")]
+        assert cnt > 0
+        assert cnt < 22
+        assert 25 <= avg_age <= 40
