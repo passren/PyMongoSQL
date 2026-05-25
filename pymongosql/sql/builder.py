@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+import json
 import logging
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Dict, Optional, Union
@@ -112,6 +113,11 @@ class ExecutionPlanBuilder:
     @staticmethod
     def _build_query_plan(parse_result: "QueryParseResult") -> "QueryExecutionPlan":
         """Build a query execution plan from SELECT parsing."""
+
+        # Auto-generate aggregate pipeline for SQL aggregate functions (COUNT, SUM, etc.)
+        if getattr(parse_result, "aggregate_functions", None):
+            return ExecutionPlanBuilder._build_sql_aggregate_plan(parse_result)
+
         builder = BuilderFactory.create_query_builder().collection(parse_result.collection)
 
         builder.filter(parse_result.filter_conditions).project(parse_result.projection).column_aliases(
@@ -125,6 +131,60 @@ class ExecutionPlanBuilder:
             builder._execution_plan.aggregate_options = parse_result.aggregate_options
 
         # Now build and validate
+        plan = builder.build()
+        return plan
+
+    @staticmethod
+    def _build_sql_aggregate_plan(parse_result: "QueryParseResult") -> "QueryExecutionPlan":
+        """Build an aggregate execution plan from SQL aggregate functions like COUNT(*), SUM(), etc."""
+        _FUNCTION_TO_ACCUMULATOR = {
+            "COUNT": "$sum",
+            "SUM": "$sum",
+            "AVG": "$avg",
+            "MIN": "$min",
+            "MAX": "$max",
+        }
+
+        builder = BuilderFactory.create_query_builder().collection(parse_result.collection)
+
+        pipeline = []
+
+        # Add $match stage if there are filter conditions (from WHERE clause)
+        if parse_result.filter_conditions:
+            pipeline.append({"$match": parse_result.filter_conditions})
+
+        # Build $group stage from aggregate functions
+        group_stage = {"_id": None}
+        for func_info in parse_result.aggregate_functions:
+            alias = func_info["alias"]
+            func_name = func_info["function"]
+            arg = func_info["argument"]
+            accumulator = _FUNCTION_TO_ACCUMULATOR[func_name]
+
+            if func_name == "COUNT":
+                group_stage[alias] = {accumulator: 1}
+            else:
+                group_stage[alias] = {accumulator: f"${arg}"}
+
+        pipeline.append({"$group": group_stage})
+
+        # Add $project to exclude _id
+        project_stage = {"_id": 0}
+        for func_info in parse_result.aggregate_functions:
+            project_stage[func_info["alias"]] = 1
+        pipeline.append({"$project": project_stage})
+
+        # Configure the execution plan as an aggregate query
+        builder._execution_plan.is_aggregate_query = True
+        builder._execution_plan.aggregate_pipeline = json.dumps(pipeline)
+        builder._execution_plan.aggregate_options = json.dumps({})
+
+        # Set projection for ResultSet description
+        agg_projection = {}
+        for func_info in parse_result.aggregate_functions:
+            agg_projection[func_info["alias"]] = 1
+        builder._execution_plan.projection_stage = agg_projection
+
         plan = builder.build()
         return plan
 

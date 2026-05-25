@@ -28,6 +28,7 @@ PyMongoSQL implements the DB API 2.0 interfaces to provide SQL-like access to Mo
 - **PartiQL-based SQL Syntax**: Built on [PartiQL](https://partiql.org/tutorial.html) (SQL for semi-structured data), enabling seamless SQL querying of nested and hierarchical MongoDB documents
 - **Nested Structure Support**: Query and filter deeply nested fields and arrays within MongoDB documents using standard SQL syntax
 - **MongoDB Aggregate Pipeline Support**: Execute native MongoDB aggregation pipelines using SQL-like syntax with `aggregate()` function
+- **SQL Aggregate Functions**: `COUNT(*)`, `SUM`, `AVG`, `MIN`, `MAX` translated to MongoDB aggregation pipelines
 - **SQLAlchemy Integration**: Complete ORM and Core support with dedicated MongoDB dialect
 - **SQL Query Support**: SELECT statements with WHERE conditions, field selection, and aliases
 - **DML Support**: Full support for INSERT, UPDATE, and DELETE operations using PartiQL syntax
@@ -87,6 +88,7 @@ pip install -e .
   - [WHERE Clauses](#where-clauses)
   - [Nested Field Support](#nested-field-support)
   - [Sorting and Limiting](#sorting-and-limiting)
+  - [SQL Aggregate Functions](#sql-aggregate-functions)
   - [MongoDB Aggregate Function](#mongodb-aggregate-function)
   - [INSERT Statements](#insert-statements)
   - [UPDATE Statements](#update-statements)
@@ -292,6 +294,42 @@ Both functions:
 - **ORDER BY**: `ORDER BY name ASC, age DESC`
 - **LIMIT**: `LIMIT 10`
 - **Combined**: `ORDER BY created_at DESC LIMIT 5`
+
+### SQL Aggregate Functions
+
+PyMongoSQL supports standard SQL aggregate functions that are automatically translated into MongoDB aggregation pipelines.
+
+**Supported Functions**: `COUNT(*)`, `SUM(field)`, `AVG(field)`, `MIN(field)`, `MAX(field)`
+
+**Basic Count**
+
+```python
+cursor.execute("SELECT COUNT(*) AS total FROM users")
+row = cursor.fetchone()
+print(f"Total users: {row[0]}")
+```
+
+**Multiple Aggregates**
+
+```python
+cursor.execute(
+    "SELECT COUNT(*) AS cnt, AVG(price) AS avg_price, MIN(price) AS cheapest, MAX(price) AS priciest FROM products"
+)
+```
+
+**Aggregate with WHERE**
+
+```python
+cursor.execute("SELECT COUNT(*) AS total FROM users WHERE active = true AND age > 30")
+```
+
+**Aggregate with OR Conditions**
+
+```python
+cursor.execute("SELECT COUNT(*) AS cnt FROM users WHERE age < 26 OR age > 40")
+```
+
+**Note:** Aggregate functions are translated into a MongoDB `aggregate()` pipeline with `$match` (from WHERE), `$group` (with accumulators), and `$project` stages. `COUNT(*)` maps to `{$sum: 1}`, while `SUM`, `AVG`, `MIN`, and `MAX` map to their corresponding MongoDB accumulators (`$sum`, `$avg`, `$min`, `$max`).
 
 ### MongoDB Aggregate Function
 
@@ -608,20 +646,24 @@ The table below shows how PyMongoSQL translates SQL operations into MongoDB comm
 
 ### SQL Operations to MongoDB Commands
 
-| SQL Operation | MongoDB Command | Equivalent PyMongo Method |
-|---|---|---|
-| `SELECT ... FROM col` | `{find: col, projection: {...}}` | `db.command("find", ...)` |
-| `SELECT ... FROM col WHERE ...` | `{find: col, filter: {...}}` | `db.command("find", ...)` |
-| `SELECT ... ORDER BY col ASC/DESC` | `{find: ..., sort: {col: 1/-1}}` | `db.command("find", ...)` |
-| `SELECT ... LIMIT n` | `{find: ..., limit: n}` | `db.command("find", ...)` |
-| `SELECT ... OFFSET n` | `{find: ..., skip: n}` | `db.command("find", ...)` |
-| `SELECT * FROM col.aggregate(...)` | `collection.aggregate(pipeline)` | `collection.aggregate()` |
-| `INSERT INTO col ...` | `{insert: col, documents: [...]}` | `db.command("insert", ...)` |
-| `UPDATE col SET ... WHERE ...` | `{update: col, updates: [{q: filter, u: {$set: {...}}, multi: true}]}` | `db.command("update", ...)` |
-| `DELETE FROM col WHERE ...` | `{delete: col, deletes: [{q: filter, limit: 0}]}` | `db.command("delete", ...)` |
-| `CREATE VIEW v ON col AS '[...]'` | `{create: v, viewOn: col, pipeline: [...]}` | `db.command("create", ...)` |
-| `DROP VIEW v` | `{drop: v}` | `db.command("drop", ...)` |
-| `EXPLAIN <select>` | `{explain: <find\|aggregate cmd>, verbosity: "queryPlanner"}` | `db.command("explain", ...)` |
+| SQL Operation | MongoDB Command |
+|---|---|
+| `SELECT ... FROM col` | `{find: col, projection: {...}}` |
+| `SELECT ... FROM col WHERE ...` | `{find: col, filter: {...}}` |
+| `SELECT ... ORDER BY col ASC/DESC` | `{find: ..., sort: {col: 1/-1}}` |
+| `SELECT ... LIMIT n` | `{find: ..., limit: n}` |
+| `SELECT ... OFFSET n` | `{find: ..., skip: n}` |
+| `SELECT COUNT(*) FROM col` | `collection.aggregate([{$group: {_id: null, ...}}, {$project: ...}])` |
+| `SELECT AVG(field) FROM col` | `collection.aggregate([{$group: {_id: null, ...}}, {$project: ...}])` |
+| `SELECT MIN/MAX(field) FROM col` | `collection.aggregate([{$group: {_id: null, ...}}, {$project: ...}])` |
+| `SELECT SUM(field) FROM col` | `collection.aggregate([{$group: {_id: null, ...}}, {$project: ...}])` |
+| `SELECT * FROM col.aggregate(...)` | `collection.aggregate(pipeline)` |
+| `INSERT INTO col ...` | `{insert: col, documents: [...]}` |
+| `UPDATE col SET ... WHERE ...` | `{update: col, updates: [{q: filter, u: {$set: {...}}, multi: true}]}` |
+| `DELETE FROM col WHERE ...` | `{delete: col, deletes: [{q: filter, limit: 0}]}` |
+| `CREATE VIEW v ON col AS '[...]'` | `{create: v, viewOn: col, pipeline: [...]}` |
+| `DROP VIEW v` | `{drop: v}` |
+| `EXPLAIN <select>` | `{explain: <find\|aggregate cmd>, verbosity: "queryPlanner"}` |
 
 ### SQL Clauses to MongoDB Query Components
 
@@ -635,6 +677,11 @@ The table below shows how PyMongoSQL translates SQL operations into MongoDB comm
 | `ORDER BY col DESC` | `sort: {col: -1}` | Descending sort |
 | `LIMIT n` | `limit: n` | Restrict result count |
 | `OFFSET n` | `skip: n` | Skip first n results |
+| `COUNT(*)` | `{$group: {_id: null, count: {$sum: 1}}}` | Document count |
+| `SUM(field)` | `{$group: {_id: null, sum: {$sum: "$field"}}}` | Field sum |
+| `AVG(field)` | `{$group: {_id: null, avg: {$avg: "$field"}}}` | Field average |
+| `MIN(field)` | `{$group: {_id: null, min: {$min: "$field"}}}` | Field minimum |
+| `MAX(field)` | `{$group: {_id: null, max: {$max: "$field"}}}` | Field maximum |
 
 ### WHERE Operators to MongoDB Filter Operators
 
