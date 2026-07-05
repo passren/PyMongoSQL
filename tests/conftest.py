@@ -115,6 +115,14 @@ except ImportError:
     Base = None
     Session = None
 
+try:
+    import pandas as pd
+
+    HAS_PANDAS = True
+except ImportError:
+    pd = None
+    HAS_PANDAS = False
+
 # SQLAlchemy fixtures for dialect testing
 if HAS_SQLALCHEMY:
 

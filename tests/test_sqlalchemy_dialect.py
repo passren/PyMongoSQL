@@ -392,6 +392,20 @@ class TestPyMongoSQLCompilers(unittest.TestCase):
         drop_result = PyMongoSQLDDLCompiler.visit_drop_table(mock_compiler, drop_mock)
         self.assertIn("DROP COLLECTION", drop_result)
 
+    def test_ddl_placeholder_handlers(self):
+        """Test that SQLAlchemy DDL placeholders are handled without SQL parsing."""
+        mock_cursor = Mock()
+        mock_cursor.connection.database.drop_collection = Mock()
+
+        self.assertTrue(
+            self.dialect._handle_ddl_placeholder(mock_cursor, "-- Collection will be created on first insert")
+        )
+        mock_cursor.connection.database.drop_collection.assert_not_called()
+
+        handled = self.dialect._handle_ddl_placeholder(mock_cursor, "-- DROP COLLECTION test_table")
+        self.assertTrue(handled)
+        mock_cursor.connection.database.drop_collection.assert_called_once_with("test_table")
+
 
 class TestSQLAlchemyIntegration(unittest.TestCase):
     """Integration tests for SQLAlchemy functionality."""
