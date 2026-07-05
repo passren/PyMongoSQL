@@ -46,7 +46,7 @@ jobs:
       uses: actions/cache@v5
       with:
         path: ~/.cache/pip
-        key: ${{ runner.os }}-py${{ matrix.python-version }}-mongo${{ matrix.mongodb-version }}-sqlalchemy-${{ matrix.sqlalchemy-version }}-pip-${{ hashFiles('**/requirements-test.txt', 'pyproject.toml') }}
+        key: ${{ runner.os }}-py${{ matrix.python-version }}-mongo${{ matrix.mongodb-version }}-sqlalchemy-${{ matrix.sqlalchemy-version }}-pip-${{ hashFiles('**/requirements-test.txt', '**/requirements-test-sqlalchemy14.txt', '**/requirements-test-sqlalchemy2.txt', 'pyproject.toml') }}
         restore-keys: |
           ${{ runner.os }}-py${{ matrix.python-version }}-mongo${{ matrix.mongodb-version }}-sqlalchemy-${{ matrix.sqlalchemy-version }}-pip-
 

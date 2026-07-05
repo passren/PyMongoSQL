@@ -47,7 +47,8 @@ pandas_sqlalchemy14 = [
 ]
 pandas_sqlalchemy2 = [
     "sqlalchemy>=2.0.0,<3.0.0",
-    "pandas>=3.0.0,<4.0.0",
+    "pandas>=3.0.0,<4.0.0; python_version >= '3.10'",
+    "pandas>=2.2.0,<3.0.0; python_version < '3.10'",
 ]
 dev = [
     "pytest>=7.0.0",
