@@ -2,4 +2,4 @@
 
 # Supported compatibility pair for the SQLAlchemy 1.4 test lane.
 SQLAlchemy>=1.4.0,<2.0.0
-pandas>=2.2.0,<3.0.0
+pandas>=2.1.0,<2.2.0
