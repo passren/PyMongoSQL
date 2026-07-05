@@ -2,7 +2,7 @@
 
 # Supported compatibility for the SQLAlchemy 2.x test lane.
 SQLAlchemy>=2.0.0,<3.0.0
-# pandas 3 is not available on some older Python versions (e.g. 3.9),
+# pandas 3 is not available on Python < 3.11,
 # so keep a resolver-safe fallback for those interpreters.
-pandas>=3.0.0,<4.0.0; python_version >= "3.10"
-pandas>=2.2.0,<3.0.0; python_version < "3.10"
+pandas>=3.0.0,<4.0.0; python_version >= "3.11"
+pandas>=2.2.0,<3.0.0; python_version < "3.11"
