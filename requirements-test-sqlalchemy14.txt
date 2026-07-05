@@ -2,4 +2,6 @@
 
 # Supported compatibility pair for the SQLAlchemy 1.4 test lane.
 SQLAlchemy>=1.4.0,<2.0.0
-pandas>=2.1.0,<2.2.0
+# pandas>=2.2 has SQLAlchemy 1.4 engine compatibility issues in read_sql,
+# while pandas 2.1.x does not provide wheels for Python >=3.13.
+pandas>=2.1.0,<2.2.0; python_version < "3.13"
