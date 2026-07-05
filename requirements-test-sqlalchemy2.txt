@@ -1,0 +1,5 @@
+-r requirements-test.txt
+
+# Supported compatibility pair for the SQLAlchemy 2.x test lane.
+SQLAlchemy>=2.0.0,<3.0.0
+pandas>=3.0.0,<4.0.0

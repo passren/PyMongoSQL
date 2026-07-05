@@ -41,12 +41,19 @@ dependencies = [
 [project.optional-dependencies]
 retry = ["tenacity>=9.0.0"]
 sqlalchemy = ["sqlalchemy>=1.4.0"]
+pandas_sqlalchemy14 = [
+    "sqlalchemy>=1.4.0,<2.0.0",
+    "pandas>=2.2.0,<3.0.0",
+]
+pandas_sqlalchemy2 = [
+    "sqlalchemy>=2.0.0,<3.0.0",
+    "pandas>=3.0.0,<4.0.0",
+]
 dev = [
     "pytest>=7.0.0",
     "pytest-cov>=4.0.0", 
     "flake8>=6.0.0",
     "flake8-pyproject>=1.2.0",
-    "pandas>=2.2.0",
     "black>=23.0.0",
     "isort>=5.12.0",
 ]
