@@ -1,6 +1,10 @@
 -r requirements.txt
 -r requirements-optional.txt
 
+# Shared test tooling only. Version-coupled pandas/SQLAlchemy combinations live in
+# requirements-test-sqlalchemy14.txt and requirements-test-sqlalchemy2.txt.
+# This keeps local and CI installs explicit about which compatibility pair they use.
+
 # Test dependencies
 pytest>=7.0.0
 pytest-cov>=4.0.0

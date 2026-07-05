@@ -7,9 +7,6 @@ on:
     branches: [ main ]
   workflow_call:
 
-env:
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
-
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -46,7 +43,7 @@ jobs:
       uses: actions/cache@v5
       with:
         path: ~/.cache/pip
-        key: ${{ runner.os }}-py${{ matrix.python-version }}-mongo${{ matrix.mongodb-version }}-sqlalchemy-${{ matrix.sqlalchemy-version }}-pip-${{ hashFiles('**/requirements-test.txt', 'pyproject.toml') }}
+        key: ${{ runner.os }}-py${{ matrix.python-version }}-mongo${{ matrix.mongodb-version }}-sqlalchemy-${{ matrix.sqlalchemy-version }}-pip-${{ hashFiles('**/requirements-test.txt', '**/requirements-test-sqlalchemy14.txt', '**/requirements-test-sqlalchemy2.txt', 'pyproject.toml') }}
         restore-keys: |
           ${{ runner.os }}-py${{ matrix.python-version }}-mongo${{ matrix.mongodb-version }}-sqlalchemy-${{ matrix.sqlalchemy-version }}-pip-
 
@@ -60,10 +57,12 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        # Install the target SQLAlchemy version for this matrix entry first to ensure
-        # tests run against both 1.x and 2.x series.
-        pip install "SQLAlchemy==${{ matrix.sqlalchemy-version }}"
         pip install -r requirements-test.txt
+        if [ "${{ matrix.sqlalchemy-version }}" = "1.4.*" ]; then
+          pip install -r requirements-test-sqlalchemy14.txt
+        else
+          pip install -r requirements-test-sqlalchemy2.txt
+        fi
         pip install black isort
 
     - name: Wait for MongoDB to be ready

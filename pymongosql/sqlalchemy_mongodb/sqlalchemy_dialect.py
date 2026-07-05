@@ -214,6 +214,37 @@ class PyMongoSQLDialect(default.DefaultDialect):
             return pymongosql
         return super().__getattribute__(name)
 
+    @staticmethod
+    def _normalize_collection_name(statement: str) -> str:
+        """Extract a collection name from the compiler's DROP COLLECTION placeholder."""
+        collection_name = statement[len("-- DROP COLLECTION ") :].strip()
+        if collection_name.startswith('"') and collection_name.endswith('"'):
+            return collection_name[1:-1]
+        return collection_name
+
+    def _handle_ddl_placeholder(self, cursor, statement: str) -> bool:
+        """Handle SQLAlchemy DDL placeholders without routing them through the SQL parser."""
+        if statement == "-- Collection will be created on first insert":
+            return True
+
+        if statement.startswith("-- DROP COLLECTION "):
+            cursor.connection.database.drop_collection(self._normalize_collection_name(statement))
+            return True
+
+        return False
+
+    def do_execute(self, cursor, statement, parameters, context=None):
+        """Execute statements, handling MongoDB DDL placeholders directly."""
+        if self._handle_ddl_placeholder(cursor, statement):
+            return None
+        return super().do_execute(cursor, statement, parameters, context=context)
+
+    def do_execute_no_params(self, cursor, statement, context=None):
+        """Execute parameterless statements, handling MongoDB DDL placeholders directly."""
+        if self._handle_ddl_placeholder(cursor, statement):
+            return None
+        return super().do_execute_no_params(cursor, statement, context=context)
+
     def create_connect_args(self, url: url.URL) -> Tuple[List[Any], Dict[str, Any]]:
         """Create connection arguments from SQLAlchemy URL.
 
