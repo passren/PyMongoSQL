@@ -24,16 +24,18 @@ _logger = logging.getLogger(__name__)
 def _run_db_command(db: Any, command: Dict[str, Any], connection: Any, operation_name: str) -> Dict[str, Any]:
     """Run a MongoDB command with optional transaction session and retry policy."""
     retry_config = getattr(connection, "retry_config", None)
+    # command() falls back to DEFAULT_CODEC_OPTIONS, ignoring client options like uuidRepresentation
+    codec_options = db.codec_options
 
     if connection and connection.session and connection.session.in_transaction:
         return execute_with_retry(
-            lambda: db.command(command, session=connection.session),
+            lambda: db.command(command, session=connection.session, codec_options=codec_options),
             retry_config,
             operation_name,
         )
 
     return execute_with_retry(
-        lambda: db.command(command),
+        lambda: db.command(command, codec_options=codec_options),
         retry_config,
         operation_name,
     )
