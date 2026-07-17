@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import pytest
+from bson.codec_options import DEFAULT_CODEC_OPTIONS
 from pymongo.errors import ConnectionFailure, NetworkTimeout
 
 from pymongosql.connection import Connection
@@ -139,7 +140,9 @@ def test_result_set_getmore_retries_transient_failures():
     state = {"calls": 0}
 
     class FakeDatabase:
-        def command(self, command_payload):
+        codec_options = DEFAULT_CODEC_OPTIONS
+
+        def command(self, command_payload, codec_options=None):
             state["calls"] += 1
             if state["calls"] < 3:
                 raise NetworkTimeout("temporary getMore timeout")

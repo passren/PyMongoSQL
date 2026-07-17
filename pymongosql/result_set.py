@@ -112,8 +112,10 @@ class ResultSet(CursorIterator):
                         "getMore": self._cursor_id,
                         "collection": self._execution_plan.collection,
                     }
+                    # Decode later batches like the first one, not with DEFAULT_CODEC_OPTIONS
+                    codec_options = self._database.codec_options
                     result = execute_with_retry(
-                        lambda: self._database.command(getmore_cmd),
+                        lambda: self._database.command(getmore_cmd, codec_options=codec_options),
                         self._retry_config,
                         "getMore command",
                     )
