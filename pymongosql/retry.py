@@ -3,7 +3,7 @@ import logging
 from dataclasses import dataclass
 from typing import Any, Callable, Optional, Tuple, TypeVar
 
-from pymongo.errors import AutoReconnect, ConnectionFailure, NetworkTimeout, PyMongoError, ServerSelectionTimeoutError
+from pymongo.errors import AutoReconnect, ConnectionFailure, NetworkTimeout, ServerSelectionTimeoutError
 
 try:
     from tenacity import Retrying, retry_if_exception_type, stop_after_attempt, wait_exponential
@@ -89,7 +89,3 @@ def execute_with_retry(
     )
 
     return retrying(operation)
-
-
-def is_retryable_system_error(error: Exception) -> bool:
-    return isinstance(error, RETRYABLE_SYSTEM_EXCEPTIONS) and isinstance(error, PyMongoError)
