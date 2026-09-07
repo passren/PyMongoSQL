@@ -102,6 +102,43 @@ class TestPyMongoSQLDialectUnit(unittest.TestCase):
         self.assertIn("host", kwargs)
         self.assertEqual(kwargs["host"], "mongodb://user:pass@localhost:27017/testdb")
 
+    def test_create_connect_args_escapes_credentials(self):
+        """Credentials with reserved characters must be re-escaped in the rebuilt URI."""
+        test_url = url.make_url("mongodb://us%40er:p%40ss%3Aw%2Frd@localhost:27017/testdb")
+        args, kwargs = self.dialect.create_connect_args(test_url)
+
+        self.assertEqual(kwargs["host"], "mongodb://us%40er:p%40ss%3Aw%2Frd@localhost:27017/testdb")
+
+        from pymongo.uri_parser import parse_uri
+
+        parsed = parse_uri(kwargs["host"])
+        self.assertEqual(parsed["username"], "us@er")
+        self.assertEqual(parsed["password"], "p@ss:w/rd")
+
+    def test_create_connect_args_escapes_username_only(self):
+        """Username without password is also re-escaped."""
+        test_url = url.make_url("mongodb://us%40er@localhost:27017/testdb")
+        args, kwargs = self.dialect.create_connect_args(test_url)
+
+        self.assertEqual(kwargs["host"], "mongodb://us%40er@localhost:27017/testdb")
+
+    def test_create_connect_args_escapes_query_values(self):
+        """Query option values with reserved characters are re-escaped."""
+        test_url = url.make_url("mongodb://localhost/testdb?authMechanismProperties=SERVICE_NAME%3Amongo%26x")
+        args, kwargs = self.dialect.create_connect_args(test_url)
+
+        self.assertEqual(kwargs["host"], "mongodb://localhost/testdb?authMechanismProperties=SERVICE_NAME%3Amongo%26x")
+
+    def test_create_connect_args_repeated_query_key(self):
+        """Repeated query keys are emitted once per value instead of stringified as a tuple."""
+        test_url = url.make_url("mongodb://localhost/testdb?readPreferenceTags=dc:east&readPreferenceTags=dc:west")
+        args, kwargs = self.dialect.create_connect_args(test_url)
+
+        self.assertEqual(
+            kwargs["host"],
+            "mongodb://localhost/testdb?readPreferenceTags=dc%3Aeast&readPreferenceTags=dc%3Awest",
+        )
+
     def test_create_connect_args_with_query_params(self):
         """Test connection args with query parameters."""
         test_url = url.make_url("mongodb://localhost/testdb?ssl=true&replicaSet=rs0")
