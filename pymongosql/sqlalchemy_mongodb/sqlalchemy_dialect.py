@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 import logging
 from typing import Any, Dict, List, Optional, Tuple, Type
+from urllib.parse import quote_plus
 
 from sqlalchemy import pool, types
 from sqlalchemy.engine import default, url
@@ -267,12 +268,13 @@ class PyMongoSQLDialect(default.DefaultDialect):
         # Start with scheme (mongodb only - srv handled separately)
         uri_parts.append(f"{url.drivername}://")
 
-        # Add credentials if present
+        # SQLAlchemy has already percent-decoded the credentials, so they must be
+        # re-escaped (RFC 3986) before pymongo parses the rebuilt URI.
         if url.username:
             if url.password:
-                uri_parts.append(f"{url.username}:{url.password}@")
+                uri_parts.append(f"{quote_plus(url.username)}:{quote_plus(url.password)}@")
             else:
-                uri_parts.append(f"{url.username}@")
+                uri_parts.append(f"{quote_plus(url.username)}@")
 
         # Add host and port
         if url.host:
@@ -288,7 +290,9 @@ class PyMongoSQLDialect(default.DefaultDialect):
         if url.query:
             query_parts = []
             for key, value in url.query.items():
-                query_parts.append(f"{key}={value}")
+                values = value if isinstance(value, (list, tuple)) else (value,)
+                for item in values:
+                    query_parts.append(f"{quote_plus(key)}={quote_plus(str(item))}")
             if query_parts:
                 uri_parts.append(f"?{'&'.join(query_parts)}")
 
